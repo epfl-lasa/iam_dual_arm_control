@@ -13,7 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   tf
   tf_conversions
-  utils
+#   utils
 )
 
 # find_package(YARP)
@@ -168,13 +168,14 @@ set(SOLVER_BWC     "${CMAKE_CURRENT_SOURCE_DIR}/bwc_cvxgen")
 include_directories(${SOLVER_BWC}/)
 
 
-set(HEADERS_DS    ${HEADERS_FOLDER}/dual_arm_control.h 
-                  ${HEADERS_FOLDER}/dualArmFreeMotionController.h
-                  ${HEADERS_FOLDER}/dualArmCooperativeController.h)
+set(HEADERS_DS  ${HEADERS_FOLDER}/Utils.hpp
+                ${HEADERS_FOLDER}/dual_arm_control.h 
+                ${HEADERS_FOLDER}/dualArmFreeMotionController.h
+                ${HEADERS_FOLDER}/dualArmCooperativeController.h)
 
-set(SOURCES_DS    ${SRC_FOLDER}/dual_arm_control.cpp 
-                  ${SRC_FOLDER}/dualArmFreeMotionController.cpp
-                  ${SRC_FOLDER}/dualArmCooperativeController.cpp)
+set(SOURCES_DS  ${SRC_FOLDER}/dual_arm_control.cpp 
+                ${SRC_FOLDER}/dualArmFreeMotionController.cpp
+                ${SRC_FOLDER}/dualArmCooperativeController.cpp)
 
 file(GLOB BWC_SOURCES   "${SOLVER_BWC}/*.c")
 

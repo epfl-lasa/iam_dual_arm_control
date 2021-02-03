@@ -1,6 +1,6 @@
 
 #include "dualArmFreeMotionController.h"
-#include "Utils.h"
+#include "Utils.hpp"
 
 
 float computeCouplingFactor(Eigen::Vector3f ep_, float alpha_, float beta_, float gamma_, bool secondOrder)

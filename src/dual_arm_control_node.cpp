@@ -10,15 +10,24 @@ int main(int argc, char **argv)
 	ros::NodeHandle nh;
 	double frequency = 200.0f;
 
-	// Parameters
-	std::string topic_pose_object			= "/simo_track/object_pose";
-	std::string topic_pose_robot_base_left	= "/simo_track/robot_left/pose";
-	std::string topic_pose_robot_ee_left	= "/simo_track/robot_left/ee_pose";
-	std::string topic_ee_commands_left		= "/iiwa1/CustomControllers/command";
-	std::string topic_pose_robot_base_right	= "/simo_track/robot_right/pose";
-	std::string topic_pose_robot_ee_right	= "/simo_track/robot_right/ee_pose";
-	std::string topic_ee_commands_right		= "/iiwa_blue/CustomControllers/command";
+	//
+	std::string topic_pose_robot_base[NB_ROBOTS];
+	std::string topic_pose_robot_ee[NB_ROBOTS];
+	std::string topic_ee_commands[NB_ROBOTS];
+	std::string topic_sub_ForceTorque_Sensor[NB_ROBOTS];
 
+	// Parameters
+	std::string topic_pose_object	= "/simo_track/object_pose";
+	// 
+	topic_pose_robot_base[0]		= "/simo_track/robot_left/pose";
+	topic_pose_robot_ee[0]			= "/simo_track/robot_left/ee_pose";
+	topic_ee_commands[0]			= "/iiwa1/CustomControllers/command";
+	topic_sub_ForceTorque_Sensor[0]	= "/iiwa1/iiwa1_FTS_topic";
+	//
+	topic_pose_robot_base[1]		= "/simo_track/robot_right/pose";
+	topic_pose_robot_ee[1]			= "/simo_track/robot_right/ee_pose";
+	topic_ee_commands[1]			= "/iiwa_blue/CustomControllers/command";
+	topic_sub_ForceTorque_Sensor[1]	= "/iiwa_blue/iiwa_blue_FTS_topic";
 
 	// LOADING PARAMETERS FROM THE ROS SERVER
 	// Topic names
@@ -36,12 +45,10 @@ int main(int argc, char **argv)
 
 	// creating the streamer
 	dual_arm_control dualArmCtrl(nh, frequency, topic_pose_object, 	
-												topic_pose_robot_base_left,
-												topic_pose_robot_ee_left,
-												topic_ee_commands_left,
-												topic_pose_robot_base_right,
-												topic_pose_robot_ee_right,
-												topic_ee_commands_right);
+												topic_pose_robot_base,
+												topic_pose_robot_ee,
+												topic_ee_commands,
+												topic_sub_ForceTorque_Sensor);
 
 	if (!dualArmCtrl.init()) 
 	{

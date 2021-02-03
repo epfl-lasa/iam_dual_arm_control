@@ -29,7 +29,16 @@ class dualArmCooperativeController
 
 	public :
 		// Robot ID: left or right
-	    enum ROBOT {LEFT = 0, RIGHT = 1};
+	  enum ROBOT {LEFT = 0, RIGHT = 1};
+	  // Contact state:
+    // CONTACT: Both robots are in contact with the object
+    // CLOSE_TO_CONTACT: Both robots are close to make contact with the object
+    // NO_CONTACT: Both robots are not in contact with the object
+    enum ContactState {CONTACT = 0, CLOSE_TO_CONTACT = 1, NO_CONTACT = 2};
+    // Exection mode:
+    // REACHING_GRASPING_ONLY: The two robots reach and grasp the object
+    // REACHING_GRASPING_MANIPULATING: The two robots reach, grasp and move the object to a predefined position                               
+    enum Mode {REACHING_GRASPING = 0, REACHING_GRASPING_MANIPULATING = 1};
 
 	protected: 
 
@@ -42,6 +51,7 @@ class dualArmCooperativeController
 	float _deltaY_ee;
 	float _min_nF;
 	float _max_nF;
+	float _targetForce;
 
 	bool _withForceSaturation;
 	bool _contactOccured;
@@ -57,6 +67,8 @@ class dualArmCooperativeController
 
 	Eigen::Matrix<double, 12, 1> _weight_EEs_wrench;
 	Eigen::Matrix<double, 6, 1>  _weight_EEs_slack;
+	//
+	Eigen::Vector3f _nC[NB_ROBOTS];               					// Normal vector to surface object for each robot (3x1)
 
 	public :
 		float _ContactConfidence ;
@@ -79,6 +91,7 @@ class dualArmCooperativeController
 		bool getContactConstraints(Matrix6f world_Xstar_EE[]);
 		void load_wrench_data(Vector6f desired_object_wrench_);
 		void computeControlWrench(Eigen::Matrix4f w_H_o, Eigen::Matrix4f w_H_ee[], Eigen::Matrix4f w_H_cp[], Vector6f desired_object_wrench_);
+		void getPredefinedContactForceProfile(bool goHome, int contactState, Eigen::Matrix4f w_H_o, Eigen::Matrix4f w_H_ee[], Eigen::Matrix4f w_H_cp[]);
 };
 
 #endif // dualArmFreeMotionController_H

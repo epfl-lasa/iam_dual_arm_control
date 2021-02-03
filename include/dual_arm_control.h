@@ -69,28 +69,32 @@ class dual_arm_control
 		ros::NodeHandle nh_;	// Ros node handle
 		ros::Rate loop_rate_;	// Ros loop rate [Hz]
 
-		float t0_run;
+		float _t0_run;
 
 		//////////////////////////////
-	    // Subscribers declarations //
-	    //////////////////////////////
-		ros::Subscriber sub_object_pose;
-		ros::Subscriber sub_left_base_pose;
-		ros::Subscriber sub_left_ee_pose;
-		ros::Subscriber sub_right_base_pose;
-		ros::Subscriber sub_right_ee_pose;
-		// ros::Subscriber sub_left_joint_states;
-		// ros::Subscriber sub_right_joint_states;
-		ros::Subscriber _subForceTorqueSensor[NB_ROBOTS];     // Subscribe to force torque sensors
-
+    // Subscribers declarations //
+    //////////////////////////////
+		ros::Subscriber _sub_object_pose;
+		ros::Subscriber _sub_base_pose[NB_ROBOTS];			// subscribe to the base pose of the robots
+		ros::Subscriber _sub_ee_pose[NB_ROBOTS];			// subscribe to the end effectors poses
+		ros::Subscriber _subForceTorqueSensor[NB_ROBOTS];	// Subscribe to force torque sensors
+		// ros::Subscriber sub_joint_states[NB_ROBOTS];		// subscriber for the joint position
+		//////////////////////////////
 		// Publishers:
-		ros::Publisher pub_left_ts_commands;		// ee left velocity twist
-		ros::Publisher pub_right_ts_commands;		// ee right velocity twist
-		// ros::Publisher pub_left_js_commands;		// ee left velocity twist
-		// ros::Publisher pub_right_js_commands;		// ee right velocity twist
+		//////////////////////////////
+		ros::Publisher _pub_ts_commands[NB_ROBOTS];			// Publisher of the End effectors velocity twist
+		//////////////////////////////
+		// List of the topics
+		//////////////////////////////
+		std::string _topic_pose_object;
+		std::string _topic_pose_robot_base[NB_ROBOTS];
+		std::string _topic_pose_robot_ee[NB_ROBOTS];
+		std::string _topic_ee_commands[NB_ROBOTS];
+		std::string _topic_subForceTorqueSensor[NB_ROBOTS];
 
 		// Velocity commands to be sent to the robots
-		std_msgs::Float64MultiArray pubVelo[NB_ROBOTS]; // velocity Twist data to be published
+		std_msgs::Float64MultiArray _pubVelo[NB_ROBOTS]; // velocity Twist data to be published
+
 		geometry_msgs::WrenchStamped _msgFilteredWrench;
 
 		// Callbacks
@@ -98,24 +102,11 @@ class dual_arm_control
 		void updateBasePoseCallback(const geometry_msgs::Pose::ConstPtr& msg , int k);
 		void updateEEPoseCallback(const geometry_msgs::Pose::ConstPtr& msg , int k);
 		void updateRobotWrench(const geometry_msgs::WrenchStamped::ConstPtr& msg, int k);
-
+		void updateRobotWrenchLeft(const geometry_msgs::WrenchStamped::ConstPtr& msg);
+		void updateRobotWrenchRight(const geometry_msgs::WrenchStamped::ConstPtr& msg);
 		// Update contact state with the surface
     void updateContactState();
-    // Compute desired contact force profile
-    void computeDesiredContactForceProfile();
-		// void rarmPoseCallback(const geometry_msgs::Pose::ConstPtr& msg);
-		// void larmJointStatesCallback(const std_msgs::Float64MultiArray::ConstPtr& msg);
-		// void rarmJointStatesCallback(const std_msgs::Float64MultiArray::ConstPtr& msg);
-
-		std::string _topic_pose_object;
-		std::string _topic_pose_robot_base_left;
-		std::string _topic_pose_robot_ee_left;
-		std::string _topic_ee_commands_left;
-		std::string _topic_pose_robot_base_right;
-		std::string _topic_pose_robot_ee_right;
-		std::string _topic_ee_commands_right;
-
-
+		
 		// --------------------------------------------------------------------------------
 		float _toolMass;                             // Tool mass [kg]
     float _toolOffsetFromEE;                     // Tool offset along z axis of end effector [m]   
@@ -134,6 +125,11 @@ class dual_arm_control
     float _eoD;                                       // Error to object dimension vector [m]                       
     float _eC;                                        // Error to desired center position [m]
     float _eoC;                                       // Error to object center position [m]  
+
+    Eigen::Vector3f _xoC;                             // Measured object center position [m] (3x1)
+    Eigen::Vector3f _xoD;                             // Measured object dimension vector [m] (3x1)
+		Eigen::Vector3f _xdC;                             // Desired center position [m] (3x1)
+    Eigen::Vector3f _xdD;                             // Desired distance vector [m] (3x1)
 		// --------------------------------------------------------------------------------
 
 		Eigen::Vector3f _x[NB_ROBOTS];
@@ -143,6 +139,9 @@ class dual_arm_control
 		Eigen::Vector3f _xd[NB_ROBOTS];
 		Eigen::Vector4f _qd[NB_ROBOTS];
 		Eigen::Vector3f _aad[NB_ROBOTS];						// desired axis angle 
+		
+
+
 		Eigen::Vector3f _vd[NB_ROBOTS];
 		Eigen::Vector3f _omegad[NB_ROBOTS];
 		Vector6f _Vd_ee[NB_ROBOTS];									// desired velocity twist
@@ -173,7 +172,7 @@ class dual_arm_control
     Eigen::Matrix4f _w_H_gp[NB_ROBOTS];
     Eigen::Vector3f _xgp_o[NB_ROBOTS];
     Eigen::Vector4f _qgp_o[NB_ROBOTS];
-    Eigen::Vector3f _n[NB_ROBOTS];                    // Normal vector to surface object for each robot (3x1)
+    Eigen::Vector3f _n[NB_ROBOTS];               // Normal vector to surface object for each robot (3x1)
     Vector6f        _V_gpo[NB_ROBOTS];
 
     
@@ -189,6 +188,7 @@ class dual_arm_control
 	  Eigen::Matrix4f _w_H_Do;
 	  Eigen::Matrix4f _o_H_ee[NB_ROBOTS];
 	  Eigen::Matrix4f _w_H_Dgp[NB_ROBOTS];
+	  int _objecPoseCount;
 
     Eigen::Vector3f _v_abs;
     Eigen::Vector3f _w_abs;
@@ -203,8 +203,7 @@ class dual_arm_control
     Matrix6f _gain_abs;
     Matrix6f _gain_rel;
 
-    float reachable_p;
-    float reachable_o;
+    float _reachable;
     float _v_max;
     float _w_max;
     float _filteredForceGain;
@@ -212,8 +211,15 @@ class dual_arm_control
     float _nuWrench;
 
     bool _stop;                                    // Check for CTRL+C
-	  //
+
+    ////////////////////////////////////////////////////////////////////////
+    // Objects for Unconstrained and contrained motion and force generation
+    ////////////////////////////////////////////////////////////////////////
+    //
+    //--------------------------------------
 	  dualArmFreeMotionController 	FreeMotionCtrl;
+
+    // Subscribers declarations //
 	  dualArmCooperativeController 	CooperativeCtrl;
 
 	private:
@@ -225,12 +231,10 @@ class dual_arm_control
 		//
 		//
 		dual_arm_control(ros::NodeHandle &n, double frequency, 	std::string topic_pose_object_,
-																														std::string topic_pose_robot_base_left_,
-																														std::string topic_pose_robot_ee_left_,
-																														std::string topic_ee_commands_left_,
-																														std::string topic_pose_robot_base_right_,
-																														std::string topic_pose_robot_ee_right_,
-																														std::string topic_ee_commands_right_);
+																														std::string topic_pose_robot_base[],
+																														std::string topic_pose_robot_ee[],
+																														std::string topic_ee_commands[],
+																														std::string topic_sub_ForceTorque_Sensor[]);
 		~dual_arm_control();
 
 		bool init();
@@ -238,6 +242,8 @@ class dual_arm_control
 		void computeCommands();
 		void publish_commands();
 		void run();
+		void prepareCommands(Vector6f Vd_ee[], Eigen::Vector4f qd[], Vector6f V_gpo[]);
+		void getGraspPointsVelocity();
 
 		 
 };
