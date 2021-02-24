@@ -40,9 +40,8 @@ class Utils
 	  return output;
 	}
 
-
-    static Eigen::Matrix<T,3,3> eulerAnglesToRotationMatrix(T phi, T theta, T psi)
-    {
+	static Eigen::Matrix<T,3,3> eulerAnglesToRotationMatrix(T phi, T theta, T psi)
+  	{
 	  T cphi = std::cos(phi);
 	  T sphi = std::sin(phi);
 	  T ctheta = std::cos(theta);
@@ -704,6 +703,28 @@ class Utils
 	  right_V = Th.bottomLeftCorner(6,6)  *vel_a
 	          + Th.bottomRightCorner(6,6) *vel_r;
 	}
+
+	static Eigen::Matrix<T,3,1> getEulerAnglesXYZ_FixedFrame(Eigen::Matrix<T,3,3> R)
+  {
+      // this function computed for a given rotation matrix the rotation angles around X, Y and Z axis considered as fixed.
+      // the rotation matrix is assumed to be a Euler rotation matrix of type ZYX
+      Eigen::Matrix<T,3,1> Angles;
+      T Psi_X, Theta_Y, Phi_Z;
+          Psi_X   = std::atan2(R(2,1),R(2,2));
+          Theta_Y = std::atan2(-R(2,0), fabs(std::sqrt(std::pow(R(0,0), 2.)+std::pow(R(1,0), 2.))));
+          Phi_Z   = std::atan2(R(1,0),R(0,0));
+      if ((Theta_Y>M_PI/2.)||(Theta_Y<-M_PI/2.))
+      {
+          Psi_X   = std::atan2(-R(2,1),-R(2,2));
+          Theta_Y = std::atan2(-R(2,0),-fabs(std::sqrt(std::pow(R(0,0), 2.)+std::pow(R(1,0), 2.))));
+          Phi_Z   = std::atan2(-R(1,0),-R(0,0));
+      }
+      Angles(0) = Psi_X;
+      Angles(1) = Theta_Y;
+      Angles(2) = Phi_Z;
+
+      return Angles;
+  }
 
 };
 

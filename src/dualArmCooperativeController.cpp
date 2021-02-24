@@ -12,18 +12,18 @@ dualArmCooperativeController::~dualArmCooperativeController(){}
 
 bool dualArmCooperativeController::init()
 {
-	_tol_dist2contact   = 0.02f;
+	_tol_dist2contact   = 0.03f;
 	_ContactConfidence  = 0.0f;
 	_min_Fz 		    = 20.0; //15.0;
 	_min_nF 			= 20.0f;
 	_max_nF 			= 50.0f;
 	//
-	_mu_ee				= 0.4f;
-	_gamma_ee			= 0.4f;
+	_mu_ee				= 0.9f;
+	_gamma_ee			= 0.9f;
 	_deltaX_ee			= 0.5f;
 	_deltaY_ee			= 0.5f;
 	_contactOccured     = false;
-	_targetForce     	= 20.0f;
+	_targetForce     	= 40.0f;
 	//
 	_GraspMatrixEEs.setZero();
 	_optimal_contact_wrench_EEs.setZero();
@@ -85,7 +85,7 @@ void dualArmCooperativeController::check_contact_proximity(	Eigen::Matrix4f w_H_
 	// if norm in x and y are less than thrxy and z less than tol
 	//------------------------------------------------------------
 	bool tsk = false; 
-	if((lh_er.head(2).norm() <= 1.25f*_tol_dist2contact) && (rh_er.head(2).norm() <= 1.25f*_tol_dist2contact)){
+	if((lh_er.head(2).norm() <= 1.5f*_tol_dist2contact) && (rh_er.head(2).norm() <= 1.5f*_tol_dist2contact)){
 		tsk = true;
 		_contactOccured = true;
 	}
@@ -98,8 +98,8 @@ void dualArmCooperativeController::check_contact_proximity(	Eigen::Matrix4f w_H_
 	_dist2contact[RIGHT] = (rh_er(2));
 	// update the Contact confidence indicator
 	// if(tsk && (fabs(_dist2contact[RIGHT]) <= _tol_dist2contact) && (fabs(_dist2contact[LEFT]) <= _tol_dist2contact)){
-	if(_contactOccured && (fabs(_dist2contact[RIGHT]) <= _tol_dist2contact) && (fabs(_dist2contact[LEFT]) <= _tol_dist2contact)){
-	// if((fabs(_dist2contact[RIGHT]) <= _tol_dist2contact) && (fabs(_dist2contact[LEFT]) <= _tol_dist2contact)){
+	// if(_contactOccured && (fabs(_dist2contact[RIGHT]) <= _tol_dist2contact) && (fabs(_dist2contact[LEFT]) <= _tol_dist2contact)){
+	if((fabs(_dist2contact[RIGHT]) <= _tol_dist2contact) && (fabs(_dist2contact[LEFT]) <= _tol_dist2contact)){
 		_ContactConfidence = 1.0;
 	} else 	{
 		_ContactConfidence = 0.0;
@@ -107,6 +107,8 @@ void dualArmCooperativeController::check_contact_proximity(	Eigen::Matrix4f w_H_
 	std::cout << " _ContactConfidence 	aaaaaaaaaaaaaaaaaa	---------- is  \t" << _ContactConfidence << std::endl;
 	std::cout << " _dist2contact[LEFT] 	aaaaaaaaaaaaaaaaaa	---------- is  \t" << _dist2contact[LEFT] << std::endl;
 	std::cout << " _dist2contact[RIGHT] aaaaaaaaaaaaaaaaaa	---------- is  \t" << _dist2contact[RIGHT] << std::endl;
+	std::cout << " _lh_er.head(2).norm()aaaaaaaaaaaaaaaaaa	---------- is  \t" << lh_er.head(2).norm() << std::endl;
+	std::cout << " _rh_er.head(2).norm()aaaaaaaaaaaaaaaaaa	---------- is  \t" << rh_er.head(2).norm() << std::endl;
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 }
 
@@ -333,7 +335,7 @@ void dualArmCooperativeController::computeControlWrench(Eigen::Matrix4f w_H_o, E
 	// Thresholding normal forces
 	if(_withForceSaturation) {
 		this->thresholdNormalForcesEEs(_min_nF, _max_nF, w_H_ee[LEFT].block<3,3>(0,0),  _f_applied[LEFT]); 
-    	this->thresholdNormalForcesEEs(_min_nF, _max_nF, w_H_ee[RIGHT].block<3,3>(0,0), _f_applied[RIGHT]);
+    this->thresholdNormalForcesEEs(_min_nF, _max_nF, w_H_ee[RIGHT].block<3,3>(0,0), _f_applied[RIGHT]);
 	}
 	// Printing some results
 	// ---------------------
@@ -368,8 +370,8 @@ void dualArmCooperativeController::getPredefinedContactForceProfile(bool goHome,
     }
     else if(contactState==CLOSE_TO_CONTACT)
     {
-      _f_applied[LEFT].head(3)  = 10.0f * _nC[LEFT];
-			_f_applied[RIGHT].head(3) = 10.0f * _nC[RIGHT];
+      _f_applied[LEFT].head(3)  = 8.0f * _nC[LEFT];
+			_f_applied[RIGHT].head(3) = 8.0f * _nC[RIGHT];
     }
     else
     {

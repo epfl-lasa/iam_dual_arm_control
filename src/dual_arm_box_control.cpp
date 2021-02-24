@@ -102,7 +102,7 @@ dual_arm_control::dual_arm_control(ros::NodeHandle &n, double frequency, 	std::s
     _V_gpo[k].setConstant(0.0f);
     _o_H_ee[k].setIdentity();
     _w_H_Dgp[k].setIdentity();
-
+		
     // desired values
     _Vd_ee[k].setZero();
     _xd[k].setZero();
@@ -149,8 +149,8 @@ dual_arm_control::dual_arm_control(ros::NodeHandle &n, double frequency, 	std::s
 	_objecPoseCount = 0;
 
   // object desired grasping points
-  _xgp_o[0] << 0.0f, -_objectDim(1)/2.1f,  -0.01f;  	// left   // _xgp_o[0] << 0.0f, -_objectDim(1)/1.8f, 0.0f;  // left
-	_xgp_o[1] << 0.0f,  _objectDim(1)/2.1f,  -0.01f; 		// right 	// _xgp_o[1] << 0.0f,  _objectDim(1)/1.8f,  0.0f; // right
+  _xgp_o[0] << 0.0f, -_objectDim(1)/2.0f,  -0.0f;  	// left   // _xgp_o[0] << 0.0f, -_objectDim(1)/1.8f, 0.0f;  // left
+	_xgp_o[1] << 0.0f,  _objectDim(1)/2.0f,  -0.0f; 		// right 	// _xgp_o[1] << 0.0f,  _objectDim(1)/1.8f,  0.0f; // right
 
 	Eigen::Matrix3f o_R_gpl;	o_R_gpl.setZero();		
 	Eigen::Matrix3f o_R_gpr;	o_R_gpr.setZero();	
@@ -218,6 +218,17 @@ dual_arm_control::dual_arm_control(ros::NodeHandle &n, double frequency, 	std::s
 	_delta_oDx  = 0.0f;
 	_delta_oDy  = 0.0f;
 	_delta_oDz  = 0.0f;
+	//
+	for(int k=0; k<NB_OBJECTS; k++){
+		_w_H_No[k].setIdentity();
+		_xNo[k].setZero();
+		_qNo[k] << 1.0f, 0.0f, 0.0f, 0.0f;
+	}
+	//
+	_w_H_abs_Do.setIdentity();
+	_lDo_H_rDo.setIdentity();
+	_w_H_abs_o.setIdentity();
+	_lo_H_ro.setIdentity();
 	// _t0_run = ros::Time::now().toSec();
 
 }
@@ -251,14 +262,19 @@ bool dual_arm_control::init()
 
 
 	_pub_ts_commands[RIGHT]   	 = nh_.advertise<std_msgs::Float64MultiArray>(_topic_ee_commands[RIGHT], 1);														// commands
-	_pubDesiredTwist[RIGHT] 	 = nh_.advertise<geometry_msgs::Twist>("/dual_arm_control/robot_right/desired/ee_velocity", 1);
+	_pubDesiredTwist[RIGHT] 	   = nh_.advertise<geometry_msgs::Twist>("/dual_arm_control/robot_right/desired/ee_velocity", 1);
 	_pubDesiredOrientation[RIGHT]= nh_.advertise<geometry_msgs::Quaternion>("/dual_arm_control/robot_right/desired/ee_orientation", 1);
 	_pubFilteredWrench[RIGHT] 	 = nh_.advertise<geometry_msgs::WrenchStamped>("/dual_arm_control/robot_right/filteredWrenc0hRight", 1);
-	_pubNormalForce[RIGHT] 		 = nh_.advertise<std_msgs::Float64>("/dual_arm_control/robot_right/normalForceRight", 1);
+	_pubNormalForce[RIGHT] 		   = nh_.advertise<std_msgs::Float64>("/dual_arm_control/robot_right/normalForceRight", 1);
 
 	// Desired command for the dual iiwa toolkit
 	_pubDesiredVel_Quat[LEFT]   = nh_.advertise<geometry_msgs::Pose>("/passive_control/iiwa1/vel_quat", 1);
 	_pubDesiredVel_Quat[RIGHT]  = nh_.advertise<geometry_msgs::Pose>("/passive_control/iiwa_blue/vel_quat", 1);
+
+	//
+	_sub_N_objects_pose[0] = nh_.subscribe<geometry_msgs::Pose>("/simo_track/object1/pose", 1, boost::bind(&dual_arm_control::updateObjectsPoseCallback,this,_1,0), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+	_sub_N_objects_pose[1] = nh_.subscribe<geometry_msgs::Pose>("/simo_track/object2/pose", 1, boost::bind(&dual_arm_control::updateObjectsPoseCallback,this,_1,1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+	_sub_N_objects_pose[2] = nh_.subscribe<geometry_msgs::Pose>("/simo_track/object3/pose", 1, boost::bind(&dual_arm_control::updateObjectsPoseCallback,this,_1,2), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 
 	// signal(SIGINT,dual_arm_control::stopNode);
   //
@@ -404,7 +420,7 @@ void dual_arm_control::updatePoses()
 
 		FreeMotionCtrl._w_H_eeStandby[LEFT] = _w_H_eeStandby[LEFT];
 		FreeMotionCtrl._w_H_eeStandby[RIGHT] = _w_H_eeStandby[RIGHT];
-		_xDo    = Eigen::Vector3f(_xo(0), _xo(1), 0.50f);
+		_xDo    = Eigen::Vector3f(0.5f*(_xNo[0](0)+_xNo[1](0)), 0.5f*(_xNo[0](1)+_xNo[1](1)), 0.50f);
 		_qDo    = _qo; 
 
 		_w_H_Do = Utils<float>::pose2HomoMx(_xDo, _qDo);
@@ -414,6 +430,16 @@ void dual_arm_control::updatePoses()
 
 	// homogeneous transformations associated with the reaching task
   _w_H_o 				= Utils<float>::pose2HomoMx(_xo, _qo);
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////
+  for(int k=0; k<NB_OBJECTS; k++){
+  	  _w_H_No[k] = Utils<float>::pose2HomoMx(_xNo[k], _qNo[k]);
+  }
+  Utils<float>::getBimanualTransforms(_w_H_No[LEFT], _w_H_No[RIGHT], _w_H_abs_o, _lo_H_ro);       // Object
+  Utils<float>::getBimanualTransforms(_w_H_No[LEFT], _w_H_No[RIGHT], _w_H_abs_Do, _lDo_H_rDo);    // Object
+ //  _w_H_abs_Do
+	// _lDo_H_rDo
+	////////////////////////////////////////////////////////////////////////////////////////////////////////
   // _w_H_o(2,3)   = _xDo(2) + 0.10f;
   // _w_H_Do 			= Utils<float>::pose2HomoMx(_xDo, _qDo);
   if( _sensedContact && CooperativeCtrl._ContactConfidence == 1.0 && _xo(2) >= 0.9f*_xDo(2))
@@ -465,7 +491,12 @@ void dual_arm_control::updatePoses()
   {
   	// _w_H_ee[k]  = _w_H_rb[k]  * Utils<float>::pose2HomoMx(_x[k],  _q[k]);		// with ee pose wrt. the robot base
 	  _w_H_ee[k]  = Utils<float>::pose2HomoMx(_x[k],  _q[k]);			// WITH EE pose wrt. the world
-	  _w_H_gp[k]  = _w_H_o * Utils<float>::pose2HomoMx(_xgp_o[k],  _qgp_o[k]);
+
+	  ///////////////////////////////////////////////////////////////////////////////
+	  // _w_H_gp[k]  = _w_H_o * Utils<float>::pose2HomoMx(_xgp_o[k],  _qgp_o[k]);
+	  _w_H_gp[k]  = _w_H_No[k] * Utils<float>::pose2HomoMx(_xgp_o[k],  _qgp_o[k]);
+
+
 	  _n[k]       = _w_H_gp[k].block(0,0,3,3).col(2);
 	  _w_H_Dgp[k] = _w_H_gp[k];
 	  //
@@ -476,7 +507,10 @@ void dual_arm_control::updatePoses()
   {
    	for(int k=0; k<NB_ROBOTS; k++)
   	{
-  		_o_H_ee[k]  = _w_H_o.inverse() * _w_H_ee[k];
+  		// _o_H_ee[k]  = _w_H_o.inverse() * _w_H_ee[k];
+
+  		_o_H_ee[k]  = _w_H_No[k].inverse() * _w_H_ee[k];
+
 	  	// _o_H_ee[k]  = Utils<float>::pose2HomoMx(_xgp_o[k],  _qgp_o[k]);
 	  	_o_H_ee[k](1,3) *= 0.92f; 
 	  	_w_H_Dgp[k]  = _w_H_Do * _o_H_ee[k];
@@ -486,7 +520,8 @@ void dual_arm_control::updatePoses()
   // Compute errors to object center position and dimension vector
   Eigen::Matrix4f le_H_re     =  _w_H_ee[LEFT].inverse() * _w_H_ee[RIGHT];
   Eigen::Matrix4f lgp_H_rgp   =  _w_H_gp[LEFT].inverse() * _w_H_gp[RIGHT];
-  Eigen::Vector3f t_o_absEE   =   _w_H_o.block(0,3,3,1) - 0.5f*( _w_H_ee[LEFT].block(0,3,3,1) +  _w_H_ee[RIGHT].block(0,3,3,1));
+  // Eigen::Vector3f t_o_absEE   =   _w_H_o.block(0,3,3,1) - 0.5f*( _w_H_ee[LEFT].block(0,3,3,1) +  _w_H_ee[RIGHT].block(0,3,3,1)); // _w_H_abs_o
+  Eigen::Vector3f t_o_absEE   =   _w_H_abs_o.block(0,3,3,1) - 0.5f*( _w_H_ee[LEFT].block(0,3,3,1) +  _w_H_ee[RIGHT].block(0,3,3,1)); // _w_H_abs_o
   _eoD = fabs(le_H_re(2,3)) - fabs(lgp_H_rgp(2,3)); //(_xD-_xoD).dot(_xoD.normalized());
   _eoC = t_o_absEE.norm(); //(_xoC-_xC).norm();
   
@@ -498,7 +533,7 @@ void dual_arm_control::updatePoses()
 
 
 
-  std::cout << "[dual_arm_control]: _w_H_o: \n" <<  _w_H_o << std::endl;
+  std::cout << "[dual_arm_control]: _w_H_abs_o: \n" <<  _w_H_abs_o << std::endl;
   // std::cout << "[dual_arm_control]: _w_H_Do: \n" <<  _w_H_Do << std::endl;
   // std::cout << "[dual_arm_control]: _w_H_Dgp[LEFT]: \n" <<  _w_H_Dgp[LEFT] << std::endl;
 
@@ -684,7 +719,13 @@ void dual_arm_control::objectPoseCallback(const geometry_msgs::Pose::ConstPtr& m
   }
 }
 
-void dual_arm_control::updateBasePoseCallback(const geometry_msgs::Pose::ConstPtr& msg, int k)
+void dual_arm_control::updateObjectsPoseCallback(const geometry_msgs::Pose::ConstPtr& msg, int k) // updateObjectsPoseCallback
+{
+  _xNo[k] <<    msg->position.x, 	   msg->position.y, 	 msg->position.z;
+  _qNo[k] << msg->orientation.w, 	msg->orientation.x, msg->orientation.y, msg->orientation.z;
+}
+
+void dual_arm_control::updateBasePoseCallback(const geometry_msgs::Pose::ConstPtr& msg, int k) 
 {
 	Eigen::Vector4f q;
 	_w_H_rb[k].block(0,3,3,1) << msg->position.x, 	msg->position.y, 	msg->position.z;
@@ -803,13 +844,13 @@ void dual_arm_control::updateContactState()
   }
 
   // if(_normalForceAverage[LEFT] > 2.5f && _normalForceAverage[RIGHT] > 2.5f &&  _eoD < 0.05f && _eoC < 0.1f)
-  if(_normalForceAverage[LEFT] > 2.0f && _normalForceAverage[RIGHT] > 2.5f &&  _eoD < 0.05f && _eoC < 0.05f)
+  if(_normalForceAverage[LEFT] > 2.5f && _normalForceAverage[RIGHT] > 2.5f &&  _eoD < 0.06f && _eoC < 0.05f)
   {
     _contactState = CONTACT;
     _c = 1.0f;
   }
   // else if(!(_normalForceAverage[LEFT] > 2.5f && _normalForceAverage[RIGHT] > 2.5f) && _eoD < 0.05f && _eoC < 0.1f)
-  else if(!(_normalForceAverage[LEFT] > 2.0f && _normalForceAverage[RIGHT] > 2.5f) && _eoD < 0.05f && _eoC < 0.05f)
+  else if(!(_normalForceAverage[LEFT] > 2.5f && _normalForceAverage[RIGHT] > 2.5f) && _eoD < 0.06f && _eoC < 0.05f)
   {
     _contactState = CLOSE_TO_CONTACT;
     _c = 0.0f;

@@ -40,7 +40,7 @@ Read and publish the poses of the simulated robots and object by running the com
 ```sh
 roslaunch roslaunch sim_models_poses sim_models_poses.launch
 ```
-When the sim_models_poses is running, you can now start the dual arm controller:
+When sim_models_poses is running, you can now start the dual arm controller:
 ```sh
 roslaunch roslaunch dual_arm_control dual_arm_control.launch
 ```
