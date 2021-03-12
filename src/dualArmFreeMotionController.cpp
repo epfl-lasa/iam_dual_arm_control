@@ -36,10 +36,10 @@ bool dualArmFreeMotionController::init(Eigen::Matrix4f w_H_eeStandby[], Matrix6f
 	memcpy(_w_H_eeStandby, &w_H_eeStandby[0], NB_ROBOTS * sizeof * w_H_eeStandby);
 	//
 	reachable_p = 1.0f;
-	// _v_max 			= 0.7f;
-	// _w_max 			= 2.0f;
-  _v_max = 1.0f;     // velocity limits
-  _w_max = 4.0f;     // velocity limits
+	_v_max 			= 0.7f;
+	_w_max 			= 2.0f;
+  // _v_max = 1.0f;     // velocity limits
+  // _w_max = 4.0f;     // velocity limits
 
 	gain_p_abs = gain_abs_.topLeftCorner(3,3);
 	gain_o_abs = gain_abs_.bottomRightCorner(3,3);

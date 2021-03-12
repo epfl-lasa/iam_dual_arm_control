@@ -14,16 +14,16 @@ bool dualArmCooperativeController::init()
 {
 	_tol_dist2contact   = 0.03f;
 	_ContactConfidence  = 0.0f;
-	_min_Fz 		    = 20.0; //15.0;
-	_min_nF 			= 20.0f;
-	_max_nF 			= 50.0f;
+	_min_Fz 		    = 15.0; //15.0;
+	_min_nF 			= 15.0f;
+	_max_nF 			= 40.0f;
 	//
 	_mu_ee				= 0.9f;
 	_gamma_ee			= 0.9f;
 	_deltaX_ee			= 0.5f;
 	_deltaY_ee			= 0.5f;
 	_contactOccured     = false;
-	_targetForce     	= 40.0f;
+	_targetForce     	= 15.0f;
 	//
 	_GraspMatrixEEs.setZero();
 	_optimal_contact_wrench_EEs.setZero();
@@ -370,8 +370,8 @@ void dualArmCooperativeController::getPredefinedContactForceProfile(bool goHome,
     }
     else if(contactState==CLOSE_TO_CONTACT)
     {
-      _f_applied[LEFT].head(3)  = 8.0f * _nC[LEFT];
-			_f_applied[RIGHT].head(3) = 8.0f * _nC[RIGHT];
+      _f_applied[LEFT].head(3)  = 3.0f * _nC[LEFT];
+			_f_applied[RIGHT].head(3) = 3.0f * _nC[RIGHT];
     }
     else
     {

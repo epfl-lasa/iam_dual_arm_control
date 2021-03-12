@@ -78,7 +78,8 @@ dual_arm_control::dual_arm_control(ros::NodeHandle &n, double frequency, 	std::s
 	//
 	_objectMass = 1.0f;
 	_objectDim << 0.20f, 0.20f, 0.20f;
-	_toolOffsetFromEE = 0.11f;
+	_toolOffsetFromEE[0] = 0.11f;
+	_toolOffsetFromEE[1] = 0.11f;
   _toolMass = 0.2f;    // TO CHANGE !!!!
   _gravity << 0.0f, 0.0f, -9.80665f;
   _toolComPositionFromSensor << 0.0f,0.0f,0.035f;
@@ -740,7 +741,7 @@ void dual_arm_control::updateEEPoseCallback(const geometry_msgs::Pose::ConstPtr&
 	_q[k] << 	msg->orientation.w, msg->orientation.x, msg->orientation.y, msg->orientation.z;	// orientation
   //
   _wRb[k] = Utils<float>::quaternionToRotationMatrix(_q[k]);
-  _x[k]   = _x[k]+_toolOffsetFromEE*_wRb[k].col(2);
+  _x[k]   = _x[k]+_toolOffsetFromEE[k]*_wRb[k].col(2);
 }
 
 void dual_arm_control::updateRobotWrench(const geometry_msgs::WrenchStamped::ConstPtr& msg, int k)

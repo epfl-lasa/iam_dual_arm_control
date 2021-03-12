@@ -60,16 +60,16 @@ class dual_arm_control
 		// Robot ID: left or right
 	    enum ROBOT {LEFT = 0, RIGHT = 1};
 
-	  // Contact state:
-    // CONTACT: Both robots are in contact with the object
-    // CLOSE_TO_CONTACT: Both robots are close to make contact with the object
-    // NO_CONTACT: Both robots are not in contact with the object
-    enum ContactState {CONTACT = 0, CLOSE_TO_CONTACT = 1, NO_CONTACT = 2};
+		// Contact state:
+		// CONTACT: Both robots are in contact with the object
+		// CLOSE_TO_CONTACT: Both robots are close to make contact with the object
+		// NO_CONTACT: Both robots are not in contact with the object
+		enum ContactState {CONTACT = 0, CLOSE_TO_CONTACT = 1, NO_CONTACT = 2};
 
-    // Exection mode:
-    // REACHING_GRASPING_ONLY: The two robots reach and grasp the object
-    // REACHING_GRASPING_MANIPULATING: The two robots reach, grasp and move the object to a predefined position                               
-    enum Mode {REACHING_GRASPING = 0, REACHING_GRASPING_MANIPULATING = 1};
+		// Exection mode:
+		// REACHING_GRASPING_ONLY: The two robots reach and grasp the object
+		// REACHING_GRASPING_MANIPULATING: The two robots reach, grasp and move the object to a predefined position                               
+		enum Mode {REACHING_GRASPING = 0, REACHING_GRASPING_MANIPULATING = 1};
 
 	protected: 
 		std::mutex _mutex;
@@ -82,8 +82,8 @@ class dual_arm_control
 		float _t0_run;
 
 		//////////////////////////////
-    // Subscribers declarations //
-    //////////////////////////////
+		// Subscribers declarations //
+		//////////////////////////////
 		ros::Subscriber _sub_object_pose;
 		ros::Subscriber _sub_base_pose[NB_ROBOTS];			// subscribe to the base pose of the robots
 		ros::Subscriber _sub_ee_pose[NB_ROBOTS];			// subscribe to the end effectors poses
@@ -99,6 +99,9 @@ class dual_arm_control
     ros::Publisher _pubNormalForce[NB_ROBOTS];        	// Publish measured normal force to the surface
 
     ros::Publisher _pubDesiredVel_Quat[NB_ROBOTS];      // Publish desired twist to DS-impdedance controller
+
+		ros::Publisher _pubDistAttractorEe[NB_ROBOTS];
+		ros::Publisher _pubAttractor[NB_ROBOTS];
 
 		//////////////////////////////
 		// List of the topics
@@ -122,40 +125,39 @@ class dual_arm_control
 		void updateRobotWrenchLeft(const geometry_msgs::WrenchStamped::ConstPtr& msg);
 		void updateRobotWrenchRight(const geometry_msgs::WrenchStamped::ConstPtr& msg);
 		// Update contact state with the surface
-    void updateContactState();
+    	void updateContactState();
 		
 		// --------------------------------------------------------------------------------
 		float _toolMass;                             // Tool mass [kg]
-    float _toolOffsetFromEE;                     // Tool offset along z axis of end effector [m]   
+    	float _toolOffsetFromEE[NB_ROBOTS];          // Tool offset along z axis of end effector [m]   
 		Eigen::Vector3f _objectDim;                  // Object dimensions [m] (3x1)
 		Eigen::Vector3f _gravity;
 		Eigen::Vector3f _toolComPositionFromSensor;
-		int _wrenchCount[NB_ROBOTS];                          // Counter used to pre-process the force data
-		ContactState _contactState;                           // Contact state with the object
+		int _wrenchCount[NB_ROBOTS];                      // Counter used to pre-process the force data
+		ContactState _contactState;                       // Contact state with the object
 		std::deque<float> _normalForceWindow[NB_ROBOTS];  // Moving window saving the robots' measured normal force to the object's surface [N]  
 		float _normalForceAverage[NB_ROBOTS];             // Average normal force measured through the force windows [N]
-		float _normalForce[NB_ROBOTS];                        // Normal force to the surface [N] 
-		float _c;                                             // Contact value (1 = CONTACT, 0 otherwise)
-		bool _wrenchBiasOK[NB_ROBOTS];                 // Check if computation of force/torque sensor bias is OK
+		float _normalForce[NB_ROBOTS];                    // Normal force to the surface [N] 
+		float _c;                                         // Contact value (1 = CONTACT, 0 otherwise)
+		bool _wrenchBiasOK[NB_ROBOTS];                 		// Check if computation of force/torque sensor bias is OK
 
 		float _eD;                                        // Error to desired distance vector [m]                       
-    float _eoD;                                       // Error to object dimension vector [m]                       
-    float _eC;                                        // Error to desired center position [m]
-    float _eoC;                                       // Error to object center position [m]  
+		float _eoD;                                       // Error to object dimension vector [m]                       
+		float _eC;                                        // Error to desired center position [m]
+		float _eoC;                                       // Error to object center position [m]  
 
-    Eigen::Vector3f _xoC;                             // Measured object center position [m] (3x1)
-    Eigen::Vector3f _xoD;                             // Measured object dimension vector [m] (3x1)
+		Eigen::Vector3f _xoC;                             // Measured object center position [m] (3x1)
+		Eigen::Vector3f _xoD;                             // Measured object dimension vector [m] (3x1)
 		Eigen::Vector3f _xdC;                             // Desired center position [m] (3x1)
-    Eigen::Vector3f _xdD;                             // Desired distance vector [m] (3x1)
+		Eigen::Vector3f _xdD;                             // Desired distance vector [m] (3x1)
 		// --------------------------------------------------------------------------------
-
 		Eigen::Vector3f _x[NB_ROBOTS];
 		Eigen::Vector4f _q[NB_ROBOTS];
-		Eigen::Matrix3f _wRb[NB_ROBOTS];             // Orientation matrix (3x3)
+		Eigen::Matrix3f _wRb[NB_ROBOTS];             			// Orientation matrix (3x3)
 
 		Eigen::Vector3f _xd[NB_ROBOTS];
 		Eigen::Vector4f _qd[NB_ROBOTS];
-		Eigen::Vector3f _aad[NB_ROBOTS];						// desired axis angle 
+		Eigen::Vector3f _aad[NB_ROBOTS];									// desired axis angle 
 		
 
 
@@ -163,23 +165,21 @@ class dual_arm_control
 		Eigen::Vector3f _omegad[NB_ROBOTS];
 		Vector6f _Vd_ee[NB_ROBOTS];									// desired velocity twist
 
-		Eigen::Vector3f _fxc[NB_ROBOTS];     // Desired conservative parts of the nominal DS [m/s] (3x1)
-    float _Fd[NB_ROBOTS];                // Desired force profiles [N]
-    float _targetForce;                  // Target force in contact [N]
-    float _err[NB_ROBOTS];
+		Eigen::Vector3f _fxc[NB_ROBOTS];     				// Desired conservative parts of the nominal DS [m/s] (3x1)
+		float _Fd[NB_ROBOTS];                				// Desired force profiles [N]
+		float _targetForce;                  				// Target force in contact [N]
+		float _err[NB_ROBOTS];
+		Eigen::Vector3f pose_err[NB_ROBOTS];
 
+	float _d1[NB_ROBOTS];
 
+	bool _firstRobotPose[NB_ROBOTS];
+	bool _firstRobotTwist[NB_ROBOTS];
+	bool _firstWrenchReceived[NB_ROBOTS];
+	bool _sensedContact;
+	bool _goHome;
 
-
-		float _d1[NB_ROBOTS];
-
-		bool _firstRobotPose[NB_ROBOTS];
-		bool _firstRobotTwist[NB_ROBOTS];
-		bool _firstWrenchReceived[NB_ROBOTS];
-		bool _sensedContact;
-		bool _goHome;
-
-		Eigen::Matrix4f _w_H_ee[NB_ROBOTS];						// Homogenenous transform of the End-effectors poses (4x4)
+	Eigen::Matrix4f _w_H_ee[NB_ROBOTS];							// Homogenenous transform of the End-effectors poses (4x4)
     Eigen::Matrix4f _w_H_eeStandby[NB_ROBOTS];		// Homogenenous transform of Standby pose of the End-effectors (4x4)
     Eigen::Matrix4f _w_H_rb[NB_ROBOTS];						// Homogenenous transform of robots base frame (4x4)
     Eigen::Matrix4f _rb_H_eeStandby[NB_ROBOTS];		// Homogenenous transform of EE standby poses relatve to robots base (4x4)
@@ -194,11 +194,11 @@ class dual_arm_control
     Eigen::Matrix4f _w_H_gp[NB_ROBOTS];
     Eigen::Vector3f _xgp_o[NB_ROBOTS];
     Eigen::Vector4f _qgp_o[NB_ROBOTS];
-    Eigen::Vector3f _n[NB_ROBOTS];               // Normal vector to surface object for each robot (3x1)
+    Eigen::Vector3f _n[NB_ROBOTS];               	// Normal vector to surface object for each robot (3x1)
     Vector6f        _V_gpo[NB_ROBOTS];
 
-    Eigen::Vector3f _delta_pos; 	// variation of object position
-    Eigen::Vector3f _delta_ang; 	// variation of object orientation euler angles
+    Eigen::Vector3f _delta_pos; 									// variation of object position
+    Eigen::Vector3f _delta_ang; 									// variation of object orientation euler angles
     bool _objCtrlKey;
     bool _releaseAndretract;
 
@@ -237,6 +237,7 @@ class dual_arm_control
     float _forceThreshold;
     float _nu_Wr0;
     float _nu_Wr1;
+		float _applyVelo;
 
     float _delta_oDx;
     float _delta_oDy;
@@ -244,6 +245,9 @@ class dual_arm_control
 
     bool _stop;                                    // Check for CTRL+C
     bool  _isThrowing;
+		bool _goToAttractors;
+
+
 
 
     ////////////////////////////////////////////
