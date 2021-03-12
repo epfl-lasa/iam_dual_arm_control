@@ -13,6 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   tf
   tf_conversions
+  roslib
 #   utils
 )
 
@@ -25,7 +26,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${YARP_MODULE_PATH})
 catkin_package(
    INCLUDE_DIRS include
    #LIBRARIES yarp2ros_data_publisher
-   CATKIN_DEPENDS geometry_msgs roscpp std_msgs tf tf_conversions
+   CATKIN_DEPENDS geometry_msgs roscpp std_msgs tf tf_conversions roslib
 #   DEPENDS system_lib
 )
 

@@ -726,6 +726,17 @@ class Utils
       return Angles;
   }
 
+  static T computeCouplingFactor(Eigen::Matrix<T,3,1> ep_, T alpha_, T beta_, T gamma_, bool secondOrder)
+	{
+		T t_cpl_ = 1.0/(alpha_*ep_.norm()+1e-15);         
+		T cpl_   = 0.0;
+		t_cpl_ = pow(t_cpl_,gamma_);
+		if(secondOrder)	cpl_   = 1.0 - exp(-t_cpl_/beta_) *(1.0 + t_cpl_/beta_);  // 2nd order critically damped
+		else						cpl_   = 1.0 - exp(-t_cpl_/beta_); 												// 1st order increase
+
+		return cpl_;
+	}
+
 };
 
 template class Utils<float>;

@@ -7,11 +7,13 @@
 #include <signal.h>
 #include <mutex>
 #include <fstream>
+#include <sstream>
 #include <pthread.h>
 #include <vector>
 #include <deque>
 #include <stdio.h>
 #include <termios.h>
+
 
 #include "ros/ros.h"
 #include <ros/package.h>
@@ -87,6 +89,7 @@ class dual_arm_control
 		ros::Subscriber _sub_object_pose;
 		ros::Subscriber _sub_base_pose[NB_ROBOTS];			// subscribe to the base pose of the robots
 		ros::Subscriber _sub_ee_pose[NB_ROBOTS];			// subscribe to the end effectors poses
+		ros::Subscriber _sub_ee_velo[NB_ROBOTS];			// subscribe to the end effectors velocity Twist
 		ros::Subscriber _subForceTorqueSensor[NB_ROBOTS];	// Subscribe to force torque sensors
 		// ros::Subscriber sub_joint_states[NB_ROBOTS];		// subscriber for the joint position
 		//////////////////////////////
@@ -121,12 +124,13 @@ class dual_arm_control
 		void updateRobotWrench(const geometry_msgs::WrenchStamped::ConstPtr& msg, int k);
 		void updateRobotWrenchLeft(const geometry_msgs::WrenchStamped::ConstPtr& msg);
 		void updateRobotWrenchRight(const geometry_msgs::WrenchStamped::ConstPtr& msg);
+		void updateEETwistCallback(const geometry_msgs::Twist::ConstPtr& msg, int k);
 		// Update contact state with the surface
     void updateContactState();
 		
 		// --------------------------------------------------------------------------------
 		float _toolMass;                             // Tool mass [kg]
-    float _toolOffsetFromEE;                     // Tool offset along z axis of end effector [m]   
+    	float _toolOffsetFromEE[NB_ROBOTS];          // Tool offset along z axis of end effector [m]   
 		Eigen::Vector3f _objectDim;                  // Object dimensions [m] (3x1)
 		Eigen::Vector3f _gravity;
 		Eigen::Vector3f _toolComPositionFromSensor;
@@ -161,12 +165,15 @@ class dual_arm_control
 
 		Eigen::Vector3f _vd[NB_ROBOTS];
 		Eigen::Vector3f _omegad[NB_ROBOTS];
+		Eigen::Vector3f _v[NB_ROBOTS];
+		Eigen::Vector3f _w[NB_ROBOTS];
 		Vector6f _Vd_ee[NB_ROBOTS];									// desired velocity twist
 
 		Eigen::Vector3f _fxc[NB_ROBOTS];     // Desired conservative parts of the nominal DS [m/s] (3x1)
     float _Fd[NB_ROBOTS];                // Desired force profiles [N]
     float _targetForce;                  // Target force in contact [N]
     float _err[NB_ROBOTS];
+    bool _qp_wrench_generation;
 
 
 
@@ -241,10 +248,16 @@ class dual_arm_control
     float _delta_oDx;
     float _delta_oDy;
     float _delta_oDz;
+    float _desVtoss ;
 
     bool _stop;                                    // Check for CTRL+C
     bool  _isThrowing;
 
+    //
+    std::string   _DataID;
+    std::ofstream _OutRecord_pose;
+    std::ofstream _OutRecord_velo;
+		std::ofstream _OutRecord_efforts;
 
     ////////////////////////////////////////////
     ros::Subscriber _sub_N_objects_pose[NB_ROBOTS];			// subscribe to the base pose of the robots
@@ -278,7 +291,8 @@ class dual_arm_control
 	public :
 		//
 		//
-		dual_arm_control(ros::NodeHandle &n, double frequency, 	std::string topic_pose_object_,
+		dual_arm_control(ros::NodeHandle &n, double frequency, 	//std::string dataID,
+																														std::string topic_pose_object_,
 																														std::string topic_pose_robot_base[],
 																														std::string topic_pose_robot_ee[],
 																														std::string topic_ee_commands[],
@@ -290,6 +304,7 @@ class dual_arm_control
 		void computeCommands();
 		void publish_commands();
 		void publishData();
+		void saveData();
 		void run();
 		void prepareCommands(Vector6f Vd_ee[], Eigen::Vector4f qd[], Vector6f V_gpo[]);
 		void getGraspPointsVelocity();

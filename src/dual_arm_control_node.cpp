@@ -11,6 +11,19 @@ int main(int argc, char **argv)
 	double frequency = 200.0f;
 
 	//
+	std::string DataID;
+
+
+	// if(argc == 2) {
+	// 	DataID = std::string(argv[1]);
+	// }
+	// else
+ //  {
+ //    ROS_ERROR("You are missing arguments: the command line arguments should be: dataID");
+ //    return 0;
+ //  }
+
+
 	std::string topic_pose_robot_base[NB_ROBOTS];
 	std::string topic_pose_robot_ee[NB_ROBOTS];
 	std::string topic_ee_commands[NB_ROBOTS];
@@ -44,11 +57,12 @@ int main(int argc, char **argv)
 	// }
 
 	// creating the streamer
-	dual_arm_control dualArmCtrl(nh, frequency, topic_pose_object, 	
-												topic_pose_robot_base,
-												topic_pose_robot_ee,
-												topic_ee_commands,
-												topic_sub_ForceTorque_Sensor);
+	dual_arm_control dualArmCtrl(nh, frequency, //DataID,
+																											topic_pose_object, 	
+																											topic_pose_robot_base,
+																											topic_pose_robot_ee,
+																											topic_ee_commands,
+																											topic_sub_ForceTorque_Sensor);
 
 	if (!dualArmCtrl.init()) 
 	{

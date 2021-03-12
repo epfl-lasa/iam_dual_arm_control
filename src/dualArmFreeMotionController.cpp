@@ -96,7 +96,7 @@ void dualArmFreeMotionController::computeCoordinatedMotion(Eigen::Matrix4f w_H_e
   // =====================================
   // Relative velocity of the hands
   // =====================================
-  float coord_abs = computeCouplingFactor(_error_abs.head(3), 50.0f, 0.02f, 1.0f, true);
+  float coord_abs = computeCouplingFactor(_error_abs.head(3), 50.0f, 0.01f, 1.0f, true);
   // Coupling the orientation with the position error
   Eigen::Matrix3f d_R_rel = reachable_p* (coord_abs*lp_H_rp.block<3,3>(0,0) + (1.0f-coord_abs)*lp_H_rp_pgrasp.block<3,3>(0,0)) 
                    				+ (1.0f- reachable_p)*lr_H_rr_stb.block<3,3>(0,0);
@@ -153,6 +153,9 @@ void dualArmFreeMotionController::computeCoordinatedMotion(Eigen::Matrix4f w_H_e
   Vd_ee[LEFT]  = Utils<float>::SaturationTwist(_v_max, _w_max, Vd_ee[LEFT]);
   Vd_ee[RIGHT] = Utils<float>::SaturationTwist(_v_max, _w_max, Vd_ee[RIGHT]);
 
+  // Vd_ee[LEFT].head(3)  = Vd_ee[LEFT].head(3) + Vd_ee[LEFT].head(3)/Vd_ee[LEFT].head(3).norm() * cp_ap * 0.2;
+  // Vd_ee[RIGHT].head(3) = Vd_ee[RIGHT].head(3) + Vd_ee[RIGHT].head(3)/Vd_ee[RIGHT].head(3).norm() * cp_ap * 0.2;
+
   std::cout << "[dual_arm_control]: CCCCCCCCCCC coord_abs: \t" <<  coord_abs << std::endl;
   // std::cout << "[dual_arm_control]: CCCCCCCCCCC TANH: \t" <<  1.0f-std::tanh(3.0f*_error_rel.head(3).norm()) << std::endl;
   std::cout << "[dual_arm_control]: CCCCCCCCCCC cpl_rel: \t" <<  cpl_rel << std::endl;
@@ -203,8 +206,8 @@ void dualArmFreeMotionController::computeConstrainedMotion(Eigen::Matrix4f w_H_e
 
   // computing the velocity
   // ~~~~~~~~~~~~~~~~~~~~~~~
-  _V_abs.head(3) = -gain_p_abs * _error_abs.head(3);
-  _V_abs.tail(3) = -jacMuTheta_abs.inverse() * gain_o_abs * _error_abs.tail(3);
+  _V_abs.head(3) = -4.0f*gain_p_abs * _error_abs.head(3);
+  _V_abs.tail(3) = -1.0f*jacMuTheta_abs.inverse() * gain_o_abs * _error_abs.tail(3);
 
   std::cout << "[dual_arm_control]: Absolute Velo: \n" <<  _V_abs.transpose() << std::endl;
 

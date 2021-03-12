@@ -14,9 +14,9 @@ bool dualArmCooperativeController::init()
 {
 	_tol_dist2contact   = 0.03f;
 	_ContactConfidence  = 0.0f;
-	_min_Fz 		    = 20.0; //15.0;
-	_min_nF 			= 20.0f;
-	_max_nF 			= 50.0f;
+	_min_Fz 		    = 40.0; //15.0;
+	_min_nF 			= 40.0f;
+	_max_nF 			= 60.0f;
 	//
 	_mu_ee				= 0.9f;
 	_gamma_ee			= 0.9f;

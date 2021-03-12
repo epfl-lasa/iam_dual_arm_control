@@ -58,7 +58,8 @@ bool keyState_2(char key)
 }
 // ---------------------------------------------------------------------
 
-dual_arm_control::dual_arm_control(ros::NodeHandle &n, double frequency, 	std::string topic_pose_object_,
+dual_arm_control::dual_arm_control(ros::NodeHandle &n, double frequency, 	//std::string dataID,
+																																					std::string topic_pose_object_,
 																																					std::string topic_pose_robot_base[],
 																																					std::string topic_pose_robot_ee[],
 																																					std::string topic_ee_commands[],
@@ -68,6 +69,8 @@ dual_arm_control::dual_arm_control(ros::NodeHandle &n, double frequency, 	std::s
   //
   // me = this;
   _stop = false;
+  std::string dataID = "_02";
+  _DataID = dataID;
   //
 	_topic_pose_object = topic_pose_object_;
 	memcpy(_topic_pose_robot_base, &topic_pose_robot_base[0], NB_ROBOTS * sizeof *topic_pose_robot_base); 
@@ -78,7 +81,8 @@ dual_arm_control::dual_arm_control(ros::NodeHandle &n, double frequency, 	std::s
 	//
 	_objectMass = 1.0f;
 	_objectDim << 0.20f, 0.20f, 0.20f;
-	_toolOffsetFromEE = 0.11f;
+	_toolOffsetFromEE[0] = 0.11f;
+	_toolOffsetFromEE[1] = 0.11f;
   _toolMass = 0.2f;    // TO CHANGE !!!!
   _gravity << 0.0f, 0.0f, -9.80665f;
   _toolComPositionFromSensor << 0.0f,0.0f,0.035f;
@@ -106,6 +110,8 @@ dual_arm_control::dual_arm_control(ros::NodeHandle &n, double frequency, 	std::s
     // desired values
     _Vd_ee[k].setZero();
     _xd[k].setZero();
+    _v[k].setZero();
+		_w[k].setZero();
     _vd[k].setZero();
     _omegad[k].setZero();
     _qd[k].setZero();
@@ -173,7 +179,7 @@ dual_arm_control::dual_arm_control(ros::NodeHandle &n, double frequency, 	std::s
 	_w_abs.setZero();
 	_v_rel.setZero();
 	_w_rel.setZero();
-	_v_max = 1.00f;     // velocity limits
+	_v_max = 5.00f;     // velocity limits
 	_w_max = 4.0f;     // velocity limits
 	// coordination errors
 	_ep_abs.setZero();
@@ -203,6 +209,7 @@ dual_arm_control::dual_arm_control(ros::NodeHandle &n, double frequency, 	std::s
 	_forceThreshold    = 3.0f;
 	_nu_Wr0 				   = 0.0f;
 	_nu_Wr1 				   = 0.0f;
+	_qp_wrench_generation = false;
 	//
 	// Stanby pose
 	_xrbStandby[LEFT]   = Vector3f(0.35f,  0.20f, 0.80f); // relative to the robot base
@@ -210,7 +217,7 @@ dual_arm_control::dual_arm_control(ros::NodeHandle &n, double frequency, 	std::s
 	_qrbStandby[LEFT]  << 0.3827f, -0.9239f, 0.0f, 0.0f;
   _qrbStandby[RIGHT] << 0.3827f,  0.9239f, 0.0f, 0.0f;
 
-  _delta_pos.setZero();
+    _delta_pos.setZero();
 	_delta_ang.setZero();
 	_objCtrlKey = true;
 	_releaseAndretract = false;
@@ -218,6 +225,7 @@ dual_arm_control::dual_arm_control(ros::NodeHandle &n, double frequency, 	std::s
 	_delta_oDx  = 0.0f;
 	_delta_oDy  = 0.0f;
 	_delta_oDz  = 0.0f;
+	_desVtoss = 0.0f;
 	// _t0_run = ros::Time::now().toSec();
 
 }
@@ -233,10 +241,12 @@ bool dual_arm_control::init()
 	_sub_object_pose 			 = nh_.subscribe(_topic_pose_object,1, &dual_arm_control::objectPoseCallback, this, ros::TransportHints().reliable().tcpNoDelay());
 	_sub_base_pose[LEFT] 	 	 = nh_.subscribe<geometry_msgs::Pose>(_topic_pose_robot_base[LEFT], 1, boost::bind(&dual_arm_control::updateBasePoseCallback,this,_1,LEFT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 	_sub_ee_pose[LEFT] 			 = nh_.subscribe<geometry_msgs::Pose>(_topic_pose_robot_ee[LEFT], 1, boost::bind(&dual_arm_control::updateEEPoseCallback,this,_1,LEFT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+	_sub_ee_velo[LEFT] 			 = nh_.subscribe<geometry_msgs::Twist>("/simo_track/robot_left/ee_velo", 1, boost::bind(&dual_arm_control::updateEETwistCallback,this,_1,LEFT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 	_subForceTorqueSensor[LEFT]  = nh_.subscribe<geometry_msgs::WrenchStamped>(_topic_subForceTorqueSensor[LEFT], 1, boost::bind(&dual_arm_control::updateRobotWrench,this,_1,LEFT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 	// _subForceTorqueSensor[LEFT]	= nh_.subscribe(_topic_subForceTorqueSensor[LEFT],1, &dual_arm_control::updateRobotWrenchLeft, this, ros::TransportHints().reliable().tcpNoDelay());
 	_sub_base_pose[RIGHT] 		 = nh_.subscribe<geometry_msgs::Pose>(_topic_pose_robot_base[RIGHT], 1, boost::bind(&dual_arm_control::updateBasePoseCallback,this,_1,RIGHT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 	_sub_ee_pose[RIGHT]   		 = nh_.subscribe<geometry_msgs::Pose>(_topic_pose_robot_ee[RIGHT], 1, boost::bind(&dual_arm_control::updateEEPoseCallback,this,_1,RIGHT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+	_sub_ee_velo[RIGHT] 		 = nh_.subscribe<geometry_msgs::Twist>("/simo_track/robot_right/ee_velo", 1, boost::bind(&dual_arm_control::updateEETwistCallback,this,_1,RIGHT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 	_subForceTorqueSensor[RIGHT] = nh_.subscribe<geometry_msgs::WrenchStamped>(_topic_subForceTorqueSensor[RIGHT], 1, boost::bind(&dual_arm_control::updateRobotWrench,this,_1,RIGHT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 	// _subForceTorqueSensor[RIGHT]	= nh_.subscribe(_topic_subForceTorqueSensor[RIGHT],1, &dual_arm_control::updateRobotWrenchRight, this, ros::TransportHints().reliable().tcpNoDelay());
 	//-------------
@@ -259,6 +269,22 @@ bool dual_arm_control::init()
 	// Desired command for the dual iiwa toolkit
 	_pubDesiredVel_Quat[LEFT]   = nh_.advertise<geometry_msgs::Pose>("/passive_control/iiwa1/vel_quat", 1);
 	_pubDesiredVel_Quat[RIGHT]  = nh_.advertise<geometry_msgs::Pose>("/passive_control/iiwa_blue/vel_quat", 1);
+
+	//
+	std::string data_number = _DataID;
+	// string path_log_pose    = "log_task_pose_"      + data_number;
+ //  string path_log_velo    = "log_task_velo_"      + data_number;
+	// string path_log_efforts = "log_robot_efforts_"  + data_number;
+
+	_OutRecord_pose.open(ros::package::getPath(std::string("dual_arm_control"))+"/Data/log_task_pose_"+data_number+".txt");
+	_OutRecord_velo.open(ros::package::getPath(std::string("dual_arm_control"))+"/Data/log_task_velo_"+data_number+".txt");
+	_OutRecord_efforts.open(ros::package::getPath(std::string("dual_arm_control"))+"/Data/log_robot_efforts_"+data_number+".txt");
+
+  if(!_OutRecord_pose.is_open() && !_OutRecord_velo.is_open() && !_OutRecord_efforts.is_open())
+  {
+    ROS_ERROR("[ObjectGrasping]: Cannot open output data files, the data_grasping directory might be missing");
+    return false;
+  }
 
 	// signal(SIGINT,dual_arm_control::stopNode);
   //
@@ -334,8 +360,8 @@ void dual_arm_control::run()
           case 'q':   
                 _goHome = !_goHome;
         	break;
-
-        	// position
+        // control of the object (desired using keyboard)
+			// position
           case 'a': _delta_pos(0) -= 0.01f; break;
           case 's': _delta_pos(0) += 0.01f; break;
           case 'd': _delta_pos(1) -= 0.01f; break;
@@ -350,6 +376,7 @@ void dual_arm_control::run()
           case 'm': _delta_ang(2) -= 0.05f; break;
           case 'i': _delta_ang(2) += 0.05f; break;  
 
+        // user control of release or throwing (keyboard)
           case 'r': _releaseAndretract = !_releaseAndretract; break; 
           case 't': _isThrowing = !_isThrowing; break;        
         }
@@ -359,9 +386,9 @@ void dual_arm_control::run()
 		// get the first eigen value of the passive ds controller and Check for update of passive ds controller eigen value
 		std::vector<float> param_values;
 		ros::param::getCached("/iiwa1/CustomControllers/controllers/PassiveDS/params", param_values);	  _d1[LEFT]  = param_values[0];
-		if(_d1[LEFT] <FLT_EPSILON) _d1[LEFT]   = 150.0f;
+		if(_d1[LEFT] <FLT_EPSILON) _d1[LEFT]   = 300.0f;
 		ros::param::getCached("/iiwa_blue/CustomControllers/controllers/PassiveDS/params", param_values); _d1[RIGHT] = param_values[0];
-    if(_d1[RIGHT]<FLT_EPSILON)  _d1[RIGHT] = 150.0f;
+    if(_d1[RIGHT]<FLT_EPSILON)  _d1[RIGHT] = 300.0f;
 
     _mutex.lock();
 			// update the poses of the robots and the object
@@ -369,10 +396,10 @@ void dual_arm_control::run()
 			// compute generated desired motion and forces
 			computeCommands();
 			// publish the commands to be exectued
-	    publish_commands();
-	    //
-	    publishData();
-	    //
+		    publish_commands();
+		    //
+		    publishData();
+		    //
     _mutex.unlock();
 
 		ros::spinOnce();
@@ -391,6 +418,12 @@ void dual_arm_control::run()
 	loop_rate_.sleep();
 	//
 	nonblock_2(0);
+	//
+	_OutRecord_pose.close();
+	_OutRecord_velo.close();
+	_OutRecord_efforts.close();
+
+	ros::shutdown();
 
 }
 
@@ -398,61 +431,58 @@ void dual_arm_control::updatePoses()
 {
 	
 	if(_initPoseCount < 5)
-  {
+	{
 		_w_H_eeStandby[LEFT]  = _w_H_rb[LEFT]  * Utils<float>::pose2HomoMx(_xrbStandby[LEFT],  _qrbStandby[LEFT]);			// WITH EE pose wrt. the world TO BE CHANGED
 		_w_H_eeStandby[RIGHT] = _w_H_rb[RIGHT] * Utils<float>::pose2HomoMx(_xrbStandby[RIGHT],  _qrbStandby[RIGHT]);		// WITH EE pose wrt. the world
 
 		FreeMotionCtrl._w_H_eeStandby[LEFT] = _w_H_eeStandby[LEFT];
 		FreeMotionCtrl._w_H_eeStandby[RIGHT] = _w_H_eeStandby[RIGHT];
-		_xDo    = Eigen::Vector3f(_xo(0), _xo(1), 0.50f);
+		_xDo    = Eigen::Vector3f(_xo(0), _xo(1), 0.50f);   // set attractor of lifting task
 		_qDo    = _qo; 
-
 		_w_H_Do = Utils<float>::pose2HomoMx(_xDo, _qDo);
 
 		_initPoseCount ++;
-  }
+	}
 
-	// homogeneous transformations associated with the reaching task
-  _w_H_o 				= Utils<float>::pose2HomoMx(_xo, _qo);
-  // _w_H_o(2,3)   = _xDo(2) + 0.10f;
-  // _w_H_Do 			= Utils<float>::pose2HomoMx(_xDo, _qDo);
-  if( _sensedContact && CooperativeCtrl._ContactConfidence == 1.0 && _xo(2) >= 0.9f*_xDo(2))
-  {
-  	// _w_H_Do(0,3) = _xDo(0) + 0.15f*(1.0f + std::sin((2.0f * M_PI)/1.0f * (ros::Time::now().toSec() - _t0_run)));
-  	// _w_H_Do(2,3) = _xDo(2) + 0.20f*std::cos((2.0f * M_PI)/1.0f * (ros::Time::now().toSec() - _t0_run));
-  }
-  /////////////////////////////////////////////////////////////////////////////////////////////
-  // Test of throwing task
-  if(_isThrowing){
-  	_delta_oDx   = 0.90f*_delta_oDx + 0.10f * 2.5f;
-  	_delta_oDy   = 0.90f*_delta_oDy + 0.10f * 2.5f*std::tan(0.0f);
-  	_delta_oDz   = 0.90f*_delta_oDz + 0.10f * 2.5f*std::tan(M_PI/6.0f);
-  	
-  	_w_H_Do(0,3) = _xDo(0) + _delta_oDx;
-  	_w_H_Do(1,3) = _xDo(1) + _delta_oDy;
-  	_w_H_Do(2,3) = _xDo(2) + _delta_oDz;
-  	if(_w_H_o(0,3) >= 0.65f){
-  		_releaseAndretract = true;
-  		_isThrowing        = false;
-  		_w_H_Do(0,3) = _xDo(0);
-  		_w_H_Do(1,3) = _xDo(1);
+	// 
+	if( _sensedContact && CooperativeCtrl._ContactConfidence == 1.0 && _xo(2) >= 0.98f*_xDo(2)) //
+	{
+		_isThrowing = true;
+	}
+	/////////////////////////////////////////////////////////////////////////////////////////////
+	// desired tossing position with respect to the robot
+	float dtoss_attrac  = 2.5f;
+	float _toss_dir     = M_PI/4.0f;  // TO DO: should come from computed throwing_param 
+	float _toss_angle   = M_PI/6.0f;  // TO DO: should come from computed throwing_param 
+	// Test of throwing task
+	if(_isThrowing){
+		_delta_oDx   = 0.90f*_delta_oDx + 0.10f * dtoss_attrac;
+		_delta_oDy   = 0.90f*_delta_oDy + 0.10f * dtoss_attrac * std::tan(_toss_dir);
+		_delta_oDz   = 0.90f*_delta_oDz + 0.10f * dtoss_attrac * std::tan(_toss_angle);
+		
+		// update the attractor for tossing direction 
+		_w_H_Do(0,3) = _xDo(0) + _delta_oDx;
+		_w_H_Do(1,3) = _xDo(1) + _delta_oDy;
+		_w_H_Do(2,3) = _xDo(2) + _delta_oDz;
+		if(_w_H_o(0,3) >= 0.6f){     // specify a limit in x based on reachable space (TO DO: replace with learned function)
+			_releaseAndretract = true;
+			_isThrowing        = false;
+			_w_H_Do(0,3) = _xDo(0);
+			_w_H_Do(1,3) = _xDo(1);
 			_w_H_Do(2,3) = _xDo(2);
-
 			//
 			_delta_oDx = 0.f;
 			_delta_oDy = 0.f;
 			_delta_oDz = 0.f;
-  	}
-  }
+		}
+	}
   // else{
   // 	_w_H_Do(0,3) = _xDo(0);
   // 	_w_H_Do(1,3) = _xDo(1);
   // }
   /////////////////////////////////////////////////////////////////////////////////////////////
-  // _w_H_Do(2,3) = _xDo(2) + 0.30f;
-
   // Update trajectory of the object
-  // Update the desired object pose through keyboard
+  // Update the object position or its desired position (attractor) through keyboard 
   if(_objCtrlKey && false){
   	this->Keyboard_object_control(); 
   }
@@ -460,7 +490,7 @@ void dual_arm_control::updatePoses()
   	this->Keyboard_reference_object_control();
   }
 
-  //
+  // homogeneous transformations associated with the reaching task
   for(int k=0; k<NB_ROBOTS; k++)
   {
   	// _w_H_ee[k]  = _w_H_rb[k]  * Utils<float>::pose2HomoMx(_x[k],  _q[k]);		// with ee pose wrt. the robot base
@@ -480,6 +510,10 @@ void dual_arm_control::updatePoses()
 	  	// _o_H_ee[k]  = Utils<float>::pose2HomoMx(_xgp_o[k],  _qgp_o[k]);
 	  	_o_H_ee[k](1,3) *= 0.92f; 
 	  	_w_H_Dgp[k]  = _w_H_Do * _o_H_ee[k];
+	  	if(!_isThrowing){
+	  		_w_H_Dgp[k].block(0,0,3,3)  = _w_H_Do.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[k],  _qgp_o[k]).block(0,0,3,3);
+	  	}
+	  	
   	}
   }
 
@@ -495,21 +529,17 @@ void dual_arm_control::updatePoses()
   {
     _normalForce[k] = fabs((_wRb[k]*_filteredWrench[k].segment(0,3)).dot(_n[k]));
   }
-
-
-
-  std::cout << "[dual_arm_control]: _w_H_o: \n" <<  _w_H_o << std::endl;
-  // std::cout << "[dual_arm_control]: _w_H_Do: \n" <<  _w_H_Do << std::endl;
-  // std::cout << "[dual_arm_control]: _w_H_Dgp[LEFT]: \n" <<  _w_H_Dgp[LEFT] << std::endl;
-
-  // std::cout << "[dual_arm_control]: _w_H_Dgp[RIGHT]: \n" <<  _w_H_Dgp[RIGHT] << std::endl;  
-
-  std::cout << "[dual_arm_control]: _xDo: \t" <<  _xDo.transpose() << std::endl;
-  std::cout << "[dual_arm_control]: _qDo: \n" <<  _qDo.transpose() << std::endl;
+	// printing for analysis
+	std::cout << "[dual_arm_control]: _w_H_o: \n" <<  _w_H_o << std::endl;
+	// std::cout << "[dual_arm_control]: _w_H_Do: \n" <<  _w_H_Do << std::endl;
+	// std::cout << "[dual_arm_control]: _w_H_Dgp[LEFT]: \n" <<  _w_H_Dgp[LEFT] << std::endl;
+	// std::cout << "[dual_arm_control]: _w_H_Dgp[RIGHT]: \n" <<  _w_H_Dgp[RIGHT] << std::endl;  
+	// std::cout << "[dual_arm_control]: _xDo: \t" <<  _xDo.transpose() << std::endl;
+	// std::cout << "[dual_arm_control]: _qDo: \n" <<  _qDo.transpose() << std::endl;
 	// std::cout << "[dual_arm_control]: _w_H_ee[LEFT]: \n" <<  _w_H_ee[0] << std::endl;
-	std::cout << "[dual_arm_control]: _w_H_gp[LEFT]: \n" <<  _w_H_gp[0] << std::endl;
+	// std::cout << "[dual_arm_control]: _w_H_gp[LEFT]: \n" <<  _w_H_gp[0] << std::endl;
 	// std::cout << "[dual_arm_control]: _w_H_ee[RIGHT]: \n" << _w_H_ee[1] << std::endl;
-	std::cout << "[dual_arm_control]: _w_H_gp[RIGHT]: \n" << _w_H_gp[1] << std::endl;
+	// std::cout << "[dual_arm_control]: _w_H_gp[RIGHT]: \n" << _w_H_gp[1] << std::endl;
 	// std::cout << "[dual_arm_control]: _w_H_eeStandby[LEFT]: \n" <<  _w_H_eeStandby[0] << std::endl;
 	// std::cout << "[dual_arm_control]: _w_H_eeStandby[RIGHT]: \n" << _w_H_eeStandby[1] << std::endl;
 
@@ -526,7 +556,6 @@ void dual_arm_control::updatePoses()
 
 	std::cout << "[dual_arm_control]: FFFFFFF  filteredWrench[LEFT]: \t"  << _filteredWrench[0].transpose() << std::endl;
 	std::cout << "[dual_arm_control]: FFFFFFF  filteredWrench[RIGHT]: \t" << _filteredWrench[1].transpose() << std::endl;
-
 	// std::cout << "[dual_arm_control]: DESIRED FORCE[LEFT]: \t"  << _Fd[0] << std::endl;
 	// std::cout << "[dual_arm_control]: DESIRED FORCE[RIGHT]: \t" << _Fd[1] << std::endl;
 }
@@ -539,11 +568,12 @@ void dual_arm_control::computeCommands()
 	//
 	Vector6f desired_object_wrench_; 
 	desired_object_wrench_.setZero();
-	desired_object_wrench_.head(3) = -20.0f * (_w_H_o.block(0,3,3,1) - _w_H_Do.block(0,3,3,1)) - _objectMass * _gravity;
+	desired_object_wrench_.head(3) = -40.0f * (_w_H_o.block(0,3,3,1) - _w_H_Do.block(0,3,3,1)) - _objectMass * _gravity;
 	
 
 	if(_goHome){
-		FreeMotionCtrl.computeCoordinatedMotion(_w_H_ee, _w_H_eeStandby, _w_H_o, _Vd_ee, _qd, true);		
+		// FreeMotionCtrl.computeCoordinatedMotion(_w_H_ee, _w_H_eeStandby, _w_H_o, _Vd_ee, _qd, true);
+		FreeMotionCtrl.computeAsyncMotion(_w_H_ee, _w_H_eeStandby, _w_H_o, _Vd_ee, _qd, true);		
 		for(int i=0; i<NB_ROBOTS; i++){
 			_V_gpo[i].setZero();
 			_fxc[i].setZero();
@@ -557,18 +587,31 @@ void dual_arm_control::computeCommands()
 		}
 		else
 		{
-			
 			if(_releaseAndretract)
 			{
 				FreeMotionCtrl.computeReleaseAndRetractMotion(_w_H_ee, _w_H_Dgp,  _w_H_o, _Vd_ee, _qd, false);
 			}
-			// if(true && _sensedContact && CooperativeCtrl._ContactConfidence == 1.0f)
 			else if(true && _sensedContact && CooperativeCtrl._ContactConfidence == 1.0f){
 				// FreeMotionCtrl.computeCoordinatedMotion(_w_H_ee, _w_H_Dgp, _w_H_o, _Vd_ee, _qd, false);  // _w_H_gp
 				FreeMotionCtrl.computeConstrainedMotion(_w_H_ee, _w_H_Dgp,  _w_H_o, _Vd_ee, _qd, false);
+				if(_isThrowing){
+				  _desVtoss   = 0.90f*_desVtoss + 0.10f * _v_max;
+				  _Vd_ee[LEFT].head(3)  = _Vd_ee[LEFT].head(3)/( _Vd_ee[LEFT].head(3).norm()+1e-10)  *  _desVtoss;
+  				  _Vd_ee[RIGHT].head(3) = _Vd_ee[RIGHT].head(3)/(_Vd_ee[RIGHT].head(3).norm()+1e-10) *  _desVtoss;
+				}
 			}
-			else{
-				FreeMotionCtrl.computeCoordinatedMotion(_w_H_ee, _w_H_gp, _w_H_o, _Vd_ee, _qd, false);
+			else
+			{
+				FreeMotionCtrl.computeCoordinatedMotion(_w_H_ee, _w_H_gp, _w_H_o, _Vd_ee, _qd, false);  // nominal
+
+					Eigen::Vector3f error_p_abs     = _w_H_o.block(0,3,3,1) - 0.5f*( _w_H_ee[LEFT].block(0,3,3,1) +  _w_H_ee[RIGHT].block(0,3,3,1));
+					Eigen::Vector3f o_error_pos_abs = _w_H_o.block<3,3>(0,0).transpose() * error_p_abs;
+				    Eigen::Vector3f o_error_pos_abs_paral = Eigen::Vector3f(o_error_pos_abs(0), 0.0f, o_error_pos_abs(2));
+				    float cp_ap = Utils<float>::computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.06f, 1.0f, true);  // 50.0f, 0.05f, 2.8f
+				   	// create impact in the normal direction
+				    float desVimp = 0.3f;
+				  _Vd_ee[LEFT].head(3)  = _Vd_ee[LEFT].head(3)  + _n[LEFT]  * cp_ap  * desVimp;
+  				  _Vd_ee[RIGHT].head(3) = _Vd_ee[RIGHT].head(3) + _n[RIGHT] * cp_ap * desVimp;
 			}
 		}
 		// compute the object's grasp points velocity
@@ -579,10 +622,15 @@ void dual_arm_control::computeCommands()
 	  // Compute desired contact force profile
 	  // -------------------------------------
 	  // using QP based wrench generation
-	  // CooperativeCtrl.computeControlWrench(_w_H_o, _w_H_ee, _w_H_gp, desired_object_wrench_);
-	  // using Predefined normal forcve
-	  CooperativeCtrl.getPredefinedContactForceProfile(_goHome, _contactState, _w_H_o, _w_H_ee, _w_H_gp);
-
+	  if(_qp_wrench_generation){
+	  	CooperativeCtrl.computeControlWrench(_w_H_o, _w_H_ee, _w_H_gp, desired_object_wrench_);
+	  }
+	  else{
+	  	// using Predefined normal forcve
+	  	CooperativeCtrl.getPredefinedContactForceProfile(_goHome, _contactState, _w_H_o, _w_H_ee, _w_H_gp);
+	  }	
+	  
+	  // conatct depend function between [0 1]
 	  if(_sensedContact && CooperativeCtrl._ContactConfidence == 1.0f)
 	  {
 	  	_nu_Wr0 = 0.80f*_nu_Wr0 + 0.20f;
@@ -593,12 +641,8 @@ void dual_arm_control::computeCommands()
 	  	_nu_Wr0 = 0.0f;
 	  	_nu_Wr1 = 0.0f;
 	  }
-		  //
-		  // for(int i=0; i<NB_ROBOTS; i++)
-		  // {
-			 //  _fxc[i] = _Fd[i]/_d1[i] * _n[i];
-			 //  _vd[i]  = _vd[i] + _fxc[i];
-		  // }
+
+	  // applied force in velocity space
 	  for(int i=0; i<NB_ROBOTS; i++){
 	  	_fxc[i] = 1.0f/_d1[i] * CooperativeCtrl._f_applied[i].head(3);
 	  }
@@ -619,10 +663,10 @@ void dual_arm_control::computeCommands()
 	  // set the command to send
 	  for(int i=0; i<NB_ROBOTS; i++)
 	  {
-		  _vd[i]  = (1.0f-_nu_Wr0) *_vd[i] + _nu_Wr0 * (_fxc[i] + 0.40f*_nu_Wr1*_vd[i]);
-		  // _vd[i]  = (1.0f-_nu_Wr0) *_vd[i] + _nu_Wr0 * (_fxc[i] + 0.00f*_nu_Wr1*_vd[i]);
-		  // _vd[i]  = _vd[i] + (_fxc[i] + 0.0f*_vd[i]);
-		  std::cout << " tttttttttttttttttttttttttttttttttttttttttttttttttttttt " <<  std::endl;
+		// _vd[i]  = (1.0f-_nu_Wr0) *_vd[i] + _nu_Wr0 * (_fxc[i]);
+	  	_vd[i]  = _vd[i] + _nu_Wr0 * _fxc[i];
+		// _vd[i]  = _vd[i] + (_fxc[i] + 0.0f*_vd[i]);
+		std::cout << " tttttttttttttttttttttttttttttttttttttttttttttttttttttt " <<  std::endl;
 	  }
   std::cout << "[dual_arm_control]: _Vd_ee[LEFT]:  \t" << _Vd_ee[LEFT].transpose() << std::endl;
   std::cout << "[dual_arm_control]: _Vd_ee[RIGHT]: \t" << _Vd_ee[RIGHT].transpose() << std::endl;
@@ -642,9 +686,9 @@ void dual_arm_control::publish_commands()
 	  // _pubVelo[k].data.push_back(_omegad[k](0));		// angular velocity omega_x	
 	  // _pubVelo[k].data.push_back(_omegad[k](1));		// angular velocity omega_y
 	  // _pubVelo[k].data.push_back(_omegad[k](2));		// angular velocity omega_z
-	  _pubVelo[k].data.push_back(_aad[k](0));	// axis angle pose_x	
-	  _pubVelo[k].data.push_back(_aad[k](1));	// axis angle pose_y
-	  _pubVelo[k].data.push_back(_aad[k](2));	// axis angle pose_z
+	  _pubVelo[k].data.push_back(_aad[k](0));			// axis angle pose_x	
+	  _pubVelo[k].data.push_back(_aad[k](1));		// axis angle pose_y
+	  _pubVelo[k].data.push_back(_aad[k](2));		// axis angle pose_z
 	  _pubVelo[k].data.push_back(_vd[k](0));		// linear velocity v_x
 	  _pubVelo[k].data.push_back(_vd[k](1));		// linear velocity v_y
 	  _pubVelo[k].data.push_back(_vd[k](2));		// linear velocity v_z
@@ -660,7 +704,6 @@ void dual_arm_control::publish_commands()
 		vel_quat[k].orientation.z	= _qd[k](3);
 		
 	}
-
 	//
 	_pub_ts_commands[LEFT].publish(_pubVelo[LEFT]);
 	_pub_ts_commands[RIGHT].publish(_pubVelo[RIGHT]);
@@ -675,13 +718,6 @@ void dual_arm_control::objectPoseCallback(const geometry_msgs::Pose::ConstPtr& m
 {
 	_xo << msg->position.x, 	msg->position.y, 	msg->position.z;
   _qo << msg->orientation.w, 	msg->orientation.x, msg->orientation.y, msg->orientation.z;
-
-  if(_objecPoseCount < 5)
-  {
-  // 	_xDo    = Eigen::Vector3f(_xo(0), _xo(1), 0.60f);
-		// _qDo    = _qo; 
-		_objecPoseCount ++;
-  }
 }
 
 void dual_arm_control::updateBasePoseCallback(const geometry_msgs::Pose::ConstPtr& msg, int k)
@@ -699,7 +735,13 @@ void dual_arm_control::updateEEPoseCallback(const geometry_msgs::Pose::ConstPtr&
 	_q[k] << 	msg->orientation.w, msg->orientation.x, msg->orientation.y, msg->orientation.z;	// orientation
   //
   _wRb[k] = Utils<float>::quaternionToRotationMatrix(_q[k]);
-  _x[k]   = _x[k]+_toolOffsetFromEE*_wRb[k].col(2);
+  _x[k]   = _x[k]+_toolOffsetFromEE[k]*_wRb[k].col(2);
+}
+
+void dual_arm_control::updateEETwistCallback(const geometry_msgs::Twist::ConstPtr& msg, int k)
+{
+  _v[k] << msg->linear.x, msg->linear.y, msg->linear.z;
+  _w[k] << msg->angular.x, msg->angular.y, msg->angular.z;
 }
 
 void dual_arm_control::updateRobotWrench(const geometry_msgs::WrenchStamped::ConstPtr& msg, int k)
@@ -714,7 +756,6 @@ void dual_arm_control::updateRobotWrench(const geometry_msgs::WrenchStamped::Con
 
   // _wrench[k] = raw -_wrenchBias[k];
   // _filteredWrench[k] = _filteredForceGain*_filteredWrench[k]+(1.0f-_filteredForceGain)*_wrench[k];
-
   // if(!_wrenchBiasOK[k] && _firstRobotPose[k])
   if(!_wrenchBiasOK[k])
   {
@@ -855,7 +896,7 @@ void dual_arm_control::getGraspPointsVelocity()
   }
 }
 
-void dual_arm_control::Keyboard_reference_object_control()
+void dual_arm_control::Keyboard_reference_object_control()   // control of attractor position through keyboad
 {
     _w_H_Do(0,3) += _delta_pos(0);
     _w_H_Do(1,3) += _delta_pos(1);
@@ -867,7 +908,7 @@ void dual_arm_control::Keyboard_reference_object_control()
 
 
 // //
-void dual_arm_control::Keyboard_object_control()
+void dual_arm_control::Keyboard_object_control()		// control of object position through keyboad
 {
 	// object2grasp.States_Object.pose.head(3) = ioSM->w_H_absF.block<3,3>(0,0) * init_obj_aF + ioSM->w_H_absF.block<3,1>(0,3); //
 	_w_H_o(0,3) += _delta_pos(0);
@@ -923,4 +964,17 @@ void dual_arm_control::publishData()
   }
 
 
+}
+
+void dual_arm_control::saveData()
+{
+	_OutRecord_pose		<< _x[LEFT].transpose() << "	" << _q[LEFT].transpose() << "	";
+	_OutRecord_pose   << _x[RIGHT].transpose() << "	" << _q[RIGHT].transpose() << "	";
+	_OutRecord_pose   << _xo.transpose() << "	" << _qo.transpose() << std::endl;
+
+	_OutRecord_velo		<< _Vd_ee[LEFT].transpose() << "	" << _Vd_ee[RIGHT].transpose() << "	";
+	_OutRecord_velo		<< _v[LEFT].transpose() << "  " << _w[LEFT].transpose() << " ";
+	_OutRecord_velo		<< _v[RIGHT].transpose() << "  " << _w[RIGHT].transpose() << std::endl;
+
+	_OutRecord_efforts	<< _filteredWrench[LEFT].transpose() << "  " << _filteredWrench[RIGHT].transpose() << std::endl;
 }
