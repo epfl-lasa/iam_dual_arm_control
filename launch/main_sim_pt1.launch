@@ -21,8 +21,8 @@
   <arg name="force_sensor_2"  default="True"/>
   <arg name="grabber_2"       default="True"/>
   <arg name="controller"      default="CustomControllers"/>
-  <arg name="position_1"      default="-y -1.5"/>
-  <arg name="position_2"      default="-y 0.5 -x 0.00"/>
+  <arg name="position_1"      default="-y -0.5 -x -1.0"/>
+  <arg name="position_2"      default="-y 0.5 -x -1.0"/>
 
   <include file="$(find iiwa_gazebo)/launch/iiwa_double_gazebo.launch">
     <arg name="robot_name_1"    value="$(arg robot_name_1)" />

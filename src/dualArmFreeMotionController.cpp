@@ -127,7 +127,7 @@ void dualArmFreeMotionController::computeCoordinatedMotion(Eigen::Matrix4f w_H_e
 
   Eigen::Vector3f o_error_pos_abs = w_H_o.block<3,3>(0,0).transpose() * _error_abs.head(3);
   Eigen::Vector3f o_error_pos_abs_paral = Eigen::Vector3f(o_error_pos_abs(0), 0.0f, o_error_pos_abs(2));
-  float cp_ap = computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.04f, 1.0f, true);  // 50.0f, 0.05f, 2.8f
+  float cp_ap = computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.02f, 1.0f, true);  // 50.0f, 0.05f, 2.8f
 
 
   // position error accounting for the reachability of the target
