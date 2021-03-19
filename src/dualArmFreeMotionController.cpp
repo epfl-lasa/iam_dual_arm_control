@@ -114,7 +114,6 @@ void dualArmFreeMotionController::computeCoordinatedMotion(Eigen::Matrix4f w_H_e
   // relative transformation
   lr_H_rr_t.block<3,3>(0,0) = Utils<float>::quaternionToRotationMatrix(qd[LEFT]).transpose() * Utils<float>::quaternionToRotationMatrix(qd[RIGHT]);
   Eigen::Matrix4f d_H_c_rel = lr_H_rr_t.inverse() * lr_H_rr;  // expressed in the left hand frame 
-
   
   // orientation error
   _error_rel.tail(3) = Utils<float>::getPoseErrorCur2Des(d_H_c_rel).tail(3);
@@ -123,11 +122,10 @@ void dualArmFreeMotionController::computeCoordinatedMotion(Eigen::Matrix4f w_H_e
 
   // ///////////////////////////////////////////////////////////////////////////////////////
   float cpl_rel    = computeCouplingFactor(_error_abs.head(3), 50.0f, 0.08f, 1.0f, true);  // 50.0f, 0.05f, 2.8f  0.5
-  // float cpl_rel    = computeCouplingFactor(_error_rel.tail(3), 50.0f, 0.1f, 1.0f, false);  // 50.0f, 0.05f, 2.8f
 
   Eigen::Vector3f o_error_pos_abs = w_H_o.block<3,3>(0,0).transpose() * _error_abs.head(3);
   Eigen::Vector3f o_error_pos_abs_paral = Eigen::Vector3f(o_error_pos_abs(0), 0.0f, o_error_pos_abs(2));
-  float cp_ap = computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.04f, 1.0f, true);  // 50.0f, 0.05f, 2.8f
+  float cp_ap = computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.02f, 1.0f, true);  // 50.0f, 0.05f, 2.8f  (0.04f)
 
 
   // position error accounting for the reachability of the target
