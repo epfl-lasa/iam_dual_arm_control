@@ -31,8 +31,10 @@ class dualArmFreeMotionController
 	
 	Vector6f _error_abs;
 	Vector6f _error_rel;
+	Vector6f _error_obj;
 	Vector6f _V_abs;
 	Vector6f _V_rel;
+	Vector6f _V_obj;
 	// Vector6f _Vd_ee[NB_ROBOTS];		// desired velocity twist
 
 	Eigen::Matrix3f gain_p_abs;
@@ -61,6 +63,8 @@ class dualArmFreeMotionController
 
 		void computeConstrainedMotion(Eigen::Matrix4f w_H_ee[],  Eigen::Matrix4f w_H_gp[], Eigen::Matrix4f w_H_o, Vector6f (&Vd_ee)[NB_ROBOTS], Eigen::Vector4f (&qd)[NB_ROBOTS], bool isOrient3d);
 		void computeReleaseAndRetractMotion(Eigen::Matrix4f w_H_ee[],  Eigen::Matrix4f w_H_gp[], Eigen::Matrix4f w_H_o, Vector6f (&Vd_ee)[NB_ROBOTS], Eigen::Vector4f (&qd)[NB_ROBOTS], bool isOrient3d);
+		void generatePlacingMotion(	Eigen::Matrix4f w_H_ee[],  Eigen::Matrix4f w_H_gp[], Eigen::Matrix4f w_H_o, Eigen::Matrix4f w_H_Do, float via_height, 
+									Vector6f (&Vd_ee)[NB_ROBOTS], Eigen::Vector4f (&qd)[NB_ROBOTS], bool isOrient3d);
 
 };
 

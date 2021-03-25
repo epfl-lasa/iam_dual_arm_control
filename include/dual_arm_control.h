@@ -101,7 +101,7 @@ class dual_arm_control
     ros::Publisher _pubFilteredWrench[NB_ROBOTS];      	// Publish filtered measured wrench
     ros::Publisher _pubNormalForce[NB_ROBOTS];        	// Publish measured normal force to the surface
     ros::Publisher _pubDesiredVel_Quat[NB_ROBOTS];      // Publish desired EE linear velocity and quaternion
-    
+
     ros::Publisher _pubDistAttractorEe[NB_ROBOTS];
 		ros::Publisher _pubAttractor[NB_ROBOTS];
 
@@ -244,6 +244,7 @@ class dual_arm_control
     bool _stop;                                     // Check for CTRL+C
     bool _isThrowing;																// if true execute throwing of the object
     bool _goToAttractors;														// send the robots to their attractors
+    bool _isPlacing;
 
     // data logging
     std::string   _DataID;

@@ -194,8 +194,8 @@ dual_arm_control::dual_arm_control(ros::NodeHandle &n, double frequency, 	//std:
 	_eoC = 0.0f;
 	// coordination motion gains
 	_gain_abs.setZero();
-	_gain_abs.topLeftCorner(3,3)     = 1.f*Eigen::Vector3f(1.5f, 1.5f, 1.5f).asDiagonal();  //3.0f, 3.0f, 3.0f
-	_gain_abs.bottomRightCorner(3,3) = 1.f*Eigen::Vector3f(1.0f, 1.0f, 1.0f).asDiagonal();  //1.5f, 1.5f, 1.5f
+	_gain_abs.topLeftCorner(3,3)     = 1.5f*Eigen::Vector3f(1.5f, 1.5f, 1.5f).asDiagonal();  //3.0f, 3.0f, 3.0f
+	_gain_abs.bottomRightCorner(3,3) = 1.5f*Eigen::Vector3f(1.0f, 1.0f, 1.0f).asDiagonal();  //1.5f, 1.5f, 1.5f
 	_gain_rel.setZero();
 	_gain_rel.topLeftCorner(3,3)     = 1.f*Eigen::Vector3f(2.0f, 2.0f, 2.0f).asDiagonal();  //4.0f, 4.0f, 4.0f
 	_gain_rel.bottomRightCorner(3,3) = 1.f*Eigen::Vector3f(1.0f, 1.0f, 1.0f).asDiagonal();  //1.5f, 1.5f, 1.5f
@@ -229,6 +229,7 @@ dual_arm_control::dual_arm_control(ros::NodeHandle &n, double frequency, 	//std:
 	_goToAttractors 		= true;
 	_releaseAndretract 	= false;
 	_isThrowing 				= false;
+	_isPlacing          = false;
 	// _t0_run = ros::Time::now().toSec();
 }
 //
@@ -378,7 +379,8 @@ void dual_arm_control::run()
         // user control of release or throwing (keyboard)
           case 'r': _releaseAndretract = !_releaseAndretract; break; 
           case 't': _isThrowing = !_isThrowing; break;  
-          case 'g': _goToAttractors = !_goToAttractors; break;      
+          case 'g': _goToAttractors = !_goToAttractors; break;  
+          case 'p': _isPlacing = !_isPlacing; break;    
         }
     }
     // ----------------------------------------------------
@@ -430,7 +432,7 @@ void dual_arm_control::run()
 void dual_arm_control::updatePoses()
 {
 	
-	if(_initPoseCount < 5)
+	if(_initPoseCount < 20)
 	{
 		_w_H_eeStandby[LEFT]  = _w_H_rb[LEFT]  * Utils<float>::pose2HomoMx(_xrbStandby[LEFT],  _qrbStandby[LEFT]);			// WITH EE pose wrt. the world TO BE CHANGED
 		_w_H_eeStandby[RIGHT] = _w_H_rb[RIGHT] * Utils<float>::pose2HomoMx(_xrbStandby[RIGHT],  _qrbStandby[RIGHT]);		// WITH EE pose wrt. the world
@@ -443,11 +445,11 @@ void dual_arm_control::updatePoses()
 
 		_initPoseCount ++;
 	}
-
+	//
 	// 
 	if( _sensedContact && CooperativeCtrl._ContactConfidence == 1.0 && _xo(2) >= 0.98f*_xDo(2)) //
 	{
-		_isThrowing = true;
+		// _isThrowing = true;
 	}
 	/////////////////////////////////////////////////////////////////////////////////////////////
 	// desired tossing position with respect to the robot
@@ -474,6 +476,17 @@ void dual_arm_control::updatePoses()
 			_delta_oDx = 0.f;
 			_delta_oDy = 0.f;
 			_delta_oDz = 0.f;
+		}
+	}
+
+	if(_isPlacing){
+		_xDo    = Eigen::Vector3f(0.68f, 0.00f, 0.35f);   // set attractor of lifting task
+		_w_H_Do = Utils<float>::pose2HomoMx(_xDo, _qDo);
+		if((_w_H_o.block<3,1>(0,3)-_w_H_Do.block<3,1>(0,3)).norm()<=0.05){
+			_releaseAndretract = true;
+		}
+		else{
+			_releaseAndretract = false;
 		}
 	}
 
@@ -523,16 +536,16 @@ void dual_arm_control::updatePoses()
     _normalForce[k] = fabs((_wRb[k]*_filteredWrench[k].segment(0,3)).dot(_n[k]));
   }
 	// printing for analysis
-	// std::cout << "[dual_arm_control]: _w_H_o: \n" <<  _w_H_o << std::endl;
-	// std::cout << "[dual_arm_control]: _w_H_Do: \n" <<  _w_H_Do << std::endl;
+	std::cout << "[dual_arm_control]: _w_H_o: \n" <<  _w_H_o << std::endl;
+	std::cout << "[dual_arm_control]: _w_H_Do: \n" <<  _w_H_Do << std::endl;
 	// std::cout << "[dual_arm_control]: _w_H_Dgp[LEFT]: \n" <<  _w_H_Dgp[LEFT] << std::endl;
 	// std::cout << "[dual_arm_control]: _w_H_Dgp[RIGHT]: \n" <<  _w_H_Dgp[RIGHT] << std::endl;  
 	// std::cout << "[dual_arm_control]: _xDo: \t" <<  _xDo.transpose() << std::endl;
 	// std::cout << "[dual_arm_control]: _qDo: \n" <<  _qDo.transpose() << std::endl;
-	// std::cout << "[dual_arm_control]: _w_H_ee[LEFT]: \n" <<  _w_H_ee[0] << std::endl;
-	// std::cout << "[dual_arm_control]: _w_H_gp[LEFT]: \n" <<  _w_H_gp[0] << std::endl;
-	// std::cout << "[dual_arm_control]: _w_H_ee[RIGHT]: \n" << _w_H_ee[1] << std::endl;
-	// std::cout << "[dual_arm_control]: _w_H_gp[RIGHT]: \n" << _w_H_gp[1] << std::endl;
+	std::cout << "[dual_arm_control]: _w_H_ee[LEFT]: \n" <<  _w_H_ee[0] << std::endl;
+	std::cout << "[dual_arm_control]: _w_H_gp[LEFT]: \n" <<  _w_H_gp[0] << std::endl;
+	std::cout << "[dual_arm_control]: _w_H_ee[RIGHT]: \n" << _w_H_ee[1] << std::endl;
+	std::cout << "[dual_arm_control]: _w_H_gp[RIGHT]: \n" << _w_H_gp[1] << std::endl;
 	// std::cout << "[dual_arm_control]: _w_H_eeStandby[LEFT]: \n" <<  _w_H_eeStandby[0] << std::endl;
 	// std::cout << "[dual_arm_control]: _w_H_eeStandby[RIGHT]: \n" << _w_H_eeStandby[1] << std::endl;
 	// std::cout << "[dual_arm_control]:  ddddddddddddddddd  _eoD: \t" << _eoD << std::endl;
@@ -582,10 +595,14 @@ void dual_arm_control::computeCommands()
 			else if(true && _sensedContact && CooperativeCtrl._ContactConfidence == 1.0f){
 				// FreeMotionCtrl.computeCoordinatedMotion(_w_H_ee, _w_H_Dgp, _w_H_o, _Vd_ee, _qd, false);  // _w_H_gp
 				FreeMotionCtrl.computeConstrainedMotion(_w_H_ee, _w_H_Dgp,  _w_H_o, _Vd_ee, _qd, false);
+				float via_height = 0.2f;
+				if(_isPlacing){
+							FreeMotionCtrl.generatePlacingMotion(_w_H_ee, _w_H_Dgp,  _w_H_o, _w_H_Do, via_height, _Vd_ee, _qd, false);
+				}
 				if(_isThrowing){
 				  _desVtoss   = 0.90f*_desVtoss + 0.10f * _v_max;
-				  _Vd_ee[LEFT].head(3)  = _Vd_ee[LEFT].head(3)/( _Vd_ee[LEFT].head(3).norm()+1e-10)  *  _desVtoss;
-  				  _Vd_ee[RIGHT].head(3) = _Vd_ee[RIGHT].head(3)/(_Vd_ee[RIGHT].head(3).norm()+1e-10) *  _desVtoss;
+				  _Vd_ee[LEFT].head(3)  = _Vd_ee[LEFT].head(3)/(_Vd_ee[LEFT].head(3).norm()+1e-10)  *  _desVtoss;
+  				_Vd_ee[RIGHT].head(3) = _Vd_ee[RIGHT].head(3)/(_Vd_ee[RIGHT].head(3).norm()+1e-10)*  _desVtoss;
 				}
 			}
 			else
@@ -595,11 +612,11 @@ void dual_arm_control::computeCommands()
 					Eigen::Vector3f error_p_abs     = _w_H_o.block(0,3,3,1) - 0.5f*( _w_H_ee[LEFT].block(0,3,3,1) +  _w_H_ee[RIGHT].block(0,3,3,1));
 					Eigen::Vector3f o_error_pos_abs = _w_H_o.block<3,3>(0,0).transpose() * error_p_abs;
 				    Eigen::Vector3f o_error_pos_abs_paral = Eigen::Vector3f(o_error_pos_abs(0), 0.0f, o_error_pos_abs(2));
-				    float cp_ap = Utils<float>::computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.06f, 1.0f, true);  // 50.0f, 0.05f, 2.8f
+				    float cp_ap = Utils<float>::computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.15f, 1.0f, true);  // 50.0f, 0.05f, 2.8f
 				   	// create impact in the normal direction
 				    float desVimp = 0.3f;
 				  _Vd_ee[LEFT].head(3)  = _Vd_ee[LEFT].head(3)  + _n[LEFT]  * cp_ap  * desVimp;
-  				  _Vd_ee[RIGHT].head(3) = _Vd_ee[RIGHT].head(3) + _n[RIGHT] * cp_ap * desVimp;
+  				_Vd_ee[RIGHT].head(3) = _Vd_ee[RIGHT].head(3) + _n[RIGHT] * cp_ap  * desVimp;
 			}
 		}
 		// keep the current orientation if not going to the attractor
@@ -723,6 +740,7 @@ void dual_arm_control::objectPoseCallback(const geometry_msgs::Pose::ConstPtr& m
 {
 	_xo << msg->position.x, 	msg->position.y, 	msg->position.z;
   _qo << msg->orientation.w, 	msg->orientation.x, msg->orientation.y, msg->orientation.z;
+  _w_H_o = Utils<float>::pose2HomoMx(_xo, _qo);
 }
 
 void dual_arm_control::updateBasePoseCallback(const geometry_msgs::Pose::ConstPtr& msg, int k)
