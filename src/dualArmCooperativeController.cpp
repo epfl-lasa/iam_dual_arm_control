@@ -14,16 +14,16 @@ bool dualArmCooperativeController::init()
 {
 	_tol_dist2contact   = 0.03f;
 	_ContactConfidence  = 0.0f;
-	_min_Fz 		    = 10.0; //15.0;
-	_min_nF 			= 10.0f;
-	_max_nF 			= 15.0f;
+	_min_Fz 		    = 30.0; //15.0;
+	_min_nF 			= 30.0f;
+	_max_nF 			= 50.0f;
 	//
 	_mu_ee				= 0.9f;
 	_gamma_ee			= 0.9f;
 	_deltaX_ee			= 0.5f;
 	_deltaY_ee			= 0.5f;
 	_contactOccured     = false;
-	_targetForce     	= 12.0f;
+	_targetForce     	= 50.0f;
 	//
 	_GraspMatrixEEs.setZero();
 	_optimal_contact_wrench_EEs.setZero();
@@ -97,18 +97,16 @@ void dualArmCooperativeController::check_contact_proximity(	Eigen::Matrix4f w_H_
 	_dist2contact[LEFT]  = (lh_er(2));
 	_dist2contact[RIGHT] = (rh_er(2));
 	// update the Contact confidence indicator
-	// if(tsk && (fabs(_dist2contact[RIGHT]) <= _tol_dist2contact) && (fabs(_dist2contact[LEFT]) <= _tol_dist2contact)){
-	// if(_contactOccured && (fabs(_dist2contact[RIGHT]) <= _tol_dist2contact) && (fabs(_dist2contact[LEFT]) <= _tol_dist2contact)){
 	if((fabs(_dist2contact[RIGHT]) <= _tol_dist2contact) && (fabs(_dist2contact[LEFT]) <= _tol_dist2contact)){
 		_ContactConfidence = 1.0;
 	} else 	{
 		_ContactConfidence = 0.0;
 	}
 	std::cout << " _ContactConfidence 	aaaaaaaaaaaaaaaaaa	---------- is  \t" << _ContactConfidence << std::endl;
-	std::cout << " _dist2contact[LEFT] 	aaaaaaaaaaaaaaaaaa	---------- is  \t" << _dist2contact[LEFT] << std::endl;
-	std::cout << " _dist2contact[RIGHT] aaaaaaaaaaaaaaaaaa	---------- is  \t" << _dist2contact[RIGHT] << std::endl;
-	std::cout << " _lh_er.head(2).norm()aaaaaaaaaaaaaaaaaa	---------- is  \t" << lh_er.head(2).norm() << std::endl;
-	std::cout << " _rh_er.head(2).norm()aaaaaaaaaaaaaaaaaa	---------- is  \t" << rh_er.head(2).norm() << std::endl;
+	// std::cout << " _dist2contact[LEFT] 	aaaaaaaaaaaaaaaaaa	---------- is  \t" << _dist2contact[LEFT] << std::endl;
+	// std::cout << " _dist2contact[RIGHT] aaaaaaaaaaaaaaaaaa	---------- is  \t" << _dist2contact[RIGHT] << std::endl;
+	// std::cout << " _lh_er.head(2).norm()aaaaaaaaaaaaaaaaaa	---------- is  \t" << lh_er.head(2).norm() << std::endl;
+	// std::cout << " _rh_er.head(2).norm()aaaaaaaaaaaaaaaaaa	---------- is  \t" << rh_er.head(2).norm() << std::endl;
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 }
 
@@ -370,8 +368,8 @@ void dualArmCooperativeController::getPredefinedContactForceProfile(bool goHome,
     }
     else if(contactState==CLOSE_TO_CONTACT)
     {
-      _f_applied[LEFT].head(3)  = 3.0f * _nC[LEFT];
-			_f_applied[RIGHT].head(3) = 3.0f * _nC[RIGHT];
+      _f_applied[LEFT].head(3)  = 5.0f * _nC[LEFT];
+			_f_applied[RIGHT].head(3) = 5.0f * _nC[RIGHT];
     }
     else
     {

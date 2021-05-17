@@ -726,6 +726,83 @@ class Utils
       return Angles;
   }
 
+	static T computeCouplingFactor(Eigen::Matrix<T,3,1> ep_, T alpha_, T beta_, T gamma_, bool secondOrder)
+	{
+		T t_cpl_ = 1.0/(alpha_*ep_.norm()+1e-15);         
+		T cpl_   = 0.0;
+		t_cpl_ = pow(t_cpl_,gamma_);
+		if(secondOrder)	cpl_   = 1.0 - exp(-t_cpl_/beta_) *(1.0 + t_cpl_/beta_);  // 2nd order critically damped
+		else						cpl_   = 1.0 - exp(-t_cpl_/beta_); 												// 1st order increase
+
+		return cpl_;
+	}
+
+	// -============================================================================
+	static Eigen::Matrix<T,4,1> quat_mul(Eigen::Matrix<T,4,1> a, Eigen::Matrix<T,4,1> b)
+	{
+		Eigen::Matrix<T,4,1> res;
+		res[0] =  a[1]*b[2] - a[2]*b[1] + a[0]*b[3] + a[3]*b[0];
+		res[1] =  a[2]*b[0] - a[0]*b[2] + a[1]*b[3] + a[3]*b[1];
+		res[2] =  a[0]*b[1] - a[1]*b[0] + a[2]*b[3] + a[3]*b[2];
+		res[3] = -a[0]*b[0] - a[1]*b[1] - a[2]*b[2] + a[3]*b[3];
+		if (res[3]<0)
+			res *= -1;
+		return res;
+	}
+
+	// //
+	static Eigen::Matrix<T,4,1> quat_exp(Eigen::Matrix<T,4,1> in)
+	{
+		Eigen::Matrix<T,4,1> res;
+		T amp = std::exp(in[3]);
+		in[3] = 0;
+		T theta = quat_norm(in);
+		res[0] = amp * SinXoverX1(theta) * in[0];
+		res[1] = amp * SinXoverX1(theta) * in[1];
+		res[2] = amp * SinXoverX1(theta) * in[2];
+		res[3] = amp * std::cos(theta);
+		return res;
+	}
+	// //
+	static T SinXoverX1(T x)	  //mySin function
+	{
+		T sum = 0.0;
+		for(int i = 0; i < 10; i++)
+		{
+			T top = pow(-1, i) * pow(x, 2 * i + 1 - 1);  //calculation for nominator
+			T bottom = fact1(2 * i + 1);			  //calculation for denominator
+			sum += top / bottom;
+		}
+		return sum;
+	}
+
+	static T quat_norm(Eigen::Matrix<T,4,1> in)
+	{
+		return sqrt(quat_dot(in,quat_inverse(in)));
+	}
+
+	static T fact1(T x)	   //factorial function
+	{						   //Simply calculates factorial for denominator
+		if(x==0 || x==1)
+			return 1;
+		else
+			return x * fact1(x - 1);
+	}
+
+	static T quat_dot(Eigen::Matrix<T,4,1> a, Eigen::Matrix<T,4,1> b)
+	{
+		T sum = a[3]*b[3];
+		for(int i=0;i<3;i++) sum -= a[i]*b[i];
+		return sum;
+	}
+
+	static Eigen::Matrix<T,4,1> quat_inverse(Eigen::Matrix<T,4,1> in)
+	{
+		Eigen::Matrix<T,4,1> out = in;
+		for(int i=0;i<3;i++) out[i] *= -1;
+		return out;
+	}
+
 };
 
 template class Utils<float>;
