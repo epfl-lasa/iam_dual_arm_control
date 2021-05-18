@@ -224,11 +224,11 @@ dual_arm_control::dual_arm_control(ros::NodeHandle &n, double frequency, 	//std:
 	_desVtoss   = 0.0f;
 	_applyVelo  = 0.0f;
 
-	_objCtrlKey 				= true;
-	_goHome 						= true;
-	_goToAttractors 		= true;
+	_objCtrlKey 		= true;
+	_goHome 			= true;
+	_goToAttractors 	= true;
 	_releaseAndretract 	= false;
-	_isThrowing 				= false;
+	_isThrowing 		= false;
 	_isPlacing          = false;
 	// _t0_run = ros::Time::now().toSec();
 }
@@ -241,15 +241,15 @@ bool dual_arm_control::init()
 	//-------------
 	// Subscribers
 	//------------
-	_sub_object_pose 			 				= nh_.subscribe(_topic_pose_object,1, &dual_arm_control::objectPoseCallback, this, ros::TransportHints().reliable().tcpNoDelay());
-	_sub_base_pose[LEFT] 	 	 			= nh_.subscribe<geometry_msgs::Pose>(_topic_pose_robot_base[LEFT], 1, boost::bind(&dual_arm_control::updateBasePoseCallback,this,_1,LEFT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
-	_sub_ee_pose[LEFT] 			 			= nh_.subscribe<geometry_msgs::Pose>(_topic_pose_robot_ee[LEFT], 1, boost::bind(&dual_arm_control::updateEEPoseCallback,this,_1,LEFT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
-	_sub_ee_velo[LEFT] 			 			= nh_.subscribe<geometry_msgs::Twist>("/simo_track/robot_left/ee_velo", 1, boost::bind(&dual_arm_control::updateEETwistCallback,this,_1,LEFT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+	_sub_object_pose 			 	= nh_.subscribe(_topic_pose_object,1, &dual_arm_control::objectPoseCallback, this, ros::TransportHints().reliable().tcpNoDelay());
+	_sub_base_pose[LEFT] 	 	 	= nh_.subscribe<geometry_msgs::Pose>(_topic_pose_robot_base[LEFT], 1, boost::bind(&dual_arm_control::updateBasePoseCallback,this,_1,LEFT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+	_sub_ee_pose[LEFT] 			 	= nh_.subscribe<geometry_msgs::Pose>(_topic_pose_robot_ee[LEFT], 1, boost::bind(&dual_arm_control::updateEEPoseCallback,this,_1,LEFT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+	_sub_ee_velo[LEFT] 			 	= nh_.subscribe<geometry_msgs::Twist>("/simo_track/robot_left/ee_velo", 1, boost::bind(&dual_arm_control::updateEETwistCallback,this,_1,LEFT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 	_subForceTorqueSensor[LEFT] 	= nh_.subscribe<geometry_msgs::WrenchStamped>(_topic_subForceTorqueSensor[LEFT], 1, boost::bind(&dual_arm_control::updateRobotWrench,this,_1,LEFT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 	// _subForceTorqueSensor[LEFT]	= nh_.subscribe(_topic_subForceTorqueSensor[LEFT],1, &dual_arm_control::updateRobotWrenchLeft, this, ros::TransportHints().reliable().tcpNoDelay());
-	_sub_base_pose[RIGHT] 		 		= nh_.subscribe<geometry_msgs::Pose>(_topic_pose_robot_base[RIGHT], 1, boost::bind(&dual_arm_control::updateBasePoseCallback,this,_1,RIGHT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
-	_sub_ee_pose[RIGHT]   		 		= nh_.subscribe<geometry_msgs::Pose>(_topic_pose_robot_ee[RIGHT], 1, boost::bind(&dual_arm_control::updateEEPoseCallback,this,_1,RIGHT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
-	_sub_ee_velo[RIGHT] 		 			= nh_.subscribe<geometry_msgs::Twist>("/simo_track/robot_right/ee_velo", 1, boost::bind(&dual_arm_control::updateEETwistCallback,this,_1,RIGHT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+	_sub_base_pose[RIGHT] 		 	= nh_.subscribe<geometry_msgs::Pose>(_topic_pose_robot_base[RIGHT], 1, boost::bind(&dual_arm_control::updateBasePoseCallback,this,_1,RIGHT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+	_sub_ee_pose[RIGHT]   		 	= nh_.subscribe<geometry_msgs::Pose>(_topic_pose_robot_ee[RIGHT], 1, boost::bind(&dual_arm_control::updateEEPoseCallback,this,_1,RIGHT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+	_sub_ee_velo[RIGHT] 		 	= nh_.subscribe<geometry_msgs::Twist>("/simo_track/robot_right/ee_velo", 1, boost::bind(&dual_arm_control::updateEETwistCallback,this,_1,RIGHT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 	_subForceTorqueSensor[RIGHT]	= nh_.subscribe<geometry_msgs::WrenchStamped>(_topic_subForceTorqueSensor[RIGHT], 1, boost::bind(&dual_arm_control::updateRobotWrench,this,_1,RIGHT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 	// _subForceTorqueSensor[RIGHT]	= nh_.subscribe(_topic_subForceTorqueSensor[RIGHT],1, &dual_arm_control::updateRobotWrenchRight, this, ros::TransportHints().reliable().tcpNoDelay());
 	//-------------
@@ -262,10 +262,10 @@ bool dual_arm_control::init()
 	_pubNormalForce[LEFT] 		  	= nh_.advertise<std_msgs::Float64>("/dual_arm_control/robot_left/normalForceLeft", 1);
 
 	_pub_ts_commands[RIGHT]   		= nh_.advertise<std_msgs::Float64MultiArray>(_topic_ee_commands[RIGHT], 1);														// commands
-	_pubDesiredTwist[RIGHT] 	 		= nh_.advertise<geometry_msgs::Twist>("/dual_arm_control/robot_right/desired/ee_velocity", 1);
+	_pubDesiredTwist[RIGHT] 	 	= nh_.advertise<geometry_msgs::Twist>("/dual_arm_control/robot_right/desired/ee_velocity", 1);
 	_pubDesiredOrientation[RIGHT]	= nh_.advertise<geometry_msgs::Quaternion>("/dual_arm_control/robot_right/desired/ee_orientation", 1);
 	_pubFilteredWrench[RIGHT] 	 	= nh_.advertise<geometry_msgs::WrenchStamped>("/dual_arm_control/robot_right/filteredWrenc0hRight", 1);
-	_pubNormalForce[RIGHT] 		 		= nh_.advertise<std_msgs::Float64>("/dual_arm_control/robot_right/normalForceRight", 1);
+	_pubNormalForce[RIGHT] 		 	= nh_.advertise<std_msgs::Float64>("/dual_arm_control/robot_right/normalForceRight", 1);
 
 	// Desired command for the dual iiwa toolkit
 	_pubDesiredVel_Quat[LEFT]   	= nh_.advertise<geometry_msgs::Pose>("/passive_control/iiwa1/vel_quat", 1);
@@ -273,8 +273,8 @@ bool dual_arm_control::init()
 
 	_pubDistAttractorEe[LEFT] 		= nh_.advertise<std_msgs::Float64>("/passive_control/iiwa1/error", 1);
 	_pubDistAttractorEe[RIGHT] 		= nh_.advertise<std_msgs::Float64>("/passive_control/iiwa_blue/error", 1);
-  _pubAttractor[LEFT] 					= nh_.advertise<geometry_msgs::Pose>("/passive_control/iiwa1/attractor", 1);
-	_pubAttractor[RIGHT] 					= nh_.advertise<geometry_msgs::Pose>("/passive_control/iiwa_blue/attractor", 1);
+  _pubAttractor[LEFT] 				= nh_.advertise<geometry_msgs::Pose>("/passive_control/iiwa1/attractor", 1);
+	_pubAttractor[RIGHT] 			= nh_.advertise<geometry_msgs::Pose>("/passive_control/iiwa_blue/attractor", 1);
 
 	//
 	std::string data_number = _DataID;
@@ -357,31 +357,41 @@ void dual_arm_control::run()
         fflush(stdin);
         switch(c)
         {
-          case 'q':   
-                _goHome = !_goHome;
-        	break;
-        // control of the object (desired using keyboard)
+			case 'q':{   
+			            _goHome = !_goHome;
+			            if(_goHome){_goToAttractors = true;}
+			        }
+			break;
+			// control of the object (desired using keyboard)
 			// position
-          case 'a': _delta_pos(0) -= 0.01f; break;
-          case 's': _delta_pos(0) += 0.01f; break;
-          case 'd': _delta_pos(1) -= 0.01f; break;
-          case 'f': _delta_pos(1) += 0.01f; break;
-          case 'z': _delta_pos(2) -= 0.01f; break;
-          case 'w': _delta_pos(2) += 0.01f; break;
-          //orientation
-          case 'h': _delta_ang(0) -= 0.05f; break;
-          case 'j': _delta_ang(0) += 0.05f; break;
-          case 'k': _delta_ang(1) -= 0.05f; break;
-          case 'l': _delta_ang(1) += 0.05f; break;
-          case 'm': _delta_ang(2) -= 0.05f; break;
-          case 'i': _delta_ang(2) += 0.05f; break;  
+			case 'a': _delta_pos(0) -= 0.01f; break;
+			case 's': _delta_pos(0) += 0.01f; break;
+			case 'd': _delta_pos(1) -= 0.01f; break;
+			case 'f': _delta_pos(1) += 0.01f; break;
+			case 'z': _delta_pos(2) -= 0.01f; break;
+			case 'w': _delta_pos(2) += 0.01f; break;
+			//orientation
+			case 'h': _delta_ang(0) -= 0.05f; break;
+			case 'j': _delta_ang(0) += 0.05f; break;
+			case 'k': _delta_ang(1) -= 0.05f; break;
+			case 'l': _delta_ang(1) += 0.05f; break;
+			case 'm': _delta_ang(2) -= 0.05f; break;
+			case 'i': _delta_ang(2) += 0.05f; break;  
 
-        // user control of release or throwing (keyboard)
-          case 'r': _releaseAndretract = !_releaseAndretract; break; 
-          case 't': _isThrowing = !_isThrowing; break;  
-          case 'g': _goToAttractors = !_goToAttractors; break;  
-          case 'p': _isPlacing = !_isPlacing; break;    
-        }
+			// user control of release or throwing (keyboard)
+			case 'r': _releaseAndretract = !_releaseAndretract; break; 
+			case 't': _isThrowing = !_isThrowing; break;  
+			// case 'g': _goToAttractors = !_goToAttractors; break;  
+			case 'g': {
+					_goToAttractors = !_goToAttractors;
+					if(_goToAttractors){
+						_goHome			   = false;
+						_releaseAndretract = false; 
+					}
+					
+			}
+			case 'p': _isPlacing = !_isPlacing; break;    
+			}
     }
     // ----------------------------------------------------
 
@@ -602,7 +612,7 @@ void dual_arm_control::computeCommands()
 				if(_isThrowing){
 				  _desVtoss   = 0.90f*_desVtoss + 0.10f * _v_max;
 				  _Vd_ee[LEFT].head(3)  = _Vd_ee[LEFT].head(3)/(_Vd_ee[LEFT].head(3).norm()+1e-10)  *  _desVtoss;
-  				_Vd_ee[RIGHT].head(3) = _Vd_ee[RIGHT].head(3)/(_Vd_ee[RIGHT].head(3).norm()+1e-10)*  _desVtoss;
+  				  _Vd_ee[RIGHT].head(3) = _Vd_ee[RIGHT].head(3)/(_Vd_ee[RIGHT].head(3).norm()+1e-10)*  _desVtoss;
 				}
 			}
 			else
@@ -614,7 +624,7 @@ void dual_arm_control::computeCommands()
 				    Eigen::Vector3f o_error_pos_abs_paral = Eigen::Vector3f(o_error_pos_abs(0), 0.0f, o_error_pos_abs(2));
 				    float cp_ap = Utils<float>::computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.15f, 1.0f, true);  // 50.0f, 0.05f, 2.8f
 				   	// create impact in the normal direction
-				    float desVimp = 0.3f;
+				    float desVimp = 0.2f;
 				  _Vd_ee[LEFT].head(3)  = _Vd_ee[LEFT].head(3)  + _n[LEFT]  * cp_ap  * desVimp;
   				_Vd_ee[RIGHT].head(3) = _Vd_ee[RIGHT].head(3) + _n[RIGHT] * cp_ap  * desVimp;
 			}
@@ -664,7 +674,7 @@ void dual_arm_control::computeCommands()
 			_fxc[0].setZero();
 			_fxc[1].setZero();
 			_nu_Wr0 = 0.0f;
-	  	_nu_Wr1 = 0.0f;
+	  		_nu_Wr1 = 0.0f;
 		}
 		//
 		if(_goToAttractors)

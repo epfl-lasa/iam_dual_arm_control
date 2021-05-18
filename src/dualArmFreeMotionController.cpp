@@ -342,6 +342,7 @@ void dualArmFreeMotionController::computeDesiredOrientation(float weight, Eigen:
 
       // Compute final quaternion on plane
       Eigen::Vector4f qf = Utils<float>::quaternionProduct(qtemp,q_);
+      // Eigen::Vector4f qf = Utils<float>::quaternionProduct(q_,qtemp);
 
       // Perform quaternion slerp interpolation to progressively orient the end effector while approaching the object surface
       // _qd[k] = Utils<float>::slerpQuaternion(q_[k],qf,1.0f-std::tanh(3.0f*_eD)); // _error_rel.head(3)
