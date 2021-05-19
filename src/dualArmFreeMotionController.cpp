@@ -117,7 +117,7 @@ void dualArmFreeMotionController::computeCoordinatedMotion(Eigen::Matrix4f w_H_e
   // orientation error
   _error_rel.tail(3) = Utils<float>::getPoseErrorCur2Des(d_H_c_rel).tail(3);
   // 3D Orientation Jacobian 
-  Eigen::Matrix3f jacMuTheta_rel = Utils<float>::getMuThetaJacobian(d_H_c_rel.block<3,3>(0,0)) * w_H_ee[LEFT].block<3,3>(0,0).transpose(); // wrt. the world
+  Eigen::Matrix3f jacMuTheta_rel = Utils<float>::getMuThetaJacobian(d_H_c_rel.block<3,3>(0,0)) * w_H_ee[RIGHT].block<3,3>(0,0).transpose(); // wrt. the world
 
   // ///////////////////////////////////////////////////////////////////////////////////////
   float cpl_rel    = computeCouplingFactor(_error_abs.head(3), 50.0f, 0.08f, 1.0f, true);  // 50.0f, 0.05f, 2.8f  0.5
@@ -233,7 +233,7 @@ void dualArmFreeMotionController::computeConstrainedMotion(Eigen::Matrix4f w_H_e
   // orientation error
   _error_rel.tail(3) = Utils<float>::getPoseErrorCur2Des(d_H_c_rel).tail(3);
   // 3D Orientation Jacobian 
-  Eigen::Matrix3f jacMuTheta_rel = Utils<float>::getMuThetaJacobian(d_H_c_rel.block<3,3>(0,0)) * w_H_ee[LEFT].block<3,3>(0,0).transpose(); // wrt. the world
+  Eigen::Matrix3f jacMuTheta_rel = Utils<float>::getMuThetaJacobian(d_H_c_rel.block<3,3>(0,0)) * w_H_ee[RIGHT].block<3,3>(0,0).transpose(); // wrt. the world
 
   // ///////////////////////////////////////////////////////////////////////////////////////
   float cpl_rel    = 1.0f; //computeCouplingFactor(_error_abs.head(3), 50.0f, 0.02f, 2.8f, true);  // 50.0f, 0.05f, 2.8f
@@ -403,7 +403,7 @@ void dualArmFreeMotionController::computeReleaseAndRetractMotion(Eigen::Matrix4f
   // orientation error
   _error_rel.tail(3) = Utils<float>::getPoseErrorCur2Des(d_H_c_rel).tail(3);
   // 3D Orientation Jacobian 
-  Eigen::Matrix3f jacMuTheta_rel = Utils<float>::getMuThetaJacobian(d_H_c_rel.block<3,3>(0,0)) * w_H_ee[LEFT].block<3,3>(0,0).transpose(); // wrt. the world
+  Eigen::Matrix3f jacMuTheta_rel = Utils<float>::getMuThetaJacobian(d_H_c_rel.block<3,3>(0,0)) * w_H_ee[RIGHT].block<3,3>(0,0).transpose(); // wrt. the world
 
   // ///////////////////////////////////////////////////////////////////////////////////////
   // float cpl_rel    = computeCouplingFactor(_error_abs.head(3), 50.0f, 0.02f, 2.8f, true);  // 50.0f, 0.05f, 2.8f
@@ -525,7 +525,7 @@ void dualArmFreeMotionController::generatePlacingMotion(Eigen::Matrix4f w_H_ee[]
   lr_H_rr_t.block<3,3>(0,0) = Utils<float>::getCombinedRotationMatrix(1.0f, lr_H_rr.block<3,3>(0,0), d_R_rel); //desired
   // lr_H_rr_t.block<3,3>(0,0) = Utils<float>::quaternionToRotationMatrix(qd[LEFT]).transpose() * Utils<float>::quaternionToRotationMatrix(qd[RIGHT]);
   Eigen::Matrix4f d_H_c_rel      = lr_H_rr_t.inverse() * lr_H_rr;  // expressed in the left hand frame  
-  Eigen::Matrix3f jacMuTheta_rel = Utils<float>::getMuThetaJacobian(d_H_c_rel.block<3,3>(0,0)) * w_H_ee[LEFT].block<3,3>(0,0).transpose(); //   // 3D Orientation Jacobian wrt. the world
+  Eigen::Matrix3f jacMuTheta_rel = Utils<float>::getMuThetaJacobian(d_H_c_rel.block<3,3>(0,0)) * w_H_ee[RIGHT].block<3,3>(0,0).transpose(); //   // 3D Orientation Jacobian wrt. the world
   Eigen::Vector3f d_pos_rel      = lp_H_rp.block<3,1>(0,3); // TBC  
 
   _error_rel.head(3) = lr_H_rr.block<3,1>(0,3) - d_pos_rel;
