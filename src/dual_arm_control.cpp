@@ -260,12 +260,14 @@ bool dual_arm_control::init()
 	_pubDesiredOrientation[LEFT]	= nh_.advertise<geometry_msgs::Quaternion>("/dual_arm_control/robot_left/desired/ee_orientation", 1);
 	_pubFilteredWrench[LEFT] 	  	= nh_.advertise<geometry_msgs::WrenchStamped>("/dual_arm_control/robot_left/filteredWrenchLeft", 1);
 	_pubNormalForce[LEFT] 		  	= nh_.advertise<std_msgs::Float64>("/dual_arm_control/robot_left/normalForceLeft", 1);
+	_pubDesiredExternalForce[LEFT] 	= nh_.advertise<geometry_msgs::WrenchStamped>("/dual_arm_control/robot_left/desiredExternalForce", 1);
 
 	_pub_ts_commands[RIGHT]   		= nh_.advertise<std_msgs::Float64MultiArray>(_topic_ee_commands[RIGHT], 1);														// commands
 	_pubDesiredTwist[RIGHT] 	 	= nh_.advertise<geometry_msgs::Twist>("/dual_arm_control/robot_right/desired/ee_velocity", 1);
 	_pubDesiredOrientation[RIGHT]	= nh_.advertise<geometry_msgs::Quaternion>("/dual_arm_control/robot_right/desired/ee_orientation", 1);
 	_pubFilteredWrench[RIGHT] 	 	= nh_.advertise<geometry_msgs::WrenchStamped>("/dual_arm_control/robot_right/filteredWrenc0hRight", 1);
 	_pubNormalForce[RIGHT] 		 	= nh_.advertise<std_msgs::Float64>("/dual_arm_control/robot_right/normalForceRight", 1);
+	_pubDesiredExternalForce[RIGHT] 	= nh_.advertise<geometry_msgs::WrenchStamped>("/dual_arm_control/robot_right/desiredExternalForce", 1);
 
 	// Desired command for the dual iiwa toolkit
 	_pubDesiredVel_Quat[LEFT]   	= nh_.advertise<geometry_msgs::Pose>("/passive_control/iiwa1/vel_quat", 1);
@@ -949,8 +951,7 @@ void dual_arm_control::Keyboard_object_control()		// control of object position 
 void dual_arm_control::publishData()
 {
   for(int k = 0; k < NB_ROBOTS; k++)
-  {
-    
+  {    
     // Publish desired twist
     geometry_msgs::Twist msgDesiredTwist;
     msgDesiredTwist.linear.x  = _vd[k](0);
@@ -978,26 +979,35 @@ void dual_arm_control::publishData()
     msgFilteredWrench.wrench.torque.x = _filteredWrench[k](3);
     msgFilteredWrench.wrench.torque.y = _filteredWrench[k](4);
     msgFilteredWrench.wrench.torque.z = _filteredWrench[k](5);
-    _pubFilteredWrench[k].publish(msgFilteredWrench);
-
+    _pubFilteredWrench[k].publish(msgFilteredWrench); 
     std_msgs::Float64 msg;
     msg.data = _normalForce[k];
     _pubNormalForce[k].publish(msg); 
     //
     msg.data = _err[k];
-		_pubDistAttractorEe[k].publish(msg);
-		geometry_msgs::Pose msgPose;
-		msgPose.position.x    = _w_H_gp[k](0,3);
-		msgPose.position.y    = _w_H_gp[k](1,3);
-		msgPose.position.z    = _w_H_gp[k](2,3);
-		Eigen::Matrix3f Rgr   = _w_H_gp[k].block(0,0,3,3); 
-		Eigen::Quaternionf qgr(Rgr);
-		msgPose.orientation.x = qgr.x();
-		msgPose.orientation.y = qgr.y();
-		msgPose.orientation.z = qgr.z();
-		msgPose.orientation.w = qgr.w();
+    _pubDistAttractorEe[k].publish(msg);
+    geometry_msgs::Pose msgPose;
+    msgPose.position.x    = _w_H_gp[k](0,3);
+    msgPose.position.y    = _w_H_gp[k](1,3);
+    msgPose.position.z    = _w_H_gp[k](2,3);
+    Eigen::Matrix3f Rgr   = _w_H_gp[k].block(0,0,3,3); 
+    Eigen::Quaternionf qgr(Rgr);
+    msgPose.orientation.x = qgr.x();
+    msgPose.orientation.y = qgr.y();
+    msgPose.orientation.z = qgr.z();
+    msgPose.orientation.w = qgr.w();
+    _pubAttractor[k].publish(msgPose);
 
-		_pubAttractor[k].publish(msgPose);
+	geometry_msgs::WrenchStamped msgDesiredExternalForce;
+	msgDesiredExternalForce.header.frame_id = "world";
+    msgDesiredExternalForce.header.stamp = ros::Time::now();
+    msgDesiredExternalForce.wrench.force.x  = _fxc[k](0);
+    msgDesiredExternalForce.wrench.force.y  = _fxc[k](1);
+    msgDesiredExternalForce.wrench.force.z  = _fxc[k](2);
+    msgDesiredExternalForce.wrench.torque.x = 0.0;
+    msgDesiredExternalForce.wrench.torque.y = 0.0;
+    msgDesiredExternalForce.wrench.torque.z = 0.0;
+    _pubDesiredExternalForce[k].publish(msgDesiredExternalForce);
   }
 }
 

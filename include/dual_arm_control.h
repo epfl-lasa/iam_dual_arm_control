@@ -84,8 +84,8 @@ class dual_arm_control
 		float _t0_run;
 
 		//////////////////////////////
-    // Subscribers declarations //
-    //////////////////////////////
+    	// Subscribers declarations //
+    	//////////////////////////////
 		ros::Subscriber _sub_object_pose;
 		ros::Subscriber _sub_base_pose[NB_ROBOTS];					// subscribe to the base pose of the robots
 		ros::Subscriber _sub_ee_pose[NB_ROBOTS];						// subscribe to the end effectors poses
@@ -97,12 +97,13 @@ class dual_arm_control
 		//////////////////////////////
 		ros::Publisher _pub_ts_commands[NB_ROBOTS];					// Publisher of the End effectors velocity twist
 		ros::Publisher _pubDesiredTwist[NB_ROBOTS];        	// Publish desired twist to DS-impdedance controller
-    ros::Publisher _pubDesiredOrientation[NB_ROBOTS];  	// Publish desired orientation to DS-impedance controller
-    ros::Publisher _pubFilteredWrench[NB_ROBOTS];      	// Publish filtered measured wrench
-    ros::Publisher _pubNormalForce[NB_ROBOTS];        	// Publish measured normal force to the surface
-    ros::Publisher _pubDesiredVel_Quat[NB_ROBOTS];      // Publish desired EE linear velocity and quaternion
+    	ros::Publisher _pubDesiredOrientation[NB_ROBOTS];  	// Publish desired orientation to DS-impedance controller
+    	ros::Publisher _pubFilteredWrench[NB_ROBOTS];      	// Publish filtered measured wrench
+    	ros::Publisher _pubNormalForce[NB_ROBOTS];        	// Publish measured normal force to the surface
+		ros::Publisher _pubDesiredExternalForce[NB_ROBOTS]; // Publish desired external forces
+    	ros::Publisher _pubDesiredVel_Quat[NB_ROBOTS];      // Publish desired EE linear velocity and quaternion
 
-    ros::Publisher _pubDistAttractorEe[NB_ROBOTS];
+    	ros::Publisher _pubDistAttractorEe[NB_ROBOTS];
 		ros::Publisher _pubAttractor[NB_ROBOTS];
 
 		//////////////////////////////
