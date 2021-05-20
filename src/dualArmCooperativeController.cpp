@@ -12,7 +12,7 @@ dualArmCooperativeController::~dualArmCooperativeController(){}
 
 bool dualArmCooperativeController::init()
 {
-	_tol_dist2contact   = 0.03f;
+	_tol_dist2contact   = 0.045f;
 	_ContactConfidence  = 0.0f;
 	_min_Fz 		    = 30.0; //15.0;
 	_min_nF 			= 30.0f;
@@ -103,8 +103,8 @@ void dualArmCooperativeController::check_contact_proximity(	Eigen::Matrix4f w_H_
 		_ContactConfidence = 0.0;
 	}
 	std::cout << " _ContactConfidence 	aaaaaaaaaaaaaaaaaa	---------- is  \t" << _ContactConfidence << std::endl;
-	// std::cout << " _dist2contact[LEFT] 	aaaaaaaaaaaaaaaaaa	---------- is  \t" << _dist2contact[LEFT] << std::endl;
-	// std::cout << " _dist2contact[RIGHT] aaaaaaaaaaaaaaaaaa	---------- is  \t" << _dist2contact[RIGHT] << std::endl;
+	std::cout << " _dist2contact[LEFT] 	aaaaaaaaaaaaaaaaaa	---------- is  \t" << _dist2contact[LEFT] << std::endl;
+	std::cout << " _dist2contact[RIGHT] aaaaaaaaaaaaaaaaaa	---------- is  \t" << _dist2contact[RIGHT] << std::endl;
 	// std::cout << " _lh_er.head(2).norm()aaaaaaaaaaaaaaaaaa	---------- is  \t" << lh_er.head(2).norm() << std::endl;
 	// std::cout << " _rh_er.head(2).norm()aaaaaaaaaaaaaaaaaa	---------- is  \t" << rh_er.head(2).norm() << std::endl;
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

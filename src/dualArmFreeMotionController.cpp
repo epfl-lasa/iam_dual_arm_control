@@ -80,7 +80,7 @@ void dualArmFreeMotionController::computeCoordinatedMotion(Eigen::Matrix4f w_H_e
   Utils<float>::getBimanualTransforms(this->_w_H_eeStandby[LEFT], this->_w_H_eeStandby[RIGHT], w_H_ar_stb, lr_H_rr_stb); // standby arms
   //
   lp_H_rp_pgrasp       = lp_H_rp;
-  lp_H_rp_pgrasp(1, 3) = lp_H_rp(1,3)/fabs(lp_H_rp(1,3)) * (fabs(lp_H_rp(1,3)) + 0.35f);
+  lp_H_rp_pgrasp(1, 3) = lp_H_rp(1,3)/fabs(lp_H_rp(1,3)) * (fabs(lp_H_rp(1,3)) + 0.38f);
 
   // =======================================
   // Absolute velocity of the End-effectors
