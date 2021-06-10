@@ -33,6 +33,7 @@
 #include "eigen3/Eigen/Core"
 #include "eigen3/Eigen/Geometry"
 #include "eigen3/Eigen/Dense"
+#include "sg_filter.h"
 
 #include "dualArmFreeMotionController.h"
 #include "dualArmCooperativeController.h"
@@ -81,6 +82,7 @@ class dual_arm_control
 		ros::NodeHandle nh_;	// Ros node handle
 		ros::Rate loop_rate_;	// Ros loop rate [Hz]
 
+		SGF::real _dt;
 		float _t0_run;
 
 		//////////////////////////////
@@ -185,10 +187,10 @@ class dual_arm_control
 	    Eigen::Vector3f _xrbStandby[NB_ROBOTS];		    		// quaternion orientation of EE standby poses relatve to robots base (3x1)
 	    Eigen::Vector4f _qrbStandby[NB_ROBOTS];		    		// quaternion orientation of EE standby poses relatve to robots base (4x1)
 	   
-	    Vector6f  		  _wrench[NB_ROBOTS];          			// Wrench [N and Nm] (6x1)
-	    Vector6f 				_wrenchBias[NB_ROBOTS];			 			// Wrench bias [N and Nm] (6x1)
+	    Vector6f  		_wrench[NB_ROBOTS];          			// Wrench [N and Nm] (6x1)
+	    Vector6f 		_wrenchBias[NB_ROBOTS];			 			// Wrench bias [N and Nm] (6x1)
 	    Vector6f        _filteredWrench[NB_ROBOTS];  			// Filtered wrench [N and Nm] (6x1)
-	    int 						_initPoseCount;										// Counter of received initial poses measurements 
+	    int 			_initPoseCount;										// Counter of received initial poses measurements 
 
 	    Eigen::Matrix4f _w_H_gp[NB_ROBOTS];
 	    Eigen::Vector3f _xgp_o[NB_ROBOTS];
@@ -262,6 +264,7 @@ class dual_arm_control
 		Eigen::Vector3f _xNo[NB_OBJECTS];
 		Eigen::Vector4f _qNo[NB_OBJECTS];
 
+
     void updateObjectsPoseCallback(const geometry_msgs::Pose::ConstPtr& msg , int k);
    
     ////////////////////////////////////////////////////////////////////////
@@ -269,6 +272,14 @@ class dual_arm_control
     ////////////////////////////////////////////////////////////////////////
 	  dualArmFreeMotionController 	FreeMotionCtrl;		// Motion generation
 	  dualArmCooperativeController 	CooperativeCtrl;	// Force generation
+
+	public :
+		/////////////////////
+		// SG Filter variables //
+		/////////////////////
+		// SGF::SavitzkyGolayFilter _xo_filtered;    // Filter used for the object's center position
+	std::unique_ptr<SGF::SavitzkyGolayFilter> _xo_filtered;
+		// SGF::SavitzkyGolayFilter _x_filtered;    // Filter used for the object's dimension vector
 
 	private:
     	// Callback called when CTRL is detected to stop the node       
