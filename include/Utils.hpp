@@ -581,6 +581,20 @@ class Utils
 	    return d_eta_c;
 	}
 
+	static Eigen::Matrix<T,3,1> getOrientationErrorCur2Des(Eigen::Matrix<T,3,3> d_R_c)
+	{   
+	    // Pass 
+	    Eigen::Matrix<T,3,1> d_eta_c(3);
+	    // extracrion of the rotation
+	    Eigen::AngleAxis<T> d_AxisAngle_c(d_R_c);
+	    Eigen::Matrix<T,3,1> d_Axis_c = d_AxisAngle_c.axis();
+	    d_eta_c(0) = d_Axis_c(0) * d_AxisAngle_c.angle();
+	    d_eta_c(1) = d_Axis_c(1) * d_AxisAngle_c.angle();
+	    d_eta_c(2) = d_Axis_c(2) * d_AxisAngle_c.angle();
+
+	    return d_eta_c;
+	}
+
 	static Eigen::Matrix<T,3,3> getMuThetaJacobian(Eigen::Matrix<T,3,3> d_R_c)
 	{
 	    // extracrion of the rotation
@@ -736,6 +750,60 @@ class Utils
 
 		return cpl_;
 	}
+
+	static Eigen::Matrix<T,3,3> create3dOrthonormalMatrixFromVector(Eigen::Matrix<T,3,1> inVec)
+	{
+	  //
+	  int n = inVec.rows();
+	  Eigen::Matrix<T,3,3> basis; // = Eigen::MatrixXf::Random(n,n); 
+	  basis.setRandom(3,3);
+	  basis.col(0) = 1./inVec.norm() * inVec;
+
+	  assert(basis.rows() == basis.cols());
+	  uint dim = basis.rows();
+	  basis.col(0).normalize();
+	  for(uint i=1;i<dim;i++){
+	      for(uint j=0;j<i;j++)
+	          basis.col(i) -= basis.col(j).dot(basis.col(i))*basis.col(j);
+	      basis.col(i).normalize();
+	  }
+
+	  if (basis.rows() == 3){
+	  	Eigen::Matrix<T,3,1> u = basis.col(0);
+	  	Eigen::Matrix<T,3,1> v = basis.col(1);
+	  	Eigen::Matrix<T,3,1> w = u.cross(v);
+	  	basis.col(2) = w;
+	  }
+	  return basis;
+	} 
+	
+	static void Orthobasis(Eigen::Matrix<T,3,1> v1,Eigen::Matrix<T,3,1> v0, Eigen::Matrix<T,3,3> &R1, Eigen::Matrix<T,3,3> &R0)
+	{
+	  Eigen::Matrix<T,3,1> i  = v1; 
+	  Eigen::Matrix<T,3,1> id = v0; 
+
+	  i.normalize();
+	  id.normalize();
+	  Eigen::Matrix<T,3,1> j  = i.cross(id);
+
+	    if(j.norm() <1e-6){
+        Eigen::Matrix<T,3,3> Rq = Utils<T>::create3dOrthonormalMatrixFromVector(i);
+        j  = Rq.col(1);
+      }
+
+	    j.normalize();
+	    Eigen::Matrix<T,3,1> jd = j;
+	    Eigen::Matrix<T,3,1> k  = i.cross(j);
+	    Eigen::Matrix<T,3,1> kd = id.cross(jd);
+	    //
+	    R1.col(0) = i;
+	    R1.col(1) = j;
+	    R1.col(2) = k;
+	    //
+	    R0.col(0) = id;
+	    R0.col(1) = jd;
+	    R0.col(2) = kd;
+	  }
 
 };
 
