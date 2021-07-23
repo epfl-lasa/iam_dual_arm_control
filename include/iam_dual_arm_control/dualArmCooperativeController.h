@@ -92,6 +92,7 @@ class dualArmCooperativeController
 		void load_wrench_data(Vector6f desired_object_wrench_);
 		void computeControlWrench(Eigen::Matrix4f w_H_o, Eigen::Matrix4f w_H_ee[], Eigen::Matrix4f w_H_cp[], Vector6f desired_object_wrench_);
 		void getPredefinedContactForceProfile(bool goHome, int contactState, Eigen::Matrix4f w_H_o, Eigen::Matrix4f w_H_ee[], Eigen::Matrix4f w_H_cp[]);
+		void getAppliedWrenches(bool goHome, int contactState, Eigen::Matrix4f w_H_o, Eigen::Matrix4f w_H_ee[], Eigen::Matrix4f w_H_cp[], Vector6f desired_object_wrench_, bool qp_wrench_generation);
 };
 
 #endif // dualArmFreeMotionController_H

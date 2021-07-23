@@ -1,6 +1,6 @@
 
-#include "dual_arm_control.h"
-#include "Utils.hpp"
+#include "iam_dual_arm_control/dual_arm_control.h"
+#include "iam_dual_arm_control/Utils.hpp"
 
 using namespace std;
 using namespace Eigen;
@@ -61,7 +61,6 @@ bool keyState_2(char key)
 dual_arm_control::dual_arm_control(ros::NodeHandle &n, double frequency, 	std::string topic_pose_object_,
 																																					std::string topic_pose_robot_base[],
 																																					std::string topic_pose_robot_ee[],
-																																					std::string topic_twist_robot_ee[],
 																																					std::string topic_ee_commands[],
 																																					std::string topic_sub_ForceTorque_Sensor[])	: nh_(n)
 																																																											, loop_rate_(frequency)
@@ -482,7 +481,7 @@ void dual_arm_control::updatePoses()
   // Update trajectory of the object
   // Update the desired object pose through keyboard
   if(_objCtrlKey && false){
-  	this->Keyboard_object_control(); 
+  	this->Keyboard_virtual_object_control(); 
   }
   else{
   	this->Keyboard_reference_object_control();
@@ -516,6 +515,7 @@ void dual_arm_control::updatePoses()
 	  	// _o_H_ee[k]  = Utils<float>::pose2HomoMx(_xgp_o[k],  _qgp_o[k]);
 	  	_o_H_ee[k](1,3) *= 0.92f; 
 	  	_w_H_Dgp[k]  = _w_H_Do * _o_H_ee[k];
+	  	_w_H_Dgp[k].block(0,0,3,3)  = _w_H_Do.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[k],  _qgp_o[k]).block(0,0,3,3);
   	}
   }
 
@@ -742,7 +742,7 @@ void dual_arm_control::updateEEPoseCallback(const geometry_msgs::Pose::ConstPtr&
 	_q[k] << 	msg->orientation.w, msg->orientation.x, msg->orientation.y, msg->orientation.z;	// orientation
   //
   _wRb[k] = Utils<float>::quaternionToRotationMatrix(_q[k]);
-  _x[k]   = _x[k]+_toolOffsetFromEE[k]*_wRb[k].col(2);
+  _x[k]   = _x[k]+_toolOffsetFromEE[k] *_wRb[k].col(2);
 }
 
 void dual_arm_control::updateRobotWrench(const geometry_msgs::WrenchStamped::ConstPtr& msg, int k)
@@ -910,7 +910,7 @@ void dual_arm_control::Keyboard_reference_object_control()
 
 
 // //
-void dual_arm_control::Keyboard_object_control()
+void dual_arm_control::Keyboard_virtual_object_control()
 {
 	// object2grasp.States_Object.pose.head(3) = ioSM->w_H_absF.block<3,3>(0,0) * init_obj_aF + ioSM->w_H_absF.block<3,1>(0,3); //
 	_w_H_o(0,3) += _delta_pos(0);

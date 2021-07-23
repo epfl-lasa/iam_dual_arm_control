@@ -1,6 +1,6 @@
 
-#include "dualArmCooperativeController.h"
-#include "Utils.hpp"
+#include "iam_dual_arm_control/dualArmCooperativeController.h"
+#include "iam_dual_arm_control/Utils.hpp"
 
 bwc_Vars 		bwc_vars;
 bwc_Params 		bwc_params;
@@ -12,18 +12,18 @@ dualArmCooperativeController::~dualArmCooperativeController(){}
 
 bool dualArmCooperativeController::init()
 {
-	_tol_dist2contact   = 0.045f;
+	_tol_dist2contact   = 0.03f;
 	_ContactConfidence  = 0.0f;
-	_min_Fz 		    = 30.0; //15.0;
-	_min_nF 			= 30.0f;
-	_max_nF 			= 45.0f;
+	_min_Fz 		    = 30.0f; //15.0;  // 40.0f;  
+	_min_nF 			= 30.0f;          // 40.0f;
+	_max_nF 			= 45.0f;          // 60.0f;
 	//
 	_mu_ee				= 0.9f;
 	_gamma_ee			= 0.9f;
 	_deltaX_ee			= 0.5f;
 	_deltaY_ee			= 0.5f;
 	_contactOccured     = false;
-	_targetForce     	= 45.0f;
+	_targetForce     	= 45.0f;   // 40
 	//
 	_GraspMatrixEEs.setZero();
 	_optimal_contact_wrench_EEs.setZero();
@@ -97,14 +97,16 @@ void dualArmCooperativeController::check_contact_proximity(	Eigen::Matrix4f w_H_
 	_dist2contact[LEFT]  = (lh_er(2));
 	_dist2contact[RIGHT] = (rh_er(2));
 	// update the Contact confidence indicator
+	// if(tsk && (fabs(_dist2contact[RIGHT]) <= _tol_dist2contact) && (fabs(_dist2contact[LEFT]) <= _tol_dist2contact)){
+	// if(_contactOccured && (fabs(_dist2contact[RIGHT]) <= _tol_dist2contact) && (fabs(_dist2contact[LEFT]) <= _tol_dist2contact)){
 	if((fabs(_dist2contact[RIGHT]) <= _tol_dist2contact) && (fabs(_dist2contact[LEFT]) <= _tol_dist2contact)){
 		_ContactConfidence = 1.0;
 	} else 	{
 		_ContactConfidence = 0.0;
 	}
 	std::cout << " _ContactConfidence 	aaaaaaaaaaaaaaaaaa	---------- is  \t" << _ContactConfidence << std::endl;
-	std::cout << " _dist2contact[LEFT] 	aaaaaaaaaaaaaaaaaa	---------- is  \t" << _dist2contact[LEFT] << std::endl;
-	std::cout << " _dist2contact[RIGHT] aaaaaaaaaaaaaaaaaa	---------- is  \t" << _dist2contact[RIGHT] << std::endl;
+	// std::cout << " _dist2contact[LEFT] 	aaaaaaaaaaaaaaaaaa	---------- is  \t" << _dist2contact[LEFT] << std::endl;
+	// std::cout << " _dist2contact[RIGHT] aaaaaaaaaaaaaaaaaa	---------- is  \t" << _dist2contact[RIGHT] << std::endl;
 	// std::cout << " _lh_er.head(2).norm()aaaaaaaaaaaaaaaaaa	---------- is  \t" << lh_er.head(2).norm() << std::endl;
 	// std::cout << " _rh_er.head(2).norm()aaaaaaaaaaaaaaaaaa	---------- is  \t" << rh_er.head(2).norm() << std::endl;
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -350,6 +352,7 @@ void dualArmCooperativeController::getPredefinedContactForceProfile(bool goHome,
 {
   //
 	this->getGraspKineDynVariables(w_H_o, w_H_ee, w_H_cp);
+	this->check_contact_proximity(w_H_ee, w_H_cp);
 	//
 	_f_applied[LEFT].setZero(); 
 	_f_applied[RIGHT].setZero();
@@ -368,8 +371,8 @@ void dualArmCooperativeController::getPredefinedContactForceProfile(bool goHome,
     }
     else if(contactState==CLOSE_TO_CONTACT)
     {
-      _f_applied[LEFT].head(3)  = 5.0f * _nC[LEFT];
-			_f_applied[RIGHT].head(3) = 5.0f * _nC[RIGHT];
+      _f_applied[LEFT].head(3)  = 8.0f * _nC[LEFT];
+			_f_applied[RIGHT].head(3) = 8.0f * _nC[RIGHT];
     }
     else
     {
@@ -378,6 +381,19 @@ void dualArmCooperativeController::getPredefinedContactForceProfile(bool goHome,
     }
   }
 
+  std::cout << " APPLIED HAND WRENCH  LEFT \t " << _f_applied[LEFT].transpose() << std::endl;
+	std::cout << " APPLIED HAND WRENCH RIGHT \t " << _f_applied[RIGHT].transpose() << std::endl;
+}
+
+void dualArmCooperativeController::getAppliedWrenches(bool goHome, int contactState, Eigen::Matrix4f w_H_o, Eigen::Matrix4f w_H_ee[], Eigen::Matrix4f w_H_cp[], Vector6f desired_object_wrench, bool qp_wrench_generation)
+{
+	if(qp_wrench_generation){
+	  	this->computeControlWrench(w_H_o, w_H_ee, w_H_cp, desired_object_wrench);
+  }
+  else{
+  	// using Predefined normal forcve
+  	this->getPredefinedContactForceProfile(goHome, contactState, w_H_o, w_H_ee, w_H_cp);
+  }	
   std::cout << " APPLIED HAND WRENCH  LEFT \t " << _f_applied[LEFT].transpose() << std::endl;
 	std::cout << " APPLIED HAND WRENCH RIGHT \t " << _f_applied[RIGHT].transpose() << std::endl;
 }

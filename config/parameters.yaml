@@ -1,0 +1,47 @@
+# End-effector tool
+tool:
+  offset2end_effector:
+    left:  0.17
+    right: 0.15
+
+#
+desVimp:   0.3
+desVreach: 1.0
+# tossing task parameters
+tossing:
+  desVtoss:           0.80
+  releasePos:         [0.70, 0.00, 0.60]
+  releaseOrient:      [1.00, 0.00, 0.00, 0.00]
+  releaseLinVel_dir:  [1.00, 0.00, 1.00]
+  releaseAngVel:      [0.00, 0.00, 0.00]
+  restPos:            [0.50, 0.15, 0.30]
+  restOrient:         [1.00, 0.00, 0.00, 0.00] 
+
+# robot home pose
+standby_pose:
+  robot_left:
+    position:    [0.35,  0.20, 0.80]
+    orientation: [0.3827, -0.9239, 0.0, 0.0]
+  robot_right:
+    position:    [0.35,  -0.20, 0.80]
+    orientation: [0.3827, 0.9239, 0.0, 0.0]
+
+# Bimanual DS gains
+ds_absolute_gains: [1.5, 1.5, 1.5, 1.0, 1.0, 1.0] # 2.5 orient [2.25, 2.25, 2.25, 1.0, 1.0, 1.0] #
+ds_relative_gains: [2.0, 2.0, 2.0, 1.0, 1.0, 1.0]
+
+# impact direction (angle in degree)
+impact_direction:
+  friction_angle: 36
+  max_friction_angle: 40
+  impact_dir_preset: false
+
+# dual arm task
+dual_arm_task:
+  dualTaskSelector: 1
+  lifting: 
+    position: [0.40, 0.00, 0.55]
+    orientation: [1.00, 0.00, 0.00, 0.00]
+  placing: 
+    position: [0.65, 0.155, 0.35]
+    orientation: [1.00, 0.00, 0.00, 0.00]

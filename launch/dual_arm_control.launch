@@ -1,5 +1,6 @@
 <?xml version="1.0" ?>
 <launch>
+  <arg name="param_file_name"          default="parameters"/>
   <!-- Launch file for DS controller -->
   <!-- <arg name="ROBOT_NAME"                         default="icubSim" /> -->
   <arg name="TOPIC_OBJECT_POSE"           default="/simo_track/object_pose"/>
@@ -21,6 +22,7 @@
     <param name="topic_pose_robot_ee_right"     value="$(arg TOPIC_RIGHT_ROBOT_EE_POSE)"     />
     <param name="topic_ee_commands_right"       value="$(arg TOPIC_RIGHT_ROBOT_COMMANDS)"    />
 
+    <rosparam file="$(find dual_arm_control)/config/$(arg param_file_name).yaml" command="load"/>
     <node name="dual_arm_control_node" pkg="dual_arm_control" type="dual_arm_control_node" output="screen"/>
   </group>
 

@@ -42,12 +42,17 @@ class dualArmFreeMotionController
 		Eigen::Matrix3f gain_p_rel;
 		Eigen::Matrix3f gain_o_rel;
 		float _cpl_grasp;
+
     float reachable_p;
     float _v_max;
     float _w_max;
 
+    float _coord_abs2;
+    float _cpl_rel;
+		float _cp_ap;
+
     Eigen::Vector4f qdPrev[NB_ROBOTS];
-		Matrix6f _Tbi;
+    Matrix6f _Tbi;
 
 	public :
 		//
@@ -55,6 +60,8 @@ class dualArmFreeMotionController
 		float a_normal_;
 		float a_tangent_;
 		float a_retract_;
+		float a_release_;
+		float v_a_release_;
 		bool  release_flag_;
 		//
 		float rho_;
@@ -65,7 +72,12 @@ class dualArmFreeMotionController
 		float sw_norm_;
 		float sw_tang_;
 		//
+		float a_normal_Do_;
+		//
 		Eigen::Matrix4f _w_H_eeStandby[NB_ROBOTS];
+		//
+		float _desVreach;
+		float _refVreach;
 		//
 		dualArmFreeMotionController();
 		~dualArmFreeMotionController();
@@ -77,8 +89,8 @@ class dualArmFreeMotionController
 
 		void computeConstrainedMotion(Eigen::Matrix4f w_H_ee[],  Eigen::Matrix4f w_H_gp[], Eigen::Matrix4f w_H_o, Vector6f (&Vd_ee)[NB_ROBOTS], Eigen::Vector4f (&qd)[NB_ROBOTS], bool isOrient3d);
 		void computeReleaseAndRetractMotion(Eigen::Matrix4f w_H_ee[],  Eigen::Matrix4f w_H_gp[], Eigen::Matrix4f w_H_o, Vector6f (&Vd_ee)[NB_ROBOTS], Eigen::Vector4f (&qd)[NB_ROBOTS], bool isOrient3d);
-		void generatePlacingMotion(Eigen::Matrix4f w_H_ee[],  Eigen::Matrix4f w_H_gp[], Eigen::Matrix4f w_H_o, Eigen::Matrix4f w_H_Do, float via_height,
-                                                        	Vector6f (&Vd_ee)[NB_ROBOTS], Eigen::Vector4f (&qd)[NB_ROBOTS], bool isOrient3d);
+		void generatePlacingMotion(	Eigen::Matrix4f w_H_ee[],  Eigen::Matrix4f w_H_gp[], Eigen::Matrix4f w_H_o, Eigen::Matrix4f w_H_Do, float via_height, 
+																Vector6f (&Vd_ee)[NB_ROBOTS], Eigen::Vector4f (&qd)[NB_ROBOTS], bool isOrient3d);
 
 		void computeCoordinatedMotion2(Eigen::Matrix4f w_H_ee[],  Eigen::Matrix4f w_H_gp[], Eigen::Matrix4f w_H_o, Vector6f (&Vd_ee)[NB_ROBOTS], Eigen::Vector4f (&qd)[NB_ROBOTS], bool isOrient3d);
 
@@ -88,6 +100,10 @@ class dualArmFreeMotionController
 
 		void dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vector6f Vee[], Eigen::Matrix4f w_H_gp[],  Eigen::Matrix4f w_H_o, Eigen::Matrix4f w_H_Do, Vector6f Vd_o,
                                                   Eigen::Matrix3f BasisQ[], Eigen::Vector3f VdImp[], bool isOrient3d, int taskType, Vector6f (&Vd_ee)[NB_ROBOTS], Eigen::Vector4f (&qd)[NB_ROBOTS], bool &release_flag);
+
+		Eigen::Vector3f getAbsoluteTangentError(Eigen::Matrix4f w_H_o, Eigen::Matrix4f w_H_ee[], Eigen::Matrix4f w_H_gp[]);
+
+		Vector6f generatePlacingMotion2(Eigen::Matrix4f w_H_o, Eigen::Matrix4f w_H_Do, float via_height, Vector6f Vo);
 
 };
 
