@@ -93,7 +93,7 @@ bool dualArmFreeMotionController::init(Eigen::Matrix4f w_H_eeStandby[], Matrix6f
 void dualArmFreeMotionController::computeCoordinatedMotion(Eigen::Matrix4f w_H_ee[],  Eigen::Matrix4f w_H_gp[], Eigen::Matrix4f w_H_o, Vector6f (&Vd_ee)[NB_ROBOTS], Eigen::Vector4f (&qd)[NB_ROBOTS], bool isOrient3d)
 {
   //
-  float coord_abs = computeCouplingFactor(_error_abs.head(3), 50.0f, 0.01f, 1.0f, true);
+  float coord_abs = computeCouplingFactor(_error_abs.head(3), 50.0f, 0.02f, 1.0f, true);
   // Computation of desired orientation
   this->computeDesiredOrientation(coord_abs, w_H_ee, w_H_gp, w_H_o, qd, isOrient3d);
   Eigen::Matrix4f w_H_dgp_l = w_H_gp[LEFT];  
@@ -653,7 +653,7 @@ void dualArmFreeMotionController::generatePlacingMotion(Eigen::Matrix4f w_H_ee[]
 void dualArmFreeMotionController::computeCoordinatedMotion2(Eigen::Matrix4f w_H_ee[],  Eigen::Matrix4f w_H_gp[], Eigen::Matrix4f w_H_o, Vector6f (&Vd_ee)[NB_ROBOTS], Eigen::Vector4f (&qd)[NB_ROBOTS], bool isOrient3d)
 {
   //
-  float coord_abs = computeCouplingFactor(_error_abs.head(3), 50.0f, 0.01f, 1.0f, true);
+  float coord_abs = computeCouplingFactor(_error_abs.head(3), 50.0f, 0.02f, 1.0f, true);
   // Computation of desired orientation
   this->computeDesiredOrientation(coord_abs, w_H_ee, w_H_gp, w_H_o, qd, isOrient3d);
   Eigen::Matrix4f w_H_dgp_l = w_H_gp[LEFT];  

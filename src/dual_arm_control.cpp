@@ -650,7 +650,7 @@ void dual_arm_control::computeCommands()
 	// check contact
 
 	//TODO: condition if ft sensor
-	_sensedContact = ((fabs(_normalForce[LEFT]) >= _forceThreshold) || (fabs(_normalForce[RIGHT]) >= _forceThreshold)) && (_c == 1.0f);
+	// _sensedContact = ((fabs(_normalForce[LEFT]) >= _forceThreshold) || (fabs(_normalForce[RIGHT]) >= _forceThreshold)) && (_c == 1.0f);
 	// _sensedContact = (_c == 1.0f);
 	//
 	Vector6f desired_object_wrench_;
@@ -1073,6 +1073,8 @@ void dual_arm_control::updateContactState()
 		_c = 0.0f;
 	}
 
+	_sensedContact = ((fabs(_normalForce[LEFT]) >= _forceThreshold) || (fabs(_normalForce[RIGHT]) >= _forceThreshold)) && (_c == 1.0f);
+	
 	std::cerr << "[dual_arm_control]: contact state: " << (int)_contactState << " c: " << _c << std::endl;
 	std::cerr << "[dual_arm_control]: _normalForceAverage[LEFT]: " << _normalForceAverage[LEFT] << std::endl;
 	std::cerr << "[dual_arm_control]: _normalForceAverage[RIGHT]: " << _normalForceAverage[RIGHT] << std::endl;
