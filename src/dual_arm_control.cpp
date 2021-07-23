@@ -63,6 +63,7 @@ bool keyState_2(char key)
 dual_arm_control::dual_arm_control(ros::NodeHandle &n, double frequency, std::string topic_pose_object_,
 								   std::string topic_pose_robot_base[],
 								   std::string topic_pose_robot_ee[],
+									 std::string topic_twist_robot_ee[],
 								   std::string topic_ee_commands[],
 								   std::string topic_sub_ForceTorque_Sensor[]) : nh_(n), loop_rate_(frequency)
 {
@@ -75,6 +76,7 @@ dual_arm_control::dual_arm_control(ros::NodeHandle &n, double frequency, std::st
 	_topic_pose_object = topic_pose_object_;
 	memcpy(_topic_pose_robot_base, &topic_pose_robot_base[0], NB_ROBOTS * sizeof *topic_pose_robot_base);
 	memcpy(_topic_pose_robot_ee, &topic_pose_robot_ee[0], NB_ROBOTS * sizeof *topic_pose_robot_ee);
+	memcpy(_topic_twist_robot_ee, &topic_twist_robot_ee[0], NB_ROBOTS * sizeof *topic_twist_robot_ee);
 	memcpy(_topic_ee_commands, &topic_ee_commands[0], NB_ROBOTS * sizeof *topic_ee_commands);
 	memcpy(_topic_subForceTorqueSensor, &topic_sub_ForceTorque_Sensor[0], NB_ROBOTS * sizeof *topic_sub_ForceTorque_Sensor);
 
@@ -82,7 +84,7 @@ dual_arm_control::dual_arm_control(ros::NodeHandle &n, double frequency, std::st
 	_objectMass = 1.0f;
 	// _objectDim << 0.20f, 0.20f, 0.20f;
 	_objectDim << 0.26f, 0.26f, 0.27f;
-	_toolOffsetFromEE[0] = 0.17f; //0.17f; //0.11f;
+	_toolOffsetFromEE[0] = 0.12f; //0.17f; //0.11f;
 	_toolOffsetFromEE[1] = 0.12f; //0.17f; //0.11f;
 	_toolMass = 0.2f; // TO CHANGE !!!!
 	_gravity << 0.0f, 0.0f, -9.80665f;
@@ -250,10 +252,12 @@ bool dual_arm_control::init()
 	_sub_object_pose = nh_.subscribe(_topic_pose_object, 1, &dual_arm_control::objectPoseCallback, this, ros::TransportHints().reliable().tcpNoDelay());
 	_sub_base_pose[LEFT] = nh_.subscribe<geometry_msgs::Pose>(_topic_pose_robot_base[LEFT], 1, boost::bind(&dual_arm_control::updateBasePoseCallback, this, _1, LEFT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 	_sub_ee_pose[LEFT] = nh_.subscribe<geometry_msgs::Pose>(_topic_pose_robot_ee[LEFT], 1, boost::bind(&dual_arm_control::updateEEPoseCallback, this, _1, LEFT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+	_sub_ee_twist[LEFT] = nh_.subscribe<geometry_msgs::Twist>(_topic_twist_robot_ee[LEFT], 1, boost::bind(&dual_arm_control::updateEETwistCallback, this, _1, LEFT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 	_subForceTorqueSensor[LEFT] = nh_.subscribe<geometry_msgs::WrenchStamped>(_topic_subForceTorqueSensor[LEFT], 1, boost::bind(&dual_arm_control::updateRobotWrench, this, _1, LEFT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 	// _subForceTorqueSensor[LEFT]	= nh_.subscribe(_topic_subForceTorqueSensor[LEFT],1, &dual_arm_control::updateRobotWrenchLeft, this, ros::TransportHints().reliable().tcpNoDelay());
 	_sub_base_pose[RIGHT] = nh_.subscribe<geometry_msgs::Pose>(_topic_pose_robot_base[RIGHT], 1, boost::bind(&dual_arm_control::updateBasePoseCallback, this, _1, RIGHT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 	_sub_ee_pose[RIGHT] = nh_.subscribe<geometry_msgs::Pose>(_topic_pose_robot_ee[RIGHT], 1, boost::bind(&dual_arm_control::updateEEPoseCallback, this, _1, RIGHT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+	_sub_ee_twist[RIGHT] = nh_.subscribe<geometry_msgs::Twist>(_topic_twist_robot_ee[RIGHT], 1, boost::bind(&dual_arm_control::updateEETwistCallback, this, _1, RIGHT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 	_subForceTorqueSensor[RIGHT] = nh_.subscribe<geometry_msgs::WrenchStamped>(_topic_subForceTorqueSensor[RIGHT], 1, boost::bind(&dual_arm_control::updateRobotWrench, this, _1, RIGHT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 	// _subForceTorqueSensor[RIGHT]	= nh_.subscribe(_topic_subForceTorqueSensor[RIGHT],1, &dual_arm_control::updateRobotWrenchRight, this, ros::TransportHints().reliable().tcpNoDelay());
 	//-------------
@@ -567,7 +571,8 @@ void dual_arm_control::updatePoses()
 	// Compute errors to object center position and dimension vector
 	Eigen::Matrix4f le_H_re = _w_H_ee[LEFT].inverse() * _w_H_ee[RIGHT];
 	Eigen::Matrix4f lgp_H_rgp = _w_H_gp[LEFT].inverse() * _w_H_gp[RIGHT];
-	Eigen::Vector3f t_o_absEE = _w_H_o.block(0, 3, 3, 1) - 0.5f * (_w_H_ee[LEFT].block(0, 3, 3, 1) + _w_H_ee[RIGHT].block(0, 3, 3, 1));
+	// Eigen::Vector3f t_o_absEE = _w_H_o.block(0, 3, 3, 1) - 0.5f * (_w_H_ee[LEFT].block(0, 3, 3, 1) + _w_H_ee[RIGHT].block(0, 3, 3, 1));
+	Eigen::Vector3f t_o_absEE = 0.5f * (_w_H_gp[LEFT].block(0, 3, 3, 1) + _w_H_gp[RIGHT].block(0, 3, 3, 1)) - 0.5f * (_w_H_ee[LEFT].block(0, 3, 3, 1) + _w_H_ee[RIGHT].block(0, 3, 3, 1));
 	_eoD = fabs(le_H_re(2, 3)) - fabs(lgp_H_rgp(2, 3)); //(_xD-_xoD).dot(_xoD.normalized());
 	_eoC = t_o_absEE.norm();							//(_xoC-_xC).norm();
 
@@ -583,10 +588,10 @@ void dual_arm_control::updatePoses()
 	// std::cout << "[dual_arm_control]: _w_H_Dgp[RIGHT]: \n" <<  _w_H_Dgp[RIGHT] << std::endl;
 	// std::cout << "[dual_arm_control]: _xDo: \t" << _xDo.transpose() << std::endl;
 	// std::cout << "[dual_arm_control]: _qDo: \n" << _qDo.transpose() << std::endl;
-	// std::cout << "[dual_arm_control]: _w_H_ee[LEFT]: \n" <<  _w_H_ee[0] << std::endl;
-	// std::cout << "[dual_arm_control]: _w_H_gp[LEFT]: \n" << _w_H_gp[0] << std::endl;
-	// std::cout << "[dual_arm_control]: _w_H_ee[RIGHT]: \n" << _w_H_ee[1] << std::endl;
-	// std::cout << "[dual_arm_control]: _w_H_gp[RIGHT]: \n" << _w_H_gp[1] << std::endl;
+	std::cout << "[dual_arm_control]: _w_H_ee[LEFT]: \n" <<  _w_H_ee[0] << std::endl;
+	std::cout << "[dual_arm_control]: _w_H_gp[LEFT]: \n" << _w_H_gp[0] << std::endl;
+	std::cout << "[dual_arm_control]: _w_H_ee[RIGHT]: \n" << _w_H_ee[1] << std::endl;
+	std::cout << "[dual_arm_control]: _w_H_gp[RIGHT]: \n" << _w_H_gp[1] << std::endl;
 	// std::cout << "[dual_arm_control]: _w_H_eeStandby[LEFT]: \n" <<  _w_H_eeStandby[0] << std::endl;
 	// std::cout << "[dual_arm_control]: _w_H_eeStandby[RIGHT]: \n" << _w_H_eeStandby[1] << std::endl;
 	// std::cout << "[dual_arm_control]: _w_H_rb[LEFT]: \n" <<  _w_H_rb[0] << std::endl;
@@ -614,7 +619,8 @@ void dual_arm_control::computeCommands()
 	// Update contact state
 	updateContactState();
 	// check contact
-	_sensedContact = (fabs(_normalForce[LEFT]) >= _forceThreshold) || (fabs(_normalForce[RIGHT]) >= _forceThreshold) && (_c == 1.0f);
+	// _sensedContact = (fabs(_normalForce[LEFT]) >= _forceThreshold) || (fabs(_normalForce[RIGHT]) >= _forceThreshold) && (_c == 1.0f);
+	_sensedContact = (_c == 1.0f);
 	//
 	Vector6f desired_object_wrench_;
 	desired_object_wrench_.setZero();
@@ -849,6 +855,17 @@ void dual_arm_control::updateEEPoseCallback(const geometry_msgs::Pose::ConstPtr 
 	_x[k] = _x[k] + _toolOffsetFromEE[k] * _wRb[k].col(2);
 }
 
+void dual_arm_control::updateEETwistCallback(const geometry_msgs::Twist::ConstPtr &msg, int k)
+{
+	// Update end effecotr twist
+	_V[k](0) = msg->linear.x;
+	_V[k](1) = msg->linear.y;
+	_V[k](2) = msg->linear.z;
+	_V[k](3) = msg->angular.x;
+	_V[k](4) = msg->angular.y;
+	_V[k](5) = msg->angular.z;
+}
+
 void dual_arm_control::updateRobotWrench(const geometry_msgs::WrenchStamped::ConstPtr &msg, int k)
 {
 	Eigen::Matrix<float, 6, 1> raw;
@@ -948,9 +965,9 @@ void dual_arm_control::updateContactState()
 		}
 	}
 
-	// if(_normalForceAverage[LEFT] > 2.5f && _normalForceAverage[RIGHT] > 2.5f &&  _eoD < 0.05f && _eoC < 0.1f)
 	// if (_normalForceAverage[LEFT] > 2.0f && _normalForceAverage[RIGHT] > 2.0f && _eoD < 0.05f && _eoC < 0.05f)
-	if (_normalForceAverage[LEFT] > 2.0f || _normalForceAverage[RIGHT] > 2.0f && _eoD < 0.05f && (_eoC < 0.05f || CooperativeCtrl._ContactConfidence == 1.0f))  
+	// if (_normalForceAverage[LEFT] > 2.0f || _normalForceAverage[RIGHT] > 2.0f && _eoD < 0.05f && (_eoC < 0.05f || CooperativeCtrl._ContactConfidence == 1.0f))  
+	if (_eoD < 0.05f && (_eoC < 0.05f || CooperativeCtrl._ContactConfidence == 1.0f))  
 	{
 		_contactState = CONTACT;
 		_c = 1.0f;
@@ -1088,9 +1105,8 @@ void dual_arm_control::saveData()
 	_OutRecord_pose   << _x[RIGHT].transpose() << "	" << _q[RIGHT].transpose() << "	";
 	_OutRecord_pose   << _xo.transpose() << "	" << _qo.transpose() << std::endl;
 
-	_OutRecord_velo		<< _Vd_ee[LEFT].transpose() << "	" << _Vd_ee[RIGHT].transpose() << std::endl; //<< "	";
-	// _OutRecord_velo		<< _v[LEFT].transpose() << "  " << _w[LEFT].transpose() << " ";
-	// _OutRecord_velo		<< _v[RIGHT].transpose() << "  " << _w[RIGHT].transpose() << std::endl;
+	_OutRecord_velo		<< _Vd_ee[LEFT].transpose() << "	" << _Vd_ee[RIGHT].transpose() << "	";
+	_OutRecord_velo		<< _V[LEFT].transpose() << "  " << _V[RIGHT].transpose() << std::endl;
 
 	_OutRecord_efforts	<< _filteredWrench[LEFT].transpose() << "  " << _filteredWrench[RIGHT].transpose() << std::endl;
 }

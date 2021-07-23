@@ -87,7 +87,6 @@ void dualArmFreeMotionController::computeCoordinatedMotion(Eigen::Matrix4f w_H_e
   // =======================================
   Eigen::Vector3f d_p_abs = reachable_p *w_H_ap.block<3,1>(0,3) + (1.0f-reachable_p)*w_H_ar_stb.block<3,1>(0,3);
   _error_abs.head(3)      = w_H_ar.block<3,1>(0,3) - d_p_abs;
-  std::cout << "[dual_arm_control]: Absolute Error: \t" <<  _V_abs.transpose() << std::endl;
 
   // Coupling the orientation with the position error
   float cpl_abs = computeCouplingFactor(_error_abs.head(3), 50.0f, 0.02f, 1.0f, false);
@@ -106,8 +105,6 @@ void dualArmFreeMotionController::computeCoordinatedMotion(Eigen::Matrix4f w_H_e
   // ~~~~~~~~~~~~~~~~~~~~~~~
   _V_abs.head(3) = -gain_p_abs * _error_abs.head(3);
   _V_abs.tail(3) = -jacMuTheta_abs.inverse() * gain_o_abs * _error_abs.tail(3);
-
-  std::cout << "[dual_arm_control]: Absolute Velo: \t" <<  _V_abs.transpose() << std::endl;
 
   // =====================================
   // Relative velocity of the hands
@@ -156,8 +153,6 @@ void dualArmFreeMotionController::computeCoordinatedMotion(Eigen::Matrix4f w_H_e
   _V_rel.head(3) = -gain_p_rel * _error_rel.head(3);
   _V_rel.tail(3) = -jacMuTheta_rel.inverse() * gain_o_rel * _error_rel.tail(3);
 
-  std::cout << "[dual_arm_control]: Relative Velo: \t" <<  _V_rel.transpose() << std::endl;
-
   // ========================================
   // Computation of individual EE motion
   // ========================================
@@ -201,7 +196,6 @@ void dualArmFreeMotionController::computeConstrainedMotion(Eigen::Matrix4f w_H_e
   Eigen::Vector3f d_p_abs = reachable_p *w_H_ap.block<3,1>(0,3) + (1.0f-reachable_p)*w_H_ar_stb.block<3,1>(0,3);
   _error_abs.head(3)      = w_H_ar.block<3,1>(0,3) - d_p_abs;
 
-  std::cout << "[dual_arm_control]: Absolute Error: \n" <<  _V_abs.transpose() << std::endl;
   // std::cout << "[dual_arm_control]: Absolute Gain: \n" <<  this->gain_p_abs << std::endl;
 
   // Coupling the orientation with the position error
@@ -221,8 +215,6 @@ void dualArmFreeMotionController::computeConstrainedMotion(Eigen::Matrix4f w_H_e
   // ~~~~~~~~~~~~~~~~~~~~~~~
   _V_abs.head(3) = -gain_p_abs * _error_abs.head(3);
   _V_abs.tail(3) = -jacMuTheta_abs.inverse() * gain_o_abs * _error_abs.tail(3);
-
-  std::cout << "[dual_arm_control]: Absolute Velo: \n" <<  _V_abs.transpose() << std::endl;
 
   // =====================================
   // Relative velocity of the hands
@@ -261,8 +253,6 @@ void dualArmFreeMotionController::computeConstrainedMotion(Eigen::Matrix4f w_H_e
   // computing the velocity
   _V_rel.head(3) = -4.0f*gain_p_rel * _error_rel.head(3);
   _V_rel.tail(3) = -4.0f*jacMuTheta_rel.inverse() * gain_o_rel * _error_rel.tail(3);
-
-  std::cout << "[dual_arm_control]: Relative Velo: \n" <<  _V_rel.transpose() << std::endl;
 
   // ========================================
   // Computation of individual EE motion
@@ -461,8 +451,6 @@ void dualArmFreeMotionController::computeReleaseAndRetractMotion(Eigen::Matrix4f
   _V_rel.head(3) = -4.0f*gain_p_rel * _error_rel.head(3);
   _V_rel.tail(3) = -jacMuTheta_rel.inverse() * gain_o_rel * _error_rel.tail(3);
 
-  std::cout << "[dual_arm_control]: Relative Velo: \t" <<  _V_rel.transpose() << std::endl;
-
   // =======================================
   // Absolute velocity of the End-effectors
   // =======================================
@@ -470,7 +458,6 @@ void dualArmFreeMotionController::computeReleaseAndRetractMotion(Eigen::Matrix4f
 
   Eigen::Vector3f d_p_abs = (1.f - cpl_rel) *w_H_ar.block<3,1>(0,3) + cpl_rel*w_H_ar_stb.block<3,1>(0,3);
   _error_abs.head(3)      = w_H_ar.block<3,1>(0,3) - d_p_abs;
-  std::cout << "[dual_arm_control]: Absolute Error: \t" <<  _V_abs.transpose() << std::endl;
 
   // Coupling the orientation with the position error
   float cpl_abs = computeCouplingFactor(_error_abs.head(3), 50.0f, 0.02f, 1.0f, false);  // 0.2f
@@ -490,9 +477,7 @@ void dualArmFreeMotionController::computeReleaseAndRetractMotion(Eigen::Matrix4f
   _V_abs.head(3) = -gain_p_abs * _error_abs.head(3);
   _V_abs.tail(3) = -jacMuTheta_abs.inverse() * gain_o_abs * _error_abs.tail(3);
 
-  std::cout << "[dual_arm_control]: Absolute Velo: \t" <<  _V_abs.transpose() << std::endl;
-
-  
+ 
 
   // ========================================
   // Computation of individual EE motion

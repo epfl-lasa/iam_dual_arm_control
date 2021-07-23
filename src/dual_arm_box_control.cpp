@@ -61,6 +61,7 @@ bool keyState_2(char key)
 dual_arm_control::dual_arm_control(ros::NodeHandle &n, double frequency, 	std::string topic_pose_object_,
 																																					std::string topic_pose_robot_base[],
 																																					std::string topic_pose_robot_ee[],
+																																					std::string topic_twist_robot_ee[],
 																																					std::string topic_ee_commands[],
 																																					std::string topic_sub_ForceTorque_Sensor[])	: nh_(n)
 																																																											, loop_rate_(frequency)

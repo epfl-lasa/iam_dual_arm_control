@@ -86,7 +86,8 @@ class dual_arm_control
 		//////////////////////////////
 		ros::Subscriber _sub_object_pose;
 		ros::Subscriber _sub_base_pose[NB_ROBOTS];			// subscribe to the base pose of the robots
-		ros::Subscriber _sub_ee_pose[NB_ROBOTS];			// subscribe to the end effectors poses
+		ros::Subscriber _sub_ee_pose[NB_ROBOTS];				// subscribe to the end effectors poses
+		ros::Subscriber _sub_ee_twist[NB_ROBOTS];				// subscribe to the end effectors twists
 		ros::Subscriber _subForceTorqueSensor[NB_ROBOTS];	// Subscribe to force torque sensors
 		// ros::Subscriber sub_joint_states[NB_ROBOTS];		// subscriber for the joint position
 		//////////////////////////////
@@ -107,6 +108,7 @@ class dual_arm_control
 		std::string _topic_pose_object;
 		std::string _topic_pose_robot_base[NB_ROBOTS];
 		std::string _topic_pose_robot_ee[NB_ROBOTS];
+		std::string _topic_twist_robot_ee[NB_ROBOTS];
 		std::string _topic_ee_commands[NB_ROBOTS];
 		std::string _topic_subForceTorqueSensor[NB_ROBOTS];
 
@@ -119,6 +121,7 @@ class dual_arm_control
 		void objectPoseCallback(const geometry_msgs::Pose::ConstPtr& msg);
 		void updateBasePoseCallback(const geometry_msgs::Pose::ConstPtr& msg , int k);
 		void updateEEPoseCallback(const geometry_msgs::Pose::ConstPtr& msg , int k);
+		void updateEETwistCallback(const geometry_msgs::Twist::ConstPtr& msg , int k);
 		void updateRobotWrench(const geometry_msgs::WrenchStamped::ConstPtr& msg, int k);
 		void updateRobotWrenchLeft(const geometry_msgs::WrenchStamped::ConstPtr& msg);
 		void updateRobotWrenchRight(const geometry_msgs::WrenchStamped::ConstPtr& msg);
@@ -157,7 +160,7 @@ class dual_arm_control
 		Eigen::Vector4f _qd[NB_ROBOTS];
 		Eigen::Vector3f _aad[NB_ROBOTS];									// desired axis angle 
 		
-
+		Vector6f _V[NB_ROBOTS];														// current end-effector twist
 
 		Eigen::Vector3f _vd[NB_ROBOTS];
 		Eigen::Vector3f _omegad[NB_ROBOTS];
@@ -169,20 +172,20 @@ class dual_arm_control
 		float _err[NB_ROBOTS];
 		Eigen::Vector3f pose_err[NB_ROBOTS];
 
-        float _d1[NB_ROBOTS];
+    float _d1[NB_ROBOTS];
 
-        bool _firstRobotPose[NB_ROBOTS];
-        bool _firstRobotTwist[NB_ROBOTS];
-        bool _firstWrenchReceived[NB_ROBOTS];
-        bool _sensedContact;
-        bool _goHome;
+    bool _firstRobotPose[NB_ROBOTS];
+    bool _firstRobotTwist[NB_ROBOTS];
+    bool _firstWrenchReceived[NB_ROBOTS];
+    bool _sensedContact;
+    bool _goHome;
 
-        Eigen::Matrix4f _w_H_ee[NB_ROBOTS];							// Homogenenous transform of the End-effectors poses (4x4)
-        Eigen::Matrix4f _w_H_eeStandby[NB_ROBOTS];		// Homogenenous transform of Standby pose of the End-effectors (4x4)
-        Eigen::Matrix4f _w_H_rb[NB_ROBOTS];						// Homogenenous transform of robots base frame (4x4)
-        Eigen::Matrix4f _rb_H_eeStandby[NB_ROBOTS];		// Homogenenous transform of EE standby poses relatve to robots base (4x4)
-        Eigen::Vector3f _xrbStandby[NB_ROBOTS];		    // quaternion orientation of EE standby poses relatve to robots base (3x1)
-        Eigen::Vector4f _qrbStandby[NB_ROBOTS];		    // quaternion orientation of EE standby poses relatve to robots base (4x1)
+    Eigen::Matrix4f _w_H_ee[NB_ROBOTS];							// Homogenenous transform of the End-effectors poses (4x4)
+    Eigen::Matrix4f _w_H_eeStandby[NB_ROBOTS];		// Homogenenous transform of Standby pose of the End-effectors (4x4)
+    Eigen::Matrix4f _w_H_rb[NB_ROBOTS];						// Homogenenous transform of robots base frame (4x4)
+    Eigen::Matrix4f _rb_H_eeStandby[NB_ROBOTS];		// Homogenenous transform of EE standby poses relatve to robots base (4x4)
+    Eigen::Vector3f _xrbStandby[NB_ROBOTS];		    // quaternion orientation of EE standby poses relatve to robots base (3x1)
+    Eigen::Vector4f _qrbStandby[NB_ROBOTS];		    // quaternion orientation of EE standby poses relatve to robots base (4x1)
     
         Vector6f  		  _wrench[NB_ROBOTS];          	// Wrench [N and Nm] (6x1)
         Vector6f 				_wrenchBias[NB_ROBOTS];			 	// Wrench bias [N and Nm] (6x1)
@@ -251,7 +254,7 @@ class dual_arm_control
         std::string   _DataID;
         std::ofstream _OutRecord_pose;
         std::ofstream _OutRecord_velo;
-		std::ofstream _OutRecord_efforts;
+				std::ofstream _OutRecord_efforts;
         ////////////////////////////////////////////
         ros::Subscriber _sub_N_objects_pose[NB_ROBOTS];			// subscribe to the base pose of the robots
         Eigen::Matrix4f _w_H_No[NB_OBJECTS];
@@ -286,6 +289,7 @@ class dual_arm_control
 		dual_arm_control(ros::NodeHandle &n, double frequency, 	std::string topic_pose_object_,
                                                                 std::string topic_pose_robot_base[],
                                                                 std::string topic_pose_robot_ee[],
+																																std::string topic_twist_robot_ee[],
                                                                 std::string topic_ee_commands[],
                                                                 std::string topic_sub_ForceTorque_Sensor[]);
 		~dual_arm_control();
