@@ -14,6 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   tf
   tf_conversions
   roslib
+  sg_differentiation
 #   utils
 )
 
@@ -26,7 +27,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${YARP_MODULE_PATH})
 catkin_package(
    INCLUDE_DIRS include
    #LIBRARIES yarp2ros_data_publisher
-   CATKIN_DEPENDS geometry_msgs roscpp std_msgs tf tf_conversions
+   CATKIN_DEPENDS geometry_msgs roscpp std_msgs tf tf_conversions roslib sg_differentiation
 #   DEPENDS system_lib
 )
 
@@ -46,16 +47,22 @@ include_directories(${SOLVER_BWC}/)
 set(HEADERS_DS  ${HEADERS_FOLDER}/Utils.hpp               # TO DO put this into a thirdarty folder
                 ${HEADERS_FOLDER}/dual_arm_control.h 
                 ${HEADERS_FOLDER}/dualArmFreeMotionController.h
-                ${HEADERS_FOLDER}/dualArmCooperativeController.h)
+                ${HEADERS_FOLDER}/dualArmCooperativeController.h
+                ${HEADERS_FOLDER}/throwingDS.h
+                )
 
 set(SOURCES_DS  ${SRC_FOLDER}/dual_arm_control.cpp 
                 ${SRC_FOLDER}/dualArmFreeMotionController.cpp
-                ${SRC_FOLDER}/dualArmCooperativeController.cpp)
+                ${SRC_FOLDER}/dualArmCooperativeController.cpp
+                ${SRC_FOLDER}/throwingDS.cpp
+                )
 
 
 set(SOURCES_2  ${SRC_FOLDER}/dual_arm_box_control.cpp 
                 ${SRC_FOLDER}/dualArmFreeMotionController.cpp
-                ${SRC_FOLDER}/dualArmCooperativeController.cpp)
+                ${SRC_FOLDER}/dualArmCooperativeController.cpp
+                ${SRC_FOLDER}/throwingDS.cpp
+                )
 
 file(GLOB BWC_SOURCES   "${SOLVER_BWC}/*.c")
 

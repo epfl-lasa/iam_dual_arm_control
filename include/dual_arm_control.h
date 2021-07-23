@@ -28,12 +28,15 @@
 #include "std_msgs/Float64MultiArray.h"
 #include "std_msgs/String.h"
 
+
 #include "eigen3/Eigen/Core"
 #include "eigen3/Eigen/Geometry"
 #include "eigen3/Eigen/Dense"
+#include "sg_filter.h"
 
 #include "dualArmFreeMotionController.h"
 #include "dualArmCooperativeController.h"
+#include "throwingDS.h"
 
 #define NB_ROBOTS 2                  // Number of robots
 #define NB_FT_SENSOR_SAMPLES 50      // Number of force torque sensors' samples used for initial calibration (compute the offsets)
@@ -80,6 +83,9 @@ class dual_arm_control
 		ros::Rate loop_rate_;	// Ros loop rate [Hz]
 
 		float _t0_run;
+		int _cycle_count;
+		float _dt;
+		SGF::real _dt1;
 
 		//////////////////////////////
 		// Subscribers declarations //
@@ -95,10 +101,10 @@ class dual_arm_control
 		//////////////////////////////
 		ros::Publisher _pub_ts_commands[NB_ROBOTS];					// Publisher of the End effectors velocity twist
 		ros::Publisher _pubDesiredTwist[NB_ROBOTS];        	// Publish desired twist to DS-impdedance controller
-        ros::Publisher _pubDesiredOrientation[NB_ROBOTS];  	// Publish desired orientation to DS-impedance controller
-        ros::Publisher _pubFilteredWrench[NB_ROBOTS];      	// Publish filtered measured wrench
-        ros::Publisher _pubNormalForce[NB_ROBOTS];        	// Publish measured normal force to the surface
-        ros::Publisher _pubDesiredVel_Quat[NB_ROBOTS];      // Publish desired twist to DS-impdedance controller
+		ros::Publisher _pubDesiredOrientation[NB_ROBOTS];  	// Publish desired orientation to DS-impedance controller
+		ros::Publisher _pubFilteredWrench[NB_ROBOTS];      	// Publish filtered measured wrench
+		ros::Publisher _pubNormalForce[NB_ROBOTS];        	// Publish measured normal force to the surface
+		ros::Publisher _pubDesiredVel_Quat[NB_ROBOTS];      // Publish desired twist to DS-impdedance controller
 		ros::Publisher _pubDistAttractorEe[NB_ROBOTS];
 		ros::Publisher _pubAttractor[NB_ROBOTS];
 
@@ -126,12 +132,12 @@ class dual_arm_control
 		void updateRobotWrenchLeft(const geometry_msgs::WrenchStamped::ConstPtr& msg);
 		void updateRobotWrenchRight(const geometry_msgs::WrenchStamped::ConstPtr& msg);
 		// Update contact state with the surface
-    	void updateContactState();
+		void updateContactState();
 		
 		// --------------------------------------------------------------------------------
-		float _toolMass;                             // Tool mass [kg]
-    	float _toolOffsetFromEE[NB_ROBOTS];          // Tool offset along z axis of end effector [m]   
-		Eigen::Vector3f _objectDim;                  // Object dimensions [m] (3x1)
+		float _toolMass;                             			// Tool mass [kg]
+		float _toolOffsetFromEE[NB_ROBOTS];          			// Tool offset along z axis of end effector [m]   
+		Eigen::Vector3f _objectDim;                  			// Object dimensions [m] (3x1)
 		Eigen::Vector3f _gravity;
 		Eigen::Vector3f _toolComPositionFromSensor;
 		int _wrenchCount[NB_ROBOTS];                      // Counter used to pre-process the force data
@@ -164,11 +170,11 @@ class dual_arm_control
 
 		Eigen::Vector3f _vd[NB_ROBOTS];
 		Eigen::Vector3f _omegad[NB_ROBOTS];
-		Vector6f _Vd_ee[NB_ROBOTS];									// desired velocity twist
+		Vector6f _Vd_ee[NB_ROBOTS];												// desired velocity twist
 
-		Eigen::Vector3f _fxc[NB_ROBOTS];     				// Desired conservative parts of the nominal DS [m/s] (3x1)
-		float _Fd[NB_ROBOTS];                				// Desired force profiles [N]
-		float _targetForce;                  				// Target force in contact [N]
+		Eigen::Vector3f _fxc[NB_ROBOTS];     							// Desired conservative parts of the nominal DS [m/s] (3x1)
+		float _Fd[NB_ROBOTS];                							// Desired force profiles [N]
+		float _targetForce;                  							// Target force in contact [N]
 		float _err[NB_ROBOTS];
 		Eigen::Vector3f pose_err[NB_ROBOTS];
 
@@ -178,106 +184,119 @@ class dual_arm_control
     bool _firstRobotTwist[NB_ROBOTS];
     bool _firstWrenchReceived[NB_ROBOTS];
     bool _sensedContact;
-    bool _goHome;
 
-    Eigen::Matrix4f _w_H_ee[NB_ROBOTS];							// Homogenenous transform of the End-effectors poses (4x4)
-    Eigen::Matrix4f _w_H_eeStandby[NB_ROBOTS];		// Homogenenous transform of Standby pose of the End-effectors (4x4)
-    Eigen::Matrix4f _w_H_rb[NB_ROBOTS];						// Homogenenous transform of robots base frame (4x4)
-    Eigen::Matrix4f _rb_H_eeStandby[NB_ROBOTS];		// Homogenenous transform of EE standby poses relatve to robots base (4x4)
-    Eigen::Vector3f _xrbStandby[NB_ROBOTS];		    // quaternion orientation of EE standby poses relatve to robots base (3x1)
-    Eigen::Vector4f _qrbStandby[NB_ROBOTS];		    // quaternion orientation of EE standby poses relatve to robots base (4x1)
+    Eigen::Matrix4f _w_H_ee[NB_ROBOTS];								// Homogenenous transform of the End-effectors poses (4x4)
+    Eigen::Matrix4f _w_H_eeStandby[NB_ROBOTS];				// Homogenenous transform of Standby pose of the End-effectors (4x4)
+    Eigen::Matrix4f _w_H_rb[NB_ROBOTS];								// Homogenenous transform of robots base frame (4x4)
+    Eigen::Matrix4f _rb_H_eeStandby[NB_ROBOTS];				// Homogenenous transform of EE standby poses relatve to robots base (4x4)
+    Eigen::Vector3f _xrbStandby[NB_ROBOTS];		    		// quaternion orientation of EE standby poses relatve to robots base (3x1)
+    Eigen::Vector4f _qrbStandby[NB_ROBOTS];		    		// quaternion orientation of EE standby poses relatve to robots base (4x1)
     
-        Vector6f  		  _wrench[NB_ROBOTS];          	// Wrench [N and Nm] (6x1)
-        Vector6f 				_wrenchBias[NB_ROBOTS];			 	// Wrench bias [N and Nm] (6x1)
-        Vector6f        _filteredWrench[NB_ROBOTS];  	// Filtered wrench [N and Nm] (6x1)
-        int 						_initPoseCount;								// Counter of received initial poses measurements 
+		Vector6f  		  _wrench[NB_ROBOTS];          			// Wrench [N and Nm] (6x1)
+		Vector6f 				_wrenchBias[NB_ROBOTS];			 			// Wrench bias [N and Nm] (6x1)
+		Vector6f        _filteredWrench[NB_ROBOTS];  			// Filtered wrench [N and Nm] (6x1)
+		int 						_initPoseCount;										// Counter of received initial poses measurements 
 
-        Eigen::Matrix4f _w_H_gp[NB_ROBOTS];
-        Eigen::Vector3f _xgp_o[NB_ROBOTS];
-        Eigen::Vector4f _qgp_o[NB_ROBOTS];
-        Eigen::Vector3f _n[NB_ROBOTS];               	// Normal vector to surface object for each robot (3x1)
-        Vector6f        _V_gpo[NB_ROBOTS];
+		Eigen::Matrix4f _w_H_gp[NB_ROBOTS];
+		Eigen::Vector3f _xgp_o[NB_ROBOTS];
+		Eigen::Vector4f _qgp_o[NB_ROBOTS];
+		Eigen::Vector3f _n[NB_ROBOTS];               			// Normal vector to surface object for each robot (3x1)
+		Vector6f        _V_gpo[NB_ROBOTS];
 
-        Eigen::Vector3f _delta_pos; 									// variation of object position
-        Eigen::Vector3f _delta_ang; 									// variation of object orientation euler angles
-        bool _objCtrlKey;
-        bool _releaseAndretract;
+		Eigen::Vector3f _delta_pos; 											// variation of object position
+		Eigen::Vector3f _delta_ang; 											// variation of object orientation euler angles
+		
+		float _objectMass;
+		Eigen::Vector3f _xo;
+		Eigen::Vector4f _qo;
+		Eigen::Vector3f _vo;
+		Eigen::Vector3f _wo;
+		Eigen::Matrix4f _w_H_o;
+		Vector6f 				_Vd_o;   								// desired object velocity (toss)
 
-        
-        float _objectMass;
-        Eigen::Vector3f _xo;
-        Eigen::Vector4f _qo;
-        Eigen::Vector3f _vo;
-        Eigen::Vector3f _wo;
-        Eigen::Matrix4f _w_H_o;
+		Eigen::Vector3f _xDo; 
+		Eigen::Vector4f _qDo;
+		Eigen::Matrix4f _w_H_Do;
+		Eigen::Matrix4f _o_H_ee[NB_ROBOTS];
+		Eigen::Matrix4f _w_H_Dgp[NB_ROBOTS];
+		int _objecPoseCount;
 
-        Eigen::Vector3f _xDo; 
-        Eigen::Vector4f _qDo;
-        Eigen::Matrix4f _w_H_Do;
-        Eigen::Matrix4f _o_H_ee[NB_ROBOTS];
-        Eigen::Matrix4f _w_H_Dgp[NB_ROBOTS];
-        int _objecPoseCount;
+		Eigen::Vector3f _v_abs;
+		Eigen::Vector3f _w_abs;
+		Eigen::Vector3f _v_rel;
+		Eigen::Vector3f _w_rel;
 
-        Eigen::Vector3f _v_abs;
-        Eigen::Vector3f _w_abs;
-        Eigen::Vector3f _v_rel;
-        Eigen::Vector3f _w_rel;
+		Eigen::Vector3f _ep_abs;
+		Eigen::Vector3f _eo_abs;
+		Eigen::Vector3f _ep_rel;
+		Eigen::Vector3f _eo_rel;
 
-        Eigen::Vector3f _ep_abs;
-        Eigen::Vector3f _eo_abs;
-        Eigen::Vector3f _ep_rel;
-        Eigen::Vector3f _eo_rel;
+		Matrix6f _gain_abs;
+		Matrix6f _gain_rel;
 
-        Matrix6f _gain_abs;
-        Matrix6f _gain_rel;
+		float _reachable;
+		float _v_max;
+		float _w_max;
+		float _filteredForceGain;
+		float _forceThreshold;
+		float _nu_Wr0;
+		float _nu_Wr1;
+		float _applyVelo;
 
-        float _reachable;
-        float _v_max;
-        float _w_max;
-        float _filteredForceGain;
-        float _forceThreshold;
-        float _nu_Wr0;
-        float _nu_Wr1;
-        float _applyVelo;
+		float _delta_oDx;
+		float _delta_oDy;
+		float _delta_oDz;
+		float _desVtoss ;
+		float _desVimp;
 
-        float _delta_oDx;
-        float _delta_oDy;
-        float _delta_oDz;
-        float _desVtoss ;
+		bool _goHome;
+		bool _stop;                                    // Check for CTRL+C
+		bool  _isThrowing;
+		bool _goToAttractors;
+		bool _isPlacing;
+		bool _objCtrlKey;
+		bool _releaseAndretract;
+		bool _qp_wrench_generation;
 
-        bool _stop;                                    // Check for CTRL+C
-        bool  _isThrowing;
-        bool _goToAttractors;
-        bool _isPlacing;
+		// data logging
+		std::string   _DataID;
+		std::ofstream _OutRecord_pose;
+		std::ofstream _OutRecord_velo;
+		std::ofstream _OutRecord_efforts;
+		std::ofstream _OutRecord_tasks;
+		////////////////////////////////////////////
+		ros::Subscriber _sub_N_objects_pose[NB_ROBOTS];			// subscribe to the base pose of the robots
+		Eigen::Matrix4f _w_H_No[NB_OBJECTS];
+		Eigen::Matrix4f _w_H_abs_Do;
+		Eigen::Matrix4f _lDo_H_rDo;
+		Eigen::Matrix4f _w_H_abs_o;
+		Eigen::Matrix4f _lo_H_ro;
+		//
+		Eigen::Vector3f _xNo[NB_OBJECTS];
+		Eigen::Vector4f _qNo[NB_OBJECTS];
+			//
+		Eigen::Matrix3f _BasisQ[NB_ROBOTS];
+		Eigen::Matrix3f _E_xt_xd[NB_ROBOTS];
+		Vector6f _Vee[NB_ROBOTS];
+		bool _release_flag;
 
-        // data logging
-        std::string   _DataID;
-        std::ofstream _OutRecord_pose;
-        std::ofstream _OutRecord_velo;
-				std::ofstream _OutRecord_efforts;
-        ////////////////////////////////////////////
-        ros::Subscriber _sub_N_objects_pose[NB_ROBOTS];			// subscribe to the base pose of the robots
-        Eigen::Matrix4f _w_H_No[NB_OBJECTS];
-        Eigen::Matrix4f _w_H_abs_Do;
-        Eigen::Matrix4f _lDo_H_rDo;
-        Eigen::Matrix4f _w_H_abs_o;
-        Eigen::Matrix4f _lo_H_ro;
-        //
-        Eigen::Vector3f _xNo[NB_OBJECTS];
-        Eigen::Vector4f _qNo[NB_OBJECTS];
-
-        void updateObjectsPoseCallback(const geometry_msgs::Pose::ConstPtr& msg , int k);
+		void updateObjectsPoseCallback(const geometry_msgs::Pose::ConstPtr& msg , int k);
     
+		////////////////////////////////////////////////////////////////////////
+		// Objects for Unconstrained and contrained motion and force generation
+		////////////////////////////////////////////////////////////////////////
+		//
+		//--------------------------------------
+		dualArmFreeMotionController 	FreeMotionCtrl;
 
-        ////////////////////////////////////////////////////////////////////////
-        // Objects for Unconstrained and contrained motion and force generation
-        ////////////////////////////////////////////////////////////////////////
-        //
-        //--------------------------------------
-	    dualArmFreeMotionController 	FreeMotionCtrl;
-
-        // Subscribers declarations //
-	    dualArmCooperativeController 	CooperativeCtrl;
+		// Subscribers declarations //
+		dualArmCooperativeController 	CooperativeCtrl;
+		//
+		throwingDS 										dsThrowing;				//
+		/////////////////////
+		// SG Filter variables //
+		/////////////////////
+		std::unique_ptr<SGF::SavitzkyGolayFilter> _xo_filtered;
 
 	private:
     	// Callback called when CTRL is detected to stop the node       
@@ -287,11 +306,11 @@ class dual_arm_control
 	public :
 		//
 		dual_arm_control(ros::NodeHandle &n, double frequency, 	std::string topic_pose_object_,
-                                                                std::string topic_pose_robot_base[],
-                                                                std::string topic_pose_robot_ee[],
-																																std::string topic_twist_robot_ee[],
-                                                                std::string topic_ee_commands[],
-                                                                std::string topic_sub_ForceTorque_Sensor[]);
+																														std::string topic_pose_robot_base[],
+																														std::string topic_pose_robot_ee[],
+																														std::string topic_twist_robot_ee[],
+																														std::string topic_ee_commands[],
+																														std::string topic_sub_ForceTorque_Sensor[]);
 		~dual_arm_control();
 
 		bool init();
@@ -299,7 +318,7 @@ class dual_arm_control
 		void computeCommands();
 		void publish_commands();
 		void publishData();
-        void saveData();
+		void saveData();
 		void run();
 		void prepareCommands(Vector6f Vd_ee[], Eigen::Vector4f qd[], Vector6f V_gpo[]);
 		void getGraspPointsVelocity();

@@ -16,14 +16,14 @@ bool dualArmCooperativeController::init()
 	_ContactConfidence  = 0.0f;
 	_min_Fz 		    = 30.0; //15.0;
 	_min_nF 			= 30.0f;
-	_max_nF 			= 50.0f;
+	_max_nF 			= 45.0f;
 	//
 	_mu_ee				= 0.9f;
 	_gamma_ee			= 0.9f;
 	_deltaX_ee			= 0.5f;
 	_deltaY_ee			= 0.5f;
 	_contactOccured     = false;
-	_targetForce     	= 50.0f;
+	_targetForce     	= 45.0f;
 	//
 	_GraspMatrixEEs.setZero();
 	_optimal_contact_wrench_EEs.setZero();
