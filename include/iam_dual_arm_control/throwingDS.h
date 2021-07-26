@@ -116,6 +116,7 @@ class throwingDS
 		float _v_max;
 		float _w_max;
 		bool _stop_and_toss = false;
+		Eigen::Vector3f Xt_;
 
 
 		throwingDS();
@@ -154,6 +155,7 @@ class throwingDS
 		bool set_rest_pose(Eigen::Vector3f new_restPos, Eigen::Vector4f new_restOrient);
 		bool get_release_flag();
 		bool set_pickup_object_pose(Eigen::Vector3f pickup_Pos, Eigen::Vector4f pickup_Orient);
+		bool reset_release_flag();
 };
 
 #endif

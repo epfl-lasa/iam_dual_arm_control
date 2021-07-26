@@ -71,6 +71,44 @@ class data_logging
 
 		}
 
+		bool datalog_reset(std::string path2Datafolder){
+			//
+			this->Close_files();
+
+			auto now = std::chrono::system_clock::now();
+			auto in_time_t = std::chrono::system_clock::to_time_t(now);
+			std::stringstream ss;
+			ss << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d-%X");
+			std::string DataID = ss.str();
+			_OutRecord_pose.open(path2Datafolder       +"/log_task_pose_"    +DataID+".csv");
+			_OutRecord_velo.open(path2Datafolder       +"/log_task_velo_"    +DataID+".csv");
+			_OutRecord_efforts.open(path2Datafolder    +"/log_robot_efforts_"+DataID+".csv");
+			_OutRecord_tasks.open(path2Datafolder      +"/log_robot_tasks_"  +DataID+".csv");
+			_OutRecord_jts_states.open(path2Datafolder +"/log_joints_states_"+DataID+".csv");
+
+		  if(!_OutRecord_pose.is_open()){
+		    ROS_ERROR("[_OutRecord_pose]: Cannot open output data files, the Data directory might be missing");
+		    return false;
+		  }
+		  if(!_OutRecord_velo.is_open()){
+		    ROS_ERROR("[_OutRecord_velo]: Cannot open output data files, the Data directory might be missing");
+		    return false;
+		  }
+		  if(!_OutRecord_efforts.is_open()){
+		    ROS_ERROR("[_OutRecord_efforts]: Cannot open output data files, the Data directory might be missing");
+		    return false;
+		  }
+		  if(!_OutRecord_tasks.is_open()){
+		    ROS_ERROR("[_OutRecord_tasks]: Cannot open output data files, the Data directory might be missing");
+		    return false;
+		  }
+		  if(!_OutRecord_jts_states.is_open()){
+		    ROS_ERROR("[_OutRecord_jts_states]: Cannot open output data files, the Data directory might be missing");
+		    return false;
+		  }
+
+		}
+
 		void Write_Data(){};
 
 		bool Close_files(){

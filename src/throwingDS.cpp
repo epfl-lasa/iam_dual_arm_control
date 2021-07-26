@@ -14,8 +14,8 @@ throwingDS::throwingDS(){
 		Do_[i] = 2.0 *sqrt(Ko_[i](0,0))*Eigen::MatrixXf::Identity(3,3);
 	}
 	//
-	rho_		    	= 0.12;
-	range_norm_  	= 0.04;
+	rho_		    	= 0.12; //0.12;
+	range_norm_  	= 0.05;
 	range_tang_  	= 0.02;
 
 	sw_proxim_   	= 150.0;
@@ -37,6 +37,7 @@ throwingDS::throwingDS(){
 	BasisQo_			= Eigen::MatrixXf::Identity(3,3);
 	V_ee_d_ 			= Eigen::VectorXf::Zero(6);
 	A_ee_d_ 			= Eigen::VectorXf::Zero(6);
+	Xt_           = Eigen::VectorXf::Zero(3);
 	//
 	release_flag_ = false;
 	_refVtoss     = 0.00f;
@@ -55,7 +56,7 @@ throwingDS::throwingDS(){
 	// ============================================================================================
 	// Gains
 	// ============================================================================================
-	float T_settling = 0.8f; // [Settling time in second]
+	float T_settling = 0.5f; // [Settling time in second]
 	float gn = pow((4.0f/T_settling),2.f);
 	// Stiffness
 	// ==========
@@ -143,6 +144,8 @@ bool throwingDS::init(tossDsParam ds_param, Eigen::Vector3f releasePos, Eigen::V
 	BasisQo_ 		= this->createOrthonormalMatrixFromVector(w_toss_);
 	_stop_and_toss = false;
 
+	Xt_         = releasePos;
+
 	return true;	
 }
 
@@ -159,6 +162,7 @@ Vector6f throwingDS::apply(Eigen::Vector3f curPos, Eigen::Vector4f curOrient, Ei
 	float  alp = 0.05f;
   // _refVtoss = (1.0f-alp)*_refVtoss + alp*v_toss_.norm(); //Vd_obj.head(3).norm(); //(v_toss_.norm());
   _refVtoss 		  = v_toss_.norm();
+  // _refVtoss 		  = Vd_obj.head(3).norm();
 	Vd_obj.head(3)  = Vd_obj.head(3)/(Vd_obj.head(3).norm()+1e-10)  *  _refVtoss;
 	return Vd_obj;
 }
@@ -185,14 +189,14 @@ Vector6f throwingDS::generate_throwing_motion(Eigen::Matrix4f w_H_ce,  Vector6f 
 	Eigen::Vector3f Xpe = Xti + BasisQ.col(0)*d;
 	//
 	float beta = 0.00f;
-	Eigen::Vector3f Xt = Xdes;
+	Xt_ = Xdes;
 	if(_stop_and_toss){
-		Xt    = (1.0f-beta)*Xpe+ beta*Xdes; //Xpe;
-		Xt(2) = 0.95f*Xdes(2);
+		Xt_    = (1.0f-beta)*Xpe+ beta*Xb; //beta*Xdes; //Xpe;
+		Xt_(2) = 0.95f*Xdes(2);
 	}
 	else{
-		beta = 0.5f;
-		Xt   = (1.0f-beta)*Xpe+ beta*Xdes; //Xpe;
+		beta = 1.0f;
+		Xt_   = (1.0f-beta)*Xpe+ beta*Xb; //beta*Xdes; //Xpe;
 	}
 	//=======================================================================
 	// Modulation term
@@ -220,7 +224,7 @@ Vector6f throwingDS::generate_throwing_motion(Eigen::Matrix4f w_H_ce,  Vector6f 
 		// a_retract_    = 0.0;
 	}
 	// 
-	if((X-Xdes).norm() <= 2e-2){  // release if the norm is within 1 cm
+	if((X-Xdes).norm() <= 2.5e-2){  // release if the norm is within 1 cm
 		release_flag_ = true;
 	}
 
@@ -231,12 +235,12 @@ Vector6f throwingDS::generate_throwing_motion(Eigen::Matrix4f w_H_ce,  Vector6f 
 	std::cout << "[throwingDS]:  -------------XXXXXXXXXXXXXXXXXXXXX ------ Xpick : \t" <<  Xpick.transpose() << std::endl;
 	std::cout << "[throwingDS]:  -------------XXXXXXXXXXXXXXXXXXXXX ------ Xb  : \t" <<  Xb.transpose() << std::endl;
 	std::cout << "[throwingDS]:  -------------XXXXXXXXXXXXXXXXXXXXX ------ Xti   : \t" <<  Xti.transpose() << std::endl;
-	std::cout << "[throwingDS]:  -------------XXXXXXXXXXXXXXXXXXXXX ------ Xt   : \t" <<  Xt.transpose() << std::endl;
+	std::cout << "[throwingDS]:  -------------XXXXXXXXXXXXXXXXXXXXX ------ Xt_   : \t" <<  Xt_.transpose() << std::endl;
 	
 
 	// float a_normal_t   	= 0.5*(std::tanh(0.8f*this->sw_norm_  * (1.2f*this->range_norm_ - dist2line)) + 1.0 );  // good
 	// float a_normal_t   	= 0.5*(std::tanh(1.2f*this->sw_norm_  * (1.0f*this->range_norm_ - dist2line)) + 1.0 );
-	float tol_rad = (X-Xt).transpose() * (X-Xt);
+	float tol_rad = (X-Xt_).transpose() * (X-Xt_);
 	float a_normal_t   	= 0.5*(std::tanh(1.2f*this->sw_norm_  * (0.8f*this->range_norm_ - tol_rad)) + 1.0 );
 	// a_normal_t = 0.0f;
 	std::cout << "[throwingDS]:  -------------XXXXXXXXXXXXXXXXXXXXX ------ a_proximity_   : \t" <<  a_proximity_ << std::endl;
@@ -278,8 +282,8 @@ Vector6f throwingDS::generate_throwing_motion(Eigen::Matrix4f w_H_ce,  Vector6f 
 		Eigen::Vector3f Xstar = (1.0 - a_normal_) * Xb + a_normal_ * (X - Kp_[TOSS].inverse()*Vdtoss);
 		// 
 		// Eigen::Vector3f Areach_ee      = Kp_[REACH]*(X - Xb); 					// DS for approaching the tossing position 
-		// Eigen::Vector3f Areach_ee      = Kp_[REACH]*(X - (a_normal_t *Xb + (1.0f-a_normal_t)*Xt) ); 					// DS for approaching the tossing position 
-		Eigen::Vector3f Areach_ee      = Kp_[REACH]*(X - (sw_toss *Xb + (1.0f-sw_toss)*Xt) ); 					// DS for approaching the tossing position 
+		// Eigen::Vector3f Areach_ee      = Kp_[REACH]*(X - (a_normal_t *Xb + (1.0f-a_normal_t)*Xt_) ); 					// DS for approaching the tossing position 
+		Eigen::Vector3f Areach_ee      = Kp_[REACH]*(X - (sw_toss *Xb + (1.0f-sw_toss)*Xt_) ); 					// DS for approaching the tossing position 
 		Eigen::Vector3f Amodul_ee_norm = Kp_[TOSS]*(X - Xb); 						// Modulated DS that aligned  the EE with the desired velocity
 		Eigen::Vector3f Amodul_ee_tang = Kp_[TOSS]*(X - Xstar); 				// this->computeModulatedAcceleration(Km, Dm, X, Xdot, Xstar);
 		Eigen::Vector3f Aretrac_ee     = Kp_[RETRACT]*(X - Xretr); 			// DS for retracting after the tossing position
@@ -352,7 +356,13 @@ Eigen::MatrixXf throwingDS::createOrthonormalMatrixFromVector(Eigen::VectorXf in
   //
   int n = inVec.rows();
   Eigen::MatrixXf basis = Eigen::MatrixXf::Random(n,n); 
-  basis.col(0) = 1./inVec.norm() * inVec;
+  if(inVec.norm()<= 1e-10){
+  	basis.col(0) = Eigen::VectorXf::Zero(n);
+  	basis(0,0)   = 1.0f;
+  }
+  else{
+  	basis.col(0) = 1.f/inVec.norm() * inVec;
+  }
 
   assert(basis.rows() == basis.cols());
   uint dim = basis.rows();
@@ -429,5 +439,11 @@ bool throwingDS::get_release_flag(){
 bool throwingDS::set_pickup_object_pose(Eigen::Vector3f pickup_Pos, Eigen::Vector4f pickup_Orient){
 	//
 	w_H_po_ = Utils<float>::pose2HomoMx(pickup_Pos, pickup_Orient);
+	return true;
+}
+
+bool throwingDS::reset_release_flag(){
+	release_flag_ = false;
+	a_retract_    = 0.0f;
 	return true;
 }

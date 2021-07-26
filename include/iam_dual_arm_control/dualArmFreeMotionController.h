@@ -77,7 +77,11 @@ class dualArmFreeMotionController
 		Eigen::Matrix4f _w_H_eeStandby[NB_ROBOTS];
 		//
 		float _desVreach;
-		float _refVreach;
+		float _refVreach; //[NB_ROBOTS];
+		float _refVtoss_EE;
+		bool _modulated_reaching = true;
+		bool _isNorm_impact_vel  = false;
+		float _height_via_point = 0.25f;
 		//
 		dualArmFreeMotionController();
 		~dualArmFreeMotionController();

@@ -57,6 +57,10 @@ dualArmFreeMotionController::dualArmFreeMotionController()
   a_normal_Do_  = 0.0f;
   _desVreach    = 1.0f;
   _refVreach    = 0.0f;
+  _refVtoss_EE  = 0.0f;
+  _modulated_reaching = true;
+  _isNorm_impact_vel  = false;
+  _height_via_point = 0.25f;
 
 }
 
@@ -73,8 +77,8 @@ bool dualArmFreeMotionController::init(Eigen::Matrix4f w_H_eeStandby[], Matrix6f
   // _w_max       = 2.0f;
   // _v_max = 2.0f;     // velocity limits
   // _w_max = 4.0f;     // velocity limits
-  _v_max      = 0.7f;
-  _w_max      = 2.0f;
+  _v_max      = 1.0f;
+  _w_max      = 3.0f;
 
   gain_p_abs = gain_abs_.topLeftCorner(3,3);
   gain_o_abs = gain_abs_.bottomRightCorner(3,3);
@@ -898,7 +902,7 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
   if((X[LEFT]-Xdes[LEFT]).norm() <= 1e-2 && (X[RIGHT]-Xdes[RIGHT]).norm() <= 1e-2){  // release if the norm is within 1 cm
     release_flag_ = true;
   }
-  release_flag = release_flag_;
+  release_flag = release_flag_;  // reaching phase
 
   float activation   = a_proximity_;
   // activation = 0.0f;
@@ -921,23 +925,37 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
     Vector6f DS_ee_nominal = Eigen::VectorXf::Zero(6);
     DS_ee_nominal.head(3)  = Vd_ee_nom[LEFT].head(3);
     DS_ee_nominal.tail(3)  = Vd_ee_nom[RIGHT].head(3);
+    // Unitary velocity field
+    float speed_ee[2];
  
     Eigen::Vector3f o_error_pos_abs_paral = this->getAbsoluteTangentError(w_H_o, w_H_ee, w_H_gp);
-    float cp_ap = Utils<float>::computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.08f, 1.0f, true);  // 50.0f, 0.05f, 2.8f /  50.0f, 0.15f, 1.0f
-    float  alp = 1.0f; //0.05f;
-    bool modulatedImpact = false;
-    if(modulatedImpact){
+    float cp_ap = Utils<float>::computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.03f, 1.2f, true);  // 50.0f, 0.05f, 2.8f /  50.0f, 0.15f, 1.0f
+    float cp_ap2 = 0.0f;
+    float  alp  = 1.0f; //0.05f;
+    
+    if(_modulated_reaching){
       if(true){
         alp = 0.05f;
       }
+      cp_ap2     = 0.0f;
       _refVreach = (1.0f-alp)*_refVreach + alp*((1.0f-cp_ap)*_desVreach + cp_ap* VdImp[LEFT].norm());
+      speed_ee[LEFT]  = _refVreach;
+      speed_ee[RIGHT] = _refVreach;
+    }
+    else if(_isNorm_impact_vel){
+      cp_ap2     = 0.0f;
+      _refVreach = VdImp[LEFT].norm();
+      speed_ee[LEFT]  = _refVreach;
+      speed_ee[RIGHT] = _refVreach;
     }
     else{
-      _refVreach = VdImp[LEFT].norm();
+      cp_ap2 = 0.0f*Utils<float>::computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.02f, 1.2f, true);
+      speed_ee[LEFT]  = DS_ee_nominal.head(3).norm();
+      speed_ee[RIGHT] = DS_ee_nominal.tail(3).norm();
     }
     //
-    DS_ee_nominal.head(3)  = DS_ee_nominal.head(3)/(DS_ee_nominal.head(3).norm()+1e-10) *  _refVreach;
-    DS_ee_nominal.tail(3)  = DS_ee_nominal.tail(3)/(DS_ee_nominal.tail(3).norm()+1e-10) *  _refVreach;
+    DS_ee_nominal.head(3)  = DS_ee_nominal.head(3)/(DS_ee_nominal.head(3).norm()+1e-10) *  speed_ee[LEFT]  + cp_ap2* VdImp[LEFT];
+    DS_ee_nominal.tail(3)  = DS_ee_nominal.tail(3)/(DS_ee_nominal.tail(3).norm()+1e-10) *  speed_ee[RIGHT] + cp_ap2* VdImp[RIGHT];
     //
     Matrix6f A = Eigen::MatrixXf::Identity(6,6);
     A.block<3,3>(0,0) = -3.0f * this->gain_p_abs;
@@ -991,6 +1009,8 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
         //
         Amodul_ee_norm = A_prime*(X_dual - Xb_dual);          // Modulated DS that aligned  the EE with the desired velocity
         Amodul_ee_tang = A_prime*(X_dual - Xstar_dual);  // ;
+
+        _refVtoss_EE   = 0.0;
       }
       break;
       case 1:{ // point to point motion of the object 
@@ -999,8 +1019,16 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
         X_bi.tail(3)  = 0.99f*(X[RIGHT] - X[LEFT]);
 
         Xstar_dual =  _Tbi.inverse() * X_bi;
-        Amodul_ee_norm = _Tbi.inverse() * A * _Tbi *(X_dual - Xstar_dual);          // Modulated DS that aligned  the EE with the desired velocity
-        Amodul_ee_tang = _Tbi.inverse() * A * _Tbi *(X_dual - Xstar_dual);  // ;
+        // Amodul_ee_norm = _Tbi.inverse() * A * _Tbi *(X_dual - Xstar_dual);          // Modulated DS that aligned  the EE with the desired velocity
+        // Amodul_ee_tang = _Tbi.inverse() * A * _Tbi *(X_dual - Xstar_dual);  // ;
+
+        Vector6f v_task_bi = ( A * _Tbi*(X_dual - Xstar_dual));
+                 v_task_bi = Utils<float>::SaturationTwist(Vd_o.head(3).norm(), _w_max, v_task_bi);
+        // v_task_bi.head(3)  = v_task_bi.head(3)/(v_task_bi.head(3).norm()+1e-10)*1.0f*v_task_bi.head(3).norm();
+        // v_task_bi.head(3) = v_task_bi.head(3)/(v_task_bi.head(3).norm()+1e-10)*Vd_o.head(3).norm();
+
+        Amodul_ee_norm = _Tbi.inverse() * v_task_bi;  // 
+        Amodul_ee_tang = _Tbi.inverse() * v_task_bi;  //
         //
         activation = 1.0f;
       }
@@ -1024,14 +1052,6 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
 
         Amodul_ee_norm = _Tbi.inverse() * v_task_bi;  // 
         Amodul_ee_tang = _Tbi.inverse() * v_task_bi;  //
-
-        // Amodul_ee_norm = _Tbi.inverse() * ( Xdot_bi +  A * _Tbi*(X_dual - Xstar_dual) );          // Modulated DS that aligned  the EE with the desired velocity
-        // Amodul_ee_tang = _Tbi.inverse() * ( Xdot_bi +  A * _Tbi*(X_dual - Xstar_dual) );          // ;  
-        //
-        // Amodul_ee_norm.head(3) = Amodul_ee_norm.head(3)/( Amodul_ee_norm.head(3).norm() +1e-10) * Vd_o.head(3).norm();
-        // Amodul_ee_norm.tail(3) = Amodul_ee_norm.tail(3)/( Amodul_ee_norm.tail(3).norm() +1e-10) * Vd_o.head(3).norm();
-        // Amodul_ee_tang.head(3) = Amodul_ee_tang.head(3)/( Amodul_ee_tang.head(3).norm() +1e-10) * Vd_o.head(3).norm();
-        // Amodul_ee_tang.tail(3) = Amodul_ee_tang.tail(3)/( Amodul_ee_tang.tail(3).norm() +1e-10) * Vd_o.head(3).norm();
         //
         activation = 1.0f;
       }
@@ -1039,23 +1059,21 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
 
       case 3:{ // point to point motion of the object 
         Vector6f X_bi = Eigen::VectorXf::Zero(6);
-        X_bi.head(3)  = (1.0f-1.0f*sw_norm_Do)*(w_H_Do.block<3,1>(0,3) - w_H_o.block<3,1>(0,3))+ 0.5f*(X[LEFT] + X[RIGHT]);
-        X_bi.tail(3)  = (1.0f-1.0f*sw_norm_Do)*0.95f*(X[RIGHT] - X[LEFT]) + 1.0f*sw_norm_Do*0.95f*(X[RIGHT] - X[LEFT]);
+        X_bi.head(3)  = 0.5f*(X[LEFT] + X[RIGHT]);
+        X_bi.tail(3)  = 0.99f*(X[RIGHT] - X[LEFT]);
         Xstar_dual    =  _Tbi.inverse() * X_bi;
         //
         //velocity based motion of the object
         Vector6f Xdot_bi      = Eigen::VectorXf::Zero(6);
         Eigen::Vector3f X_rel = X[RIGHT] - X[LEFT];
 
-        Eigen::Vector3f w_o   = Vd_o.tail(3);
+        Eigen::Vector3f w_o   = 0.0f*Vd_o.tail(3);
         Xdot_bi.head(3)       = Vd_o.head(3);
         Xdot_bi.tail(3)       = w_o.cross(X_rel);
-        // Amodul_ee_norm = A_prime*(X_dual - Xstar_dual) + sw_norm_Do*_Tbi.inverse() * Xdot_bi;  // Modulated DS that aligned  the EE with the desired velocity
-        // Amodul_ee_tang = A_prime*(X_dual - Xstar_dual) + sw_norm_Do*_Tbi.inverse() * Xdot_bi;  // ;
 
         Vector6f v_task_bi = ( A * _Tbi*(X_dual - Xstar_dual) + 1.0f*sw_norm_Do* Xdot_bi );
-        // v_task_bi.head(3) = v_task_bi.head(3)/(v_task_bi.head(3).norm()+1e-10)*1.0f*v_task_bi.head(3).norm();
-        v_task_bi.head(3) = v_task_bi.head(3)/(v_task_bi.head(3).norm()+1e-10)*Vd_o.head(3).norm();
+        v_task_bi = v_task_bi.head(3) = v_task_bi.head(3)/(v_task_bi.head(3).norm()+1e-10)*1.0f*v_task_bi.head(3).norm();
+        // v_task_bi.head(3) = v_task_bi.head(3)/(v_task_bi.head(3).norm()+1e-10)*Vd_o.head(3).norm();
 
         Amodul_ee_norm = _Tbi.inverse() * v_task_bi;  // 
         Amodul_ee_tang = _Tbi.inverse() * v_task_bi;  //
@@ -1074,10 +1092,9 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
         Vector6f Xdot_bi      = Eigen::VectorXf::Zero(6);
         Eigen::Vector3f X_rel = X[RIGHT] - X[LEFT];
         Vector6f Vo = Eigen::VectorXf::Zero(6);
-        float via_height = 0.30f;
-        Vector6f Vo_place = this->generatePlacingMotion2(w_H_o, w_H_Do, via_height, Vo);
-        // float cp_obj = Utils<float>::computeCouplingFactor(w_H_o.block<3,1>(0,3)-w_H_Do.block<3,1>(0,3), 50.0f, 0.08f, 1.0f, true);
-        float cp_obj = 0.5f*(std::tanh(1.5f*this->sw_norm_  * (1.0f*this->range_norm_ - (w_H_o.block<3,1>(0,3)-w_H_Do.block<3,1>(0,3)).norm()))  + 1.0f );
+        Vector6f Vo_place = this->generatePlacingMotion2(w_H_o, w_H_Do, _height_via_point, Vo);
+        float cp_obj = Utils<float>::computeCouplingFactor(w_H_o.block<3,1>(0,3)-w_H_Do.block<3,1>(0,3), 50.0f, 0.05f, 1.0f, true);
+        // float cp_obj = 0.5f*(std::tanh(1.5f*this->sw_norm_  * (1.0f*this->range_norm_ - (w_H_o.block<3,1>(0,3)-w_H_Do.block<3,1>(0,3)).norm()))  + 1.0f );
 
         Eigen::Vector3f w_o   = Vo_place.tail(3);
         Xdot_bi.head(3)       = Vo_place.head(3);
@@ -1105,13 +1122,19 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
     Vd_ee[RIGHT].head(3) = DS_ee_modulated.tail(3);
     Vd_ee[RIGHT].tail(3) = Vd_ee_nom[RIGHT].tail(3);
     //
-    // Unitary velocity field
-    float speed_ee[2];
+    
 
     if(taskType == 0){
-      speed_ee[LEFT]  = _refVreach;
-      speed_ee[RIGHT] = _refVreach;
+      // speed_ee[LEFT]  = _refVreach;
+      // speed_ee[RIGHT] = _refVreach;
     }
+    // else if(taskType == 2 || taskType == 3){
+    //   _refVtoss_EE    = (1.0f-alp)*_refVtoss_EE + alp*Vd_o.head(3).norm();
+    //   // speed_ee[LEFT]  = Vd_o.head(3).norm(); //_refVtoss_EE;//
+    //   // speed_ee[RIGHT] = Vd_o.head(3).norm(); //_refVtoss_EE;//Vd_o.head(3).norm();
+    //   speed_ee[LEFT]  = DS_ee_modulated.head(3).norm();
+    //   speed_ee[RIGHT] = DS_ee_modulated.tail(3).norm();
+    // }
     else{
       speed_ee[LEFT]  = DS_ee_modulated.head(3).norm();
       speed_ee[RIGHT] = DS_ee_modulated.tail(3).norm();
@@ -1120,8 +1143,7 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
     Vd_ee[LEFT].head(3)  = Vd_ee[LEFT].head(3)/(Vd_ee[LEFT].head(3).norm()+1e-15)  * speed_ee[LEFT]; 
     Vd_ee[RIGHT].head(3) = Vd_ee[RIGHT].head(3)/(Vd_ee[RIGHT].head(3).norm()+1e-15)* speed_ee[RIGHT]; 
     // Vector6f des_V_unit = DS_ee_modulated/(DS_ee_modulated.norm()+1e-15) * (speed_ee[LEFT] + speed_ee[RIGHT]);
-    // Vd_ee[LEFT].head(3)  = des_V_unit.head(3); 
-    // Vd_ee[RIGHT].head(3) = des_V_unit.tail(3); 
+
     //
     qd[LEFT]  = qd_nom[LEFT];
     qd[RIGHT] = qd_nom[RIGHT];

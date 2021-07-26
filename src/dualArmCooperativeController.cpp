@@ -12,7 +12,7 @@ dualArmCooperativeController::~dualArmCooperativeController(){}
 
 bool dualArmCooperativeController::init()
 {
-	_tol_dist2contact   = 0.03f;
+	_tol_dist2contact   = 0.045f;
 	_ContactConfidence  = 0.0f;
 	_min_Fz 		    = 30.0f; //15.0;  // 40.0f;  
 	_min_nF 			= 30.0f;          // 40.0f;
@@ -371,8 +371,8 @@ void dualArmCooperativeController::getPredefinedContactForceProfile(bool goHome,
     }
     else if(contactState==CLOSE_TO_CONTACT)
     {
-      _f_applied[LEFT].head(3)  = 8.0f * _nC[LEFT];
-			_f_applied[RIGHT].head(3) = 8.0f * _nC[RIGHT];
+      _f_applied[LEFT].head(3)  = 3.0f * _nC[LEFT];
+			_f_applied[RIGHT].head(3) = 3.0f * _nC[RIGHT];
     }
     else
     {

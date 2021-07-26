@@ -1,16 +1,16 @@
 # End-effector tool
 tool:
   offset2end_effector:
-    left:  0.17
-    right: 0.15
+    left:  0.175
+    right: 0.20
 
 #
-desVimp:   0.3
+desVimp:   0.4
 desVreach: 1.0
 # tossing task parameters
 tossing:
-  desVtoss:           0.80
-  releasePos:         [0.70, 0.00, 0.60]
+  desVtoss:           0.6
+  releasePos:         [0.6, 0.00, 0.6] #[0.70, 0.00, 0.60]
   releaseOrient:      [1.00, 0.00, 0.00, 0.00]
   releaseLinVel_dir:  [1.00, 0.00, 1.00]
   releaseAngVel:      [0.00, 0.00, 0.00]
@@ -32,16 +32,20 @@ ds_relative_gains: [2.0, 2.0, 2.0, 1.0, 1.0, 1.0]
 
 # impact direction (angle in degree)
 impact_direction:
-  friction_angle: 36
+  friction_angle: 20 #36
   max_friction_angle: 40
   impact_dir_preset: false
 
 # dual arm task
 dual_arm_task:
   dualTaskSelector: 1
+  old_dual_method: false
+  modulated_reaching: true
+  isNorm_impact_vel: false
   lifting: 
-    position: [0.40, 0.00, 0.55]
+    position: [0.60, 0.00, 0.70]
     orientation: [1.00, 0.00, 0.00, 0.00]
   placing: 
-    position: [0.65, 0.155, 0.35]
+    position: [0.70, 0.0, 0.40]
     orientation: [1.00, 0.00, 0.00, 0.00]
+    height_via_point: 0.25

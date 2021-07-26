@@ -149,8 +149,7 @@ class dual_arm_control
 		float _eC;                                        // Error to desired center position [m]
 		float _eoC;                                       // Error to object center position [m]  
 
-		Eigen::Vector3f _xoC;                             // Measured object center position [m] (3x1)
-		Eigen::Vector3f _xoD;                             // Measured object dimension vector [m] (3x1)
+		
 		Eigen::Vector3f _xdC;                             // Desired center position [m] (3x1)
 		Eigen::Vector3f _xdD;                             // Desired distance vector [m] (3x1)
 		// --------------------------------------------------------------------------------
@@ -211,6 +210,8 @@ class dual_arm_control
 		Eigen::Vector4f _qDo;
 		Eigen::Matrix4f _w_H_o;
 		Eigen::Matrix4f _w_H_Do;
+		Eigen::Vector3f _xoC;                             // Measured object center position [m] (3x1)
+		Eigen::Vector3f _xoD;                             // Measured object dimension vector [m] (3x1)
 		Eigen::Vector3f _xgp_o[NB_ROBOTS];
 		Eigen::Vector4f _qgp_o[NB_ROBOTS];
 		Eigen::Matrix4f _w_H_gp[NB_ROBOTS];
@@ -260,6 +261,7 @@ class dual_arm_control
 		float _refVreach;
 		float _friction_angle     = 0.0f; 
 		float _max_friction_angle = 0.0f;
+		float _height_via_point; 
 
 		bool _goHome;
 		bool _releaseAndretract;
@@ -269,7 +271,8 @@ class dual_arm_control
 		bool _isPlacing;
 		bool _isPickupSet;
 		bool _impact_dir_preset = true;
-		int  _dualTaskSelector   = 1;
+		int  _dualTaskSelector  = 1;
+		bool _old_dual_method   = false;
  
 		// data logging
 		std::string   _DataID;
@@ -298,6 +301,9 @@ class dual_arm_control
 		Vector7f _joints_velocities[NB_ROBOTS];
 		Vector7f _joints_accelerations[NB_ROBOTS];
 		Vector7f _joints_torques[NB_ROBOTS];
+
+		float _delta_Imp  = 0.0f;
+		float _delta_Toss = 0.0f;
 
 		////////////////////////////////////////////////////////////////////////
 		// Objects for Unconstrained and contrained motion and force generation
@@ -329,7 +335,7 @@ class dual_arm_control
 		std::unique_ptr<SGF::SavitzkyGolayFilter> _sgf_ddq_filtered_r;
 		// SGF::SavitzkyGolayFilter _x_filtered;    			// Filter used for the object's dimension vector
 
-		tossingTaskVariables tossVar;
+		tossingTaskVariables _tossVar;
 
 	private:
     	// Callback called when CTRL is detected to stop the node       
@@ -359,6 +365,7 @@ class dual_arm_control
 		Eigen::Vector3f get_impact_direction(Eigen::Vector3f des_object_force, Eigen::Vector3f normal, float coeff_friction);
 		void reset_variables();
 		void update_states_machines();
+		Eigen::Vector3f get_object_desired_direction(int task_type, Eigen::Vector3f object_pos);
 
 };
 
