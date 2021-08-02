@@ -5,12 +5,12 @@ tool:
     right: 0.20
 
 #
-desVimp:   0.4
+desVimp:   0.5
 desVreach: 1.0
 # tossing task parameters
 tossing:
   desVtoss:           0.6
-  releasePos:         [0.6, 0.00, 0.6] #[0.70, 0.00, 0.60]
+  releasePos:         [0.65, 0.00, 0.65] #[0.70, 0.00, 0.60]
   releaseOrient:      [1.00, 0.00, 0.00, 0.00]
   releaseLinVel_dir:  [1.00, 0.00, 1.00]
   releaseAngVel:      [0.00, 0.00, 0.00]
@@ -38,12 +38,12 @@ impact_direction:
 
 # dual arm task
 dual_arm_task:
-  dualTaskSelector: 1
+  dualTaskSelector: 3
   old_dual_method: false
   modulated_reaching: true
   isNorm_impact_vel: false
   lifting: 
-    position: [0.60, 0.00, 0.70]
+    position: [0.65, 0.00, 0.60] #[0.45, 0.00, 0.70]
     orientation: [1.00, 0.00, 0.00, 0.00]
   placing: 
     position: [0.70, 0.0, 0.40]

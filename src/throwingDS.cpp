@@ -18,8 +18,8 @@ throwingDS::throwingDS(){
 	range_norm_  	= 0.05;
 	range_tang_  	= 0.02;
 
-	sw_proxim_   	= 150.0;
-	sw_norm_     	= 150.0;
+	sw_proxim_   	= 300.0;
+	sw_norm_     	= 300.0;
 	sw_tang_     	= 150.0;
 	//
 	a_proximity_ 	= 0.0;
@@ -49,9 +49,9 @@ throwingDS::throwingDS(){
 	// ==============================================================================================================================
 	ds_param_.is2ndOrder = false;
 	// Modulation parameters
-	ds_param_.modulRegion[0] = 0.20;
-	ds_param_.modulRegion[1] = 0.03;
-	ds_param_.modulRegion[2] = 0.02;
+	ds_param_.modulRegion[0] = 0.28; // 0.20;
+	ds_param_.modulRegion[1] = 0.03; // good 0.03;   
+	ds_param_.modulRegion[2] = 0.02; // 0.02;
 	//
 	// ============================================================================================
 	// Gains
@@ -162,7 +162,7 @@ Vector6f throwingDS::apply(Eigen::Vector3f curPos, Eigen::Vector4f curOrient, Ei
 	float  alp = 0.05f;
   // _refVtoss = (1.0f-alp)*_refVtoss + alp*v_toss_.norm(); //Vd_obj.head(3).norm(); //(v_toss_.norm());
   _refVtoss 		  = v_toss_.norm();
-  // _refVtoss 		  = Vd_obj.head(3).norm();
+  // _refVtoss 		= Vd_obj.head(3).norm();
 	Vd_obj.head(3)  = Vd_obj.head(3)/(Vd_obj.head(3).norm()+1e-10)  *  _refVtoss;
 	return Vd_obj;
 }
@@ -195,7 +195,7 @@ Vector6f throwingDS::generate_throwing_motion(Eigen::Matrix4f w_H_ce,  Vector6f 
 		Xt_(2) = 0.95f*Xdes(2);
 	}
 	else{
-		beta = 1.0f;
+		beta = 0.2f;
 		Xt_   = (1.0f-beta)*Xpe+ beta*Xb; //beta*Xdes; //Xpe;
 	}
 	//=======================================================================
@@ -209,7 +209,7 @@ Vector6f throwingDS::generate_throwing_motion(Eigen::Matrix4f w_H_ce,  Vector6f 
 	float dist2end     = Xqe.head(1).norm();
 	
 	a_proximity_	= 0.5*(std::tanh(this->sw_proxim_* (0.5*this->rho_ - dist2reach)) + 1.0 ); 	   		// scalar function of 3D distance  to initial (pre-modulation) position of attractor
-	a_proximity_	*= (1.0-a_retract_);
+	// a_proximity_	*= (1.0-a_retract_);
 	// a_proximity_ = 1.0;
 
 	a_normal_   	= a_proximity_* 0.5*(std::tanh(this->sw_norm_  * (this->range_norm_ - dist2line)) + 1.0 ); 	// scalar function of distance to the line of direction Vtoss and passing through the release position
@@ -217,8 +217,8 @@ Vector6f throwingDS::generate_throwing_motion(Eigen::Matrix4f w_H_ce,  Vector6f 
 	coupling_     = exp(-0.5*dist2line/(2.0*range_norm_*range_norm_));
 	coupling_ = 1.0;
 	
-	if(a_tangent_ >= 0.95){ 
-		a_retract_   = 1.0;
+	if(a_tangent_ >= 0.95f){ 
+		a_retract_   = 1.0f;
 	}
 	else if((a_retract_ == 1.0) && (X - Xretr).norm() <= 0.01){  // tolerance within 1 cm
 		// a_retract_    = 0.0;
@@ -231,6 +231,8 @@ Vector6f throwingDS::generate_throwing_motion(Eigen::Matrix4f w_H_ce,  Vector6f 
 	release_flag = release_flag_;
 
 	float activation   = a_proximity_;
+	a_retract_ = 0.0f;
+
 
 	std::cout << "[throwingDS]:  -------------XXXXXXXXXXXXXXXXXXXXX ------ Xpick : \t" <<  Xpick.transpose() << std::endl;
 	std::cout << "[throwingDS]:  -------------XXXXXXXXXXXXXXXXXXXXX ------ Xb  : \t" <<  Xb.transpose() << std::endl;
@@ -240,8 +242,8 @@ Vector6f throwingDS::generate_throwing_motion(Eigen::Matrix4f w_H_ce,  Vector6f 
 
 	// float a_normal_t   	= 0.5*(std::tanh(0.8f*this->sw_norm_  * (1.2f*this->range_norm_ - dist2line)) + 1.0 );  // good
 	// float a_normal_t   	= 0.5*(std::tanh(1.2f*this->sw_norm_  * (1.0f*this->range_norm_ - dist2line)) + 1.0 );
-	float tol_rad = (X-Xt_).transpose() * (X-Xt_);
-	float a_normal_t   	= 0.5*(std::tanh(1.2f*this->sw_norm_  * (0.8f*this->range_norm_ - tol_rad)) + 1.0 );
+	float tol_rad = (X-Xt_).norm(); //(X-Xt_).transpose() * (X-Xt_);
+	float a_normal_t   	= 0.5f*(std::tanh(1.2f*this->sw_norm_  * (0.8f*this->range_norm_ - tol_rad)) + 1.0f );
 	// a_normal_t = 0.0f;
 	std::cout << "[throwingDS]:  -------------XXXXXXXXXXXXXXXXXXXXX ------ a_proximity_   : \t" <<  a_proximity_ << std::endl;
 	std::cout << "[throwingDS]:  -------------XXXXXXXXXXXXXXXXXXXXX ------ a_normal_   : \t" <<  a_normal_ << std::endl;
@@ -265,7 +267,7 @@ Vector6f throwingDS::generate_throwing_motion(Eigen::Matrix4f w_H_ce,  Vector6f 
 	//
 	if(this->is2ndOrder_){
 		// Eigen::Vector3f Xstar = (1.0 - a_normal_) * Xb + a_normal_ * (X + Kp_[TOSS].inverse()*Dp_[TOSS]*Vdtoss );
-		Eigen::Vector3f Xstar = (1.0 - a_normal_) * Xb + a_normal_ * (X + Vdtoss - (Eigen::MatrixXf::Identity(3,3)-Kp_[TOSS].inverse()*Dp_[TOSS] )*Xdot );
+		Eigen::Vector3f Xstar = (1.0f - a_normal_) * Xb + a_normal_ * (X + Vdtoss - (Eigen::MatrixXf::Identity(3,3)-Kp_[TOSS].inverse()*Dp_[TOSS] )*Xdot );
 		// 
 		Eigen::Vector3f Areach_ee      = Dp_[REACH]*Xdot + Kp_[REACH]*(X - Xb); 						// DS for approaching the tossing position
 		Eigen::Vector3f Amodul_ee_norm = Dp_[TOSS]*Xdot  + Kp_[TOSS]*(X - Xb); 							// Modulated DS that aligned  the EE with the desired velocity
@@ -279,12 +281,20 @@ Vector6f throwingDS::generate_throwing_motion(Eigen::Matrix4f w_H_ce,  Vector6f 
 													+   a_retract_ *this->compute_angular_motion(coupling_, w_H_ce, Omega, w_H_re, Ko_[RETRACT], Do_[RETRACT], this->is2ndOrder_);
 	}
 	else{
-		Eigen::Vector3f Xstar = (1.0 - a_normal_) * Xb + a_normal_ * (X - Kp_[TOSS].inverse()*Vdtoss);
+		Eigen::Vector3f Xstar = (1.0f - a_normal_) * Xb + a_normal_ * (X - Kp_[TOSS].inverse()*Vdtoss);
+		// Eigen::Vector3f Xstar = (1.0f - a_normal_) * Xdes + a_normal_ * (X - Kp_[TOSS].inverse()*Vdtoss);
+		Eigen::Vector3f Xtoss = Xdes + Vdtoss.normalized() * 0.05f; //this->rho_;
+		// Eigen::Vector3f Xstar = (1.0f - a_normal_) * Xtoss + a_normal_ * (X - Kp_[TOSS].inverse()*Vdtoss);
 		// 
 		// Eigen::Vector3f Areach_ee      = Kp_[REACH]*(X - Xb); 					// DS for approaching the tossing position 
 		// Eigen::Vector3f Areach_ee      = Kp_[REACH]*(X - (a_normal_t *Xb + (1.0f-a_normal_t)*Xt_) ); 					// DS for approaching the tossing position 
-		Eigen::Vector3f Areach_ee      = Kp_[REACH]*(X - (sw_toss *Xb + (1.0f-sw_toss)*Xt_) ); 					// DS for approaching the tossing position 
-		Eigen::Vector3f Amodul_ee_norm = Kp_[TOSS]*(X - Xb); 						// Modulated DS that aligned  the EE with the desired velocity
+		
+		// Eigen::Vector3f Areach_ee      = Kp_[REACH]*(X - (sw_toss *Xb + (1.0f-sw_toss)*Xt_) ); 	// Xdes);// DS for approaching the tossing position 
+		// Eigen::Vector3f Amodul_ee_norm = 2.0f*Kp_[TOSS]*(X - Xb); 						// Modulated DS that aligned  the EE with the desired velocity
+		// Eigen::Vector3f Amodul_ee_tang = Kp_[TOSS]*(X - Xstar); 				// this->computeModulatedAcceleration(Km, Dm, X, Xdot, Xstar);
+		// Eigen::Vector3f Aretrac_ee     = Kp_[RETRACT]*(X - Xretr); 			// DS for retracting after the tossing position
+		Eigen::Vector3f Areach_ee      = Kp_[REACH]*(X -  Xtoss);//(sw_toss *Xb + (1.0f-sw_toss)*Xt_) ); 	// Xdes);// DS for approaching the tossing position 
+		Eigen::Vector3f Amodul_ee_norm = 1.5f*Kp_[TOSS]*(X - Xb); 						// Modulated DS that aligned  the EE with the desired velocity
 		Eigen::Vector3f Amodul_ee_tang = Kp_[TOSS]*(X - Xstar); 				// this->computeModulatedAcceleration(Km, Dm, X, Xdot, Xstar);
 		Eigen::Vector3f Aretrac_ee     = Kp_[RETRACT]*(X - Xretr); 			// DS for retracting after the tossing position
 
@@ -306,8 +316,10 @@ Eigen::Vector3f throwingDS::compute_modulated_motion(float activation, Eigen::Ma
 																											Eigen::Vector3f Amodul_ee_norm, Eigen::Vector3f Amodul_ee_tang)
 {
 	//
-	Eigen::MatrixXf den_temp  = Areach_ee.transpose() * Areach_ee;
-	Eigen::RowVector3f Beta_j = 1.0/(den_temp(0,0)+1e-10) * (Areach_ee.transpose() * BasisQ);
+	// Eigen::MatrixXf den_temp  = Areach_ee.transpose() * Areach_ee;
+	// Eigen::RowVector3f Beta_j = 1.0/(den_temp(0,0)+1e-10) * (Areach_ee.transpose() * BasisQ);
+	Eigen::MatrixXf den_temp  = Amodul_ee_norm.transpose() * Amodul_ee_norm;
+	Eigen::RowVector3f Beta_j = 1.0/(den_temp(0,0)+1e-10) * (Amodul_ee_norm.transpose() * BasisQ);
 
 	Eigen::Matrix3f Lambda = Eigen::MatrixXf::Zero(3,3);
 	Lambda.block<1,1>(0,0) = activation*( BasisQ.col(0).transpose() * Amodul_ee_tang * Beta_j(0) ) + (1.0-activation)*Eigen::MatrixXf::Identity(1,1);
@@ -323,7 +335,9 @@ Eigen::Vector3f throwingDS::compute_modulated_motion(float activation, Eigen::Ma
 	Lambda.block<1,1>(2,2) = activation*( BasisQ.col(2).transpose() * Amodul_ee_norm *Beta_j(2) )  + (1.0-activation)*Eigen::MatrixXf::Identity(1,1);
 
 	// computing the modulated second order DS (translation)
-	return BasisQ * Lambda * BasisQ.transpose() * Areach_ee; 
+	float comb = 0.3f;  // good 0.3
+	// return (1.f - comb)*BasisQ * Lambda * BasisQ.transpose() * Areach_ee + comb *Areach_ee; 
+	return (1.f - comb)*BasisQ * Lambda * BasisQ.transpose() * Amodul_ee_norm + comb *Areach_ee; 
 }
 
 
@@ -445,5 +459,6 @@ bool throwingDS::set_pickup_object_pose(Eigen::Vector3f pickup_Pos, Eigen::Vecto
 bool throwingDS::reset_release_flag(){
 	release_flag_ = false;
 	a_retract_    = 0.0f;
+	a_toss_       = 0.0f;
 	return true;
 }

@@ -374,10 +374,13 @@ bool dual_arm_control::init()
 									_tossVar.rest_position, _tossVar.rest_orientation);
 	//
 	dsThrowing.set_pickup_object_pose(_xo, _qo);
+	Eigen::Vector3f new_toss_velocity = _desVtoss * (_tossVar.release_position -_xo).normalized();
+	dsThrowing.set_toss_linear_velocity(new_toss_velocity);
 	dsThrowing._refVtoss = _desVimp;
 	//
 	FreeMotionCtrl._desVreach = _desVreach;
-	FreeMotionCtrl._refVreach = _refVreach;
+	FreeMotionCtrl._refVreach[LEFT]  = _refVreach;
+	FreeMotionCtrl._refVreach[RIGHT] = _refVreach;
 	FreeMotionCtrl._modulated_reaching = modulated_reaching;
 	FreeMotionCtrl._isNorm_impact_vel  = isNorm_impact_vel;
 	FreeMotionCtrl._height_via_point = _height_via_point;
@@ -623,6 +626,8 @@ void dual_arm_control::updatePoses()
 	if(!_isPickupSet){
 		if((CooperativeCtrl._ContactConfidence == 1.0)){
 			dsThrowing.set_pickup_object_pose(_xo, _qo);
+			Eigen::Vector3f new_toss_velocity = _desVtoss * (_tossVar.release_position -_xo).normalized();
+			dsThrowing.set_toss_linear_velocity(new_toss_velocity);
 			_isPickupSet = true;
 		}
 		else{
@@ -747,7 +752,7 @@ void dual_arm_control::computeCommands()
 			else  // Free-motion: reaching
 			{
 				if(_old_dual_method){
-					FreeMotionCtrl.computeCoordinatedMotion(_w_H_ee, _w_H_gp, _w_H_o, _Vd_ee, _qd, false);
+					FreeMotionCtrl.computeCoordinatedMotion2(_w_H_ee, _w_H_gp, _w_H_o, _Vd_ee, _qd, false);
 					//
 					Eigen::Vector3f error_p_abs     = _w_H_o.block(0,3,3,1) - 0.5f*( _w_H_ee[LEFT].block(0,3,3,1) +  _w_H_ee[RIGHT].block(0,3,3,1));
 					Eigen::Vector3f o_error_pos_abs = _w_H_o.block<3,3>(0,0).transpose() * error_p_abs;
@@ -760,6 +765,9 @@ void dual_arm_control::computeCommands()
 				else{
 					FreeMotionCtrl.dual_arm_motion(_w_H_ee,  _Vee, _w_H_gp,  _w_H_o, _w_H_Do, _Vd_o, _BasisQ, _VdImpact, false, 0, _Vd_ee, _qd, _release_flag);    // 0: reach
 				}
+				// if(fabs(_w_H_o(0,3) -_xDo_lifting(0)) <=0.05){
+				// 				_releaseAndretract = true;
+				// }
   			dsThrowing._refVtoss = _desVimp;
 	 			_Vd_o.setZero();	// for data logging
 			}
@@ -1150,7 +1158,8 @@ void dual_arm_control::reset_variables(){
 	_Vd_o.setZero();
 	_nu_Wr0 = _nu_Wr1 	= 0.0f;
 	this->_refVreach  	= 0.0f;
-	FreeMotionCtrl._refVreach = 0.0f;
+	FreeMotionCtrl._refVreach[LEFT]  = 0.0f;
+	FreeMotionCtrl._refVreach[RIGHT] = 0.0f;
 	dsThrowing._refVtoss = _desVimp;
 	dsThrowing.reset_release_flag();
 	//
@@ -1276,7 +1285,7 @@ void dual_arm_control::saveData()
 		datalog._OutRecord_tasks   	<< _desVimp << " , " << _desVtoss << " , "; 
 		datalog._OutRecord_tasks   	<< _goHome 	<< " , " << _goToAttractors << " , " << _releaseAndretract << " , " << _isThrowing << " , " << _isPlacing << " , " << _c << " , "; 			//CooperativeCtrl._ContactConfidence << " , ";
 		datalog._OutRecord_tasks   	<< FreeMotionCtrl.a_proximity_ << " , " << FreeMotionCtrl.a_normal_ << " , " << FreeMotionCtrl.a_tangent_ << " , " << FreeMotionCtrl.a_release_ << " , " << FreeMotionCtrl.a_retract_ << " , ";
-		datalog._OutRecord_tasks   	<< dsThrowing.a_proximity_ << " , " << dsThrowing.a_normal_  << " , " << dsThrowing.a_tangent_<< " , " << dsThrowing.a_retract_  << std::endl;
+		datalog._OutRecord_tasks   	<< dsThrowing.a_proximity_ << " , " << dsThrowing.a_normal_  << " , " << dsThrowing.a_tangent_<< " , " << dsThrowing.a_toss_  << std::endl;
 		// 
 		datalog._OutRecord_jts_states << (float)(_cycle_count * _dt) << ", ";
 		datalog._OutRecord_jts_states << _joints_positions[LEFT].transpose().format(CSVFormat)  		<< " , " << _joints_positions[RIGHT].transpose().format(CSVFormat)  		<< " , ";

@@ -56,7 +56,9 @@ dualArmFreeMotionController::dualArmFreeMotionController()
   //
   a_normal_Do_  = 0.0f;
   _desVreach    = 1.0f;
-  _refVreach    = 0.0f;
+  // _refVreach    = 0.0f;
+  _refVreach[LEFT]  = 0.0f;
+  _refVreach[RIGHT] = 0.0f;
   _refVtoss_EE  = 0.0f;
   _modulated_reaching = true;
   _isNorm_impact_vel  = false;
@@ -698,7 +700,7 @@ void dualArmFreeMotionController::computeCoordinatedMotion2(Eigen::Matrix4f w_H_
   // computing the velocity
   // ~~~~~~~~~~~~~~~~~~~~~~~
   _V_abs.head(3) = -3.0f* gain_p_abs * _error_abs.head(3);
-  _V_abs.tail(3) = -3.0f* jacMuTheta_abs.inverse() * gain_o_abs * _error_abs.tail(3);
+  _V_abs.tail(3) = -1.0f* jacMuTheta_abs.inverse() * gain_o_abs * _error_abs.tail(3);
 
   // =====================================
   // Relative velocity of the hands
@@ -929,7 +931,7 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
     float speed_ee[2];
  
     Eigen::Vector3f o_error_pos_abs_paral = this->getAbsoluteTangentError(w_H_o, w_H_ee, w_H_gp);
-    float cp_ap = Utils<float>::computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.03f, 1.2f, true);  // 50.0f, 0.05f, 2.8f /  50.0f, 0.15f, 1.0f
+    float cp_ap = Utils<float>::computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.02f, 1.2f, true);  // 50.0f, 0.05f, 2.8f /  50.0f, 0.15f, 1.0f
     float cp_ap2 = 0.0f;
     float  alp  = 1.0f; //0.05f;
     
@@ -938,15 +940,19 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
         alp = 0.05f;
       }
       cp_ap2     = 0.0f;
-      _refVreach = (1.0f-alp)*_refVreach + alp*((1.0f-cp_ap)*_desVreach + cp_ap* VdImp[LEFT].norm());
-      speed_ee[LEFT]  = _refVreach;
-      speed_ee[RIGHT] = _refVreach;
+      // _refVreach[LEFT]  = (1.0f-alp)*_refVreach[LEFT]  + alp*((1.0f-cp_ap)*_desVreach + cp_ap* VdImp[LEFT].norm());
+      // _refVreach[RIGHT] = (1.0f-alp)*_refVreach[RIGHT] + alp*((1.0f-cp_ap)*_desVreach + cp_ap* VdImp[RIGHT].norm());
+      _refVreach[LEFT]  = (1.0f-alp)*_refVreach[LEFT]  + alp*((1.0f-cp_ap)*DS_ee_nominal.head(3).norm() + cp_ap*VdImp[LEFT].norm());
+      _refVreach[RIGHT] = (1.0f-alp)*_refVreach[RIGHT] + alp*((1.0f-cp_ap)*DS_ee_nominal.tail(3).norm() + cp_ap*VdImp[RIGHT].norm());
+      speed_ee[LEFT]  = _refVreach[LEFT];
+      speed_ee[RIGHT] = _refVreach[RIGHT];
     }
     else if(_isNorm_impact_vel){
       cp_ap2     = 0.0f;
-      _refVreach = VdImp[LEFT].norm();
-      speed_ee[LEFT]  = _refVreach;
-      speed_ee[RIGHT] = _refVreach;
+      _refVreach[LEFT]  = VdImp[LEFT].norm();
+      _refVreach[RIGHT] = VdImp[RIGHT].norm();
+      speed_ee[LEFT]    = _refVreach[LEFT];
+      speed_ee[RIGHT]   = _refVreach[RIGHT];
     }
     else{
       cp_ap2 = 0.0f*Utils<float>::computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.02f, 1.2f, true);
@@ -954,8 +960,9 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
       speed_ee[RIGHT] = DS_ee_nominal.tail(3).norm();
     }
     //
-    DS_ee_nominal.head(3)  = DS_ee_nominal.head(3)/(DS_ee_nominal.head(3).norm()+1e-10) *  speed_ee[LEFT]  + cp_ap2* VdImp[LEFT];
-    DS_ee_nominal.tail(3)  = DS_ee_nominal.tail(3)/(DS_ee_nominal.tail(3).norm()+1e-10) *  speed_ee[RIGHT] + cp_ap2* VdImp[RIGHT];
+    // DS_ee_nominal.head(3)  = DS_ee_nominal.head(3)/(DS_ee_nominal.head(3).norm()+1e-10) *  speed_ee[LEFT]  + cp_ap2* VdImp[LEFT];
+    // DS_ee_nominal.tail(3)  = DS_ee_nominal.tail(3)/(DS_ee_nominal.tail(3).norm()+1e-10) *  speed_ee[RIGHT] + cp_ap2* VdImp[RIGHT];
+
     //
     Matrix6f A = Eigen::MatrixXf::Identity(6,6);
     A.block<3,3>(0,0) = -3.0f * this->gain_p_abs;
@@ -1072,7 +1079,7 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
         Xdot_bi.tail(3)       = w_o.cross(X_rel);
 
         Vector6f v_task_bi = ( A * _Tbi*(X_dual - Xstar_dual) + 1.0f*sw_norm_Do* Xdot_bi );
-        v_task_bi = v_task_bi.head(3) = v_task_bi.head(3)/(v_task_bi.head(3).norm()+1e-10)*1.0f*v_task_bi.head(3).norm();
+        v_task_bi.head(3)  = v_task_bi.head(3)/(v_task_bi.head(3).norm()+1e-10)*1.0f*v_task_bi.head(3).norm();
         // v_task_bi.head(3) = v_task_bi.head(3)/(v_task_bi.head(3).norm()+1e-10)*Vd_o.head(3).norm();
 
         Amodul_ee_norm = _Tbi.inverse() * v_task_bi;  // 
@@ -1125,8 +1132,10 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
     
 
     if(taskType == 0){
-      // speed_ee[LEFT]  = _refVreach;
-      // speed_ee[RIGHT] = _refVreach;
+      speed_ee[LEFT]  = _refVreach[LEFT];
+      speed_ee[RIGHT] = _refVreach[RIGHT];
+      // speed_ee[LEFT]  = DS_ee_modulated.head(3).norm();
+      // speed_ee[RIGHT] = DS_ee_modulated.tail(3).norm();
     }
     // else if(taskType == 2 || taskType == 3){
     //   _refVtoss_EE    = (1.0f-alp)*_refVtoss_EE + alp*Vd_o.head(3).norm();
@@ -1140,9 +1149,11 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
       speed_ee[RIGHT] = DS_ee_modulated.tail(3).norm();
     }
     //
-    Vd_ee[LEFT].head(3)  = Vd_ee[LEFT].head(3)/(Vd_ee[LEFT].head(3).norm()+1e-15)  * speed_ee[LEFT]; 
-    Vd_ee[RIGHT].head(3) = Vd_ee[RIGHT].head(3)/(Vd_ee[RIGHT].head(3).norm()+1e-15)* speed_ee[RIGHT]; 
-    // Vector6f des_V_unit = DS_ee_modulated/(DS_ee_modulated.norm()+1e-15) * (speed_ee[LEFT] + speed_ee[RIGHT]);
+    Vd_ee[LEFT].head(3)  = Vd_ee[LEFT].head(3)/(Vd_ee[LEFT].head(3).norm()+1e-10)  * speed_ee[LEFT]; 
+    Vd_ee[RIGHT].head(3) = Vd_ee[RIGHT].head(3)/(Vd_ee[RIGHT].head(3).norm()+1e-10)* speed_ee[RIGHT]; 
+    // Vector6f des_V_unit  = DS_ee_modulated/(DS_ee_modulated.norm()+1e-15) * (speed_ee[LEFT] + speed_ee[RIGHT]);
+    // Vd_ee[LEFT].head(3)  = des_V_unit.head(3);
+    // Vd_ee[RIGHT].head(3) = des_V_unit.tail(3);
 
     //
     qd[LEFT]  = qd_nom[LEFT];
