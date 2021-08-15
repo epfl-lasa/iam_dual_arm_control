@@ -1,21 +1,22 @@
 # End-effector tool
 tool:
   offset2end_effector:
-    left:  0.175
-    right: 0.20
+    left:  0.175   # 0.175
+    right: 0.20    # 0.20
 
 #
-desVimp:   0.5
+desVimp:   0.4
 desVreach: 1.0
 # tossing task parameters
 tossing:
   desVtoss:           0.6
-  releasePos:         [0.65, 0.00, 0.65] #[0.70, 0.00, 0.60]
+  releasePos:         [0.65, 0.00, 0.40] #[0.70, 0.00, 0.60]
   releaseOrient:      [1.00, 0.00, 0.00, 0.00]
   releaseLinVel_dir:  [1.00, 0.00, 1.00]
   releaseAngVel:      [0.00, 0.00, 0.00]
   restPos:            [0.50, 0.15, 0.30]
   restOrient:         [1.00, 0.00, 0.00, 0.00] 
+  increment_release_pos: true
 
 # robot home pose
 standby_pose:
@@ -43,9 +44,9 @@ dual_arm_task:
   modulated_reaching: true
   isNorm_impact_vel: false
   lifting: 
-    position: [0.65, 0.00, 0.60] #[0.45, 0.00, 0.70]
+    position: [0.45, 0.00, 0.40] #[0.45, 0.00, 0.70]
     orientation: [1.00, 0.00, 0.00, 0.00]
   placing: 
-    position: [0.70, 0.0, 0.40]
+    position: [0.675, 0.0, 0.25]
     orientation: [1.00, 0.00, 0.00, 0.00]
-    height_via_point: 0.25
+    height_via_point: 0.10

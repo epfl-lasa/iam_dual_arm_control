@@ -58,6 +58,24 @@ int khbit_2();
 void nonblock_2(int state);
 bool keyState_2(char key);
 
+struct spherical_position{
+	float r;
+	float theta;
+	float phi;
+
+	void from_cartesian(Eigen::Vector3f pos){
+		r     = pos.norm();
+		theta = std::atan2(pos(1), pos(0));
+		phi   = std::atan2(pos(2), pos.head(2).norm());
+	}
+
+	void to_cartesian(Eigen::Vector3f &pos){
+		pos(0) = r * std::cos(phi) * std::cos(theta);
+		pos(1) = r * std::cos(phi) * std::sin(theta);
+		pos(2) = r * std::sin(phi);
+	}
+};
+
 
 class dual_arm_control
 {
@@ -304,6 +322,9 @@ class dual_arm_control
 
 		float _delta_Imp  = 0.0f;
 		float _delta_Toss = 0.0f;
+		Eigen::Vector3f _delta_rel_pos;
+		bool _increment_release_pos = false;
+		spherical_position release_pos;
 
 		////////////////////////////////////////////////////////////////////////
 		// Objects for Unconstrained and contrained motion and force generation
@@ -366,6 +387,7 @@ class dual_arm_control
 		void reset_variables();
 		void update_states_machines();
 		Eigen::Vector3f get_object_desired_direction(int task_type, Eigen::Vector3f object_pos);
+		void update_release_position();
 
 };
 

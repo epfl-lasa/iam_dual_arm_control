@@ -699,7 +699,7 @@ void dualArmFreeMotionController::computeCoordinatedMotion2(Eigen::Matrix4f w_H_
 
   // computing the velocity
   // ~~~~~~~~~~~~~~~~~~~~~~~
-  _V_abs.head(3) = -3.0f* gain_p_abs * _error_abs.head(3);
+  _V_abs.head(3) = -2.0f* gain_p_abs * _error_abs.head(3); // -3.0
   _V_abs.tail(3) = -1.0f* jacMuTheta_abs.inverse() * gain_o_abs * _error_abs.tail(3);
 
   // =====================================
@@ -745,8 +745,8 @@ void dualArmFreeMotionController::computeCoordinatedMotion2(Eigen::Matrix4f w_H_
   _error_rel.head(3) = lr_H_rr.block<3,1>(0,3) - d_p_rel;  // 
 
   // computing the velocity
-  _V_rel.head(3) = -3.0f* gain_p_rel * _error_rel.head(3);
-  _V_rel.tail(3) = -3.0f* jacMuTheta_rel.inverse() * gain_o_rel * _error_rel.tail(3);
+  _V_rel.head(3) = -2.0f* gain_p_rel * _error_rel.head(3);  // -3.0
+  _V_rel.tail(3) = -2.0f* jacMuTheta_rel.inverse() * gain_o_rel * _error_rel.tail(3);  // -3.0
 
   // ========================================
   // Computation of individual EE motion
@@ -798,8 +798,8 @@ Vector6f dualArmFreeMotionController::generatePlacingMotion2(Eigen::Matrix4f w_H
   //
   // computing the velocity
   // ~~~~~~~~~~~~~~~~~~~~~~~
-  _V_obj.head(3) = -gain_p_abs * _error_obj.head(3);
-  _V_obj.tail(3) = -jacMuTheta_obj.inverse() * gain_o_abs * _error_obj.tail(3);
+  _V_obj.head(3) = -3.0*gain_p_abs * _error_obj.head(3);
+  _V_obj.tail(3) = -3.0*jacMuTheta_obj.inverse() * gain_o_abs * _error_obj.tail(3);
   //
   std::cout << "[dual_arm_control]: CCCCCCCCCCC cpl_oz: \t" <<  cpl_oz << std::endl;
   std::cout << "[dual_arm_control]: CCCCCCCCCCC cpl_Doxy: \t" <<  cpl_Doxy << std::endl;
@@ -922,7 +922,14 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
     Vector6f Vd_ee_nom[NB_ROBOTS];
     Eigen::Vector4f qd_nom[NB_ROBOTS];
     //
-    this->computeCoordinatedMotion2(w_H_ee,  w_H_gp_t, w_H_o, Vd_ee_nom, qd_nom, isOrient3d);
+    if(_modulated_reaching || _isNorm_impact_vel){
+      this->computeCoordinatedMotion2(w_H_ee,  w_H_gp_t, w_H_o, Vd_ee_nom, qd_nom, isOrient3d);
+    }
+    else{
+      this->computeCoordinatedMotion2(w_H_ee,  w_H_gp, w_H_o, Vd_ee_nom, qd_nom, isOrient3d);
+    }
+    
+
     //
     Vector6f DS_ee_nominal = Eigen::VectorXf::Zero(6);
     DS_ee_nominal.head(3)  = Vd_ee_nom[LEFT].head(3);
@@ -937,7 +944,7 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
     
     if(_modulated_reaching){
       if(true){
-        alp = 0.05f;
+        alp = 0.08f;
       }
       cp_ap2     = 0.0f;
       // _refVreach[LEFT]  = (1.0f-alp)*_refVreach[LEFT]  + alp*((1.0f-cp_ap)*_desVreach + cp_ap* VdImp[LEFT].norm());
@@ -956,8 +963,13 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
     }
     else{
       cp_ap2 = 0.0f*Utils<float>::computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.02f, 1.2f, true);
-      speed_ee[LEFT]  = DS_ee_nominal.head(3).norm();
-      speed_ee[RIGHT] = DS_ee_nominal.tail(3).norm();
+      speed_ee[LEFT]   = DS_ee_nominal.head(3).norm();
+      speed_ee[RIGHT]  = DS_ee_nominal.tail(3).norm();
+      // _refVreach[LEFT] = DS_ee_nominal.head(3).norm();
+      // _refVreach[RIGHT]= DS_ee_nominal.tail(3).norm();
+       alp = 0.10f;
+      _refVreach[LEFT]  = (1.0f-alp)*_refVreach[LEFT]  + alp*(DS_ee_nominal.head(3).norm());
+      _refVreach[RIGHT] = (1.0f-alp)*_refVreach[RIGHT] + alp*(DS_ee_nominal.tail(3).norm());
     }
     //
     // DS_ee_nominal.head(3)  = DS_ee_nominal.head(3)/(DS_ee_nominal.head(3).norm()+1e-10) *  speed_ee[LEFT]  + cp_ap2* VdImp[LEFT];
@@ -1018,6 +1030,9 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
         Amodul_ee_tang = A_prime*(X_dual - Xstar_dual);  // ;
 
         _refVtoss_EE   = 0.0;
+        if(!(_modulated_reaching || _isNorm_impact_vel)){
+          activation = 0.0f;
+        }
       }
       break;
       case 1:{ // point to point motion of the object 
@@ -1100,22 +1115,27 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
         Eigen::Vector3f X_rel = X[RIGHT] - X[LEFT];
         Vector6f Vo = Eigen::VectorXf::Zero(6);
         Vector6f Vo_place = this->generatePlacingMotion2(w_H_o, w_H_Do, _height_via_point, Vo);
-        float cp_obj = Utils<float>::computeCouplingFactor(w_H_o.block<3,1>(0,3)-w_H_Do.block<3,1>(0,3), 50.0f, 0.05f, 1.0f, true);
+        float cp_obj = Utils<float>::computeCouplingFactor(w_H_o.block<3,1>(0,3)-w_H_Do.block<3,1>(0,3), 50.0f, 0.12f, 1.0f, true);
         // float cp_obj = 0.5f*(std::tanh(1.5f*this->sw_norm_  * (1.0f*this->range_norm_ - (w_H_o.block<3,1>(0,3)-w_H_Do.block<3,1>(0,3)).norm()))  + 1.0f );
+        // Vo_place.head(3) = Vo_place.head(3).normalized() * (cp_obj*Vo_place.head(3).norm() +(1.0f -cp_obj)*Vd_o.head(3).norm());
+        Vo_place.head(3) = Vo_place.head(3).normalized() * (Vd_o.head(3).norm());
 
-        Eigen::Vector3f w_o   = Vo_place.tail(3);
+        Eigen::Vector3f w_o   = 0.0f*Vo_place.tail(3);
         Xdot_bi.head(3)       = Vo_place.head(3);
         Xdot_bi.tail(3)       = w_o.cross(X_rel);
        
         Vector6f v_task_bi = ( A * _Tbi*(X_dual - Xstar_dual) + Xdot_bi );
 
-        v_task_bi.head(3) = v_task_bi.head(3)/(v_task_bi.head(3).norm()+1e-10)*(cp_obj*v_task_bi.head(3).norm() +(1.0f -cp_obj)*0.8f*Vd_o.head(3).norm());
-        // v_task_bi.head(3) = v_task_bi.head(3)/(v_task_bi.head(3).norm()+1e-10)*Vd_o.head(3).norm();
+        // v_task_bi.head(3) = v_task_bi.head(3)/(v_task_bi.head(3).norm()+1e-10)*(cp_obj*v_task_bi.head(3).norm() +(1.0f -cp_obj)*Vd_o.head(3).norm());
+        // v_task_bi.head(3) = v_task_bi.head(3)/(v_task_bi.head(3).norm()+1e-10)*(v_task_bi.head(3).norm());
+        v_task_bi.head(3) = v_task_bi.head(3)/(v_task_bi.head(3).norm()+1e-10)*Vd_o.head(3).norm();
 
         Amodul_ee_norm = _Tbi.inverse() * v_task_bi;  // 
         Amodul_ee_tang = _Tbi.inverse() * v_task_bi;  //
         //
         activation = 1.0f;
+        //
+        this->computeDesiredOrientation(1.0f, w_H_ee, w_H_gp, w_H_o, qd_nom, false);
       }
       break;
     }   
