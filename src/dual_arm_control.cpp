@@ -33,9 +33,9 @@ dual_arm_control::dual_arm_control(	ros::NodeHandle &n, double frequency, 	//std
 	//
 	_gravity << 0.0f, 0.0f, -9.80665f;
 	_objectMass = 1.0f;
-	// _objectDim << 0.26f, 0.26f, 0.26f;
+	_objectDim << 0.26f, 0.26f, 0.26f;
 	// _objectDim << 0.19f, 0.19f, 0.19f;
-	_objectDim << 0.27f, 0.37f, 0.24f;
+	// _objectDim << 0.27f, 0.37f, 0.24f;
 	_toolOffsetFromEE[0] = 0.115f; //0.17f;
 	_toolOffsetFromEE[1] = 0.115f; //0.15f;
 	_toolMass = 0.2f;    // TO CHANGE !!!!
@@ -753,7 +753,7 @@ void dual_arm_control::computeCommands()
 				_Vd_o  = dsThrowing.apply(_xo, _qo, _vo, Eigen::Vector3f(0.0f, 0.0f, 0.0f), 1);  // Function to call in a loop
 				_releaseAndretract = dsThrowing.get_release_flag();
 
-				
+
 				if(_old_dual_method){
 					FreeMotionCtrl.computeConstrainedMotion(_w_H_ee, _w_H_Dgp, _w_H_o, _Vd_ee, _qd, false);
 
@@ -811,7 +811,14 @@ void dual_arm_control::computeCommands()
 			}
 			else  // Free-motion: reaching
 			{
-				if(_old_dual_method){
+				if( _w_H_ee[LEFT](0,3) >= 0.65f ||  _w_H_ee[RIGHT](0,3) >= 0.65f ){
+					FreeMotionCtrl.reachable_p = 0.0f;
+				}
+				else{
+					FreeMotionCtrl.reachable_p = 1.0f;
+				}
+
+				if(true ||_old_dual_method){
 					FreeMotionCtrl.computeCoordinatedMotion2(_w_H_ee, _w_H_gp, _w_H_o, _Vd_ee, _qd, false);
 					//
 					Eigen::Vector3f error_p_abs     = _w_H_o.block(0,3,3,1) - 0.5f*( _w_H_ee[LEFT].block(0,3,3,1) +  _w_H_ee[RIGHT].block(0,3,3,1));

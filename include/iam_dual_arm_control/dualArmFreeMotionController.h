@@ -43,7 +43,6 @@ class dualArmFreeMotionController
 		Eigen::Matrix3f gain_o_rel;
 		float _cpl_grasp;
 
-    float reachable_p;
     float _v_max;
     float _w_max;
 
@@ -55,6 +54,9 @@ class dualArmFreeMotionController
     Matrix6f _Tbi;
 
 	public :
+		//
+
+    	float reachable_p;
 		//
 		float a_proximity_;
 		float a_normal_;
