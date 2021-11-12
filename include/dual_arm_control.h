@@ -29,6 +29,7 @@
 #include "std_msgs/Float64.h"
 #include "std_msgs/Float64MultiArray.h"
 #include "std_msgs/String.h"
+#include "sensor_msgs/JointState.h"
 
 #include "eigen3/Eigen/Core"
 #include "eigen3/Eigen/Geometry"
@@ -85,6 +86,7 @@ class dual_arm_control
 
 		SGF::real _dt;
 		float _t0_run;
+		int _cycle_count;
 
 		//////////////////////////////
 		// Subscribers declarations //
@@ -94,7 +96,7 @@ class dual_arm_control
 		ros::Subscriber _sub_ee_pose[NB_ROBOTS];						// subscribe to the end effectors poses
 		ros::Subscriber _sub_ee_velo[NB_ROBOTS];						// subscribe to the end effectors velocity Twist
 		ros::Subscriber _subForceTorqueSensor[NB_ROBOTS];		// Subscribe to force torque sensors
-		// ros::Subscriber sub_joint_states[NB_ROBOTS];			// subscriber for the joint position
+		ros::Subscriber _sub_joint_states[NB_ROBOTS];			// subscriber for the joint position
 		//////////////////////////////
 		// Publishers:
 		//////////////////////////////
@@ -107,6 +109,7 @@ class dual_arm_control
 
 		ros::Publisher _pubDistAttractorEe[NB_ROBOTS];
 		ros::Publisher _pubAttractor[NB_ROBOTS];
+		ros::Publisher _pubNormLinVel[NB_ROBOTS];						// Publish norms of EE linear velocities
 
 		//////////////////////////////
 		// List of the topics
@@ -132,10 +135,12 @@ class dual_arm_control
 		void updateEETwistCallback(const geometry_msgs::Twist::ConstPtr& msg, int k);
 		// Update contact state with the surface
 		void updateContactState();
+		void updateRobotStatesLeft(const sensor_msgs::JointState::ConstPtr &msg);
+		void updateRobotStatesRight(const sensor_msgs::JointState::ConstPtr &msg);
 
 		// --------------------------------------------------------------------------------
 		float _toolMass;                             			// Tool mass [kg]
-		float _toolOffsetFromEE[NB_ROBOTS];          		// Tool offset along z axis of end effector [m]   
+		float _toolOffsetFromEE[NB_ROBOTS];          			// Tool offset along z axis of end effector [m]   
 		Eigen::Vector3f _objectDim;                  			// Object dimensions [m] (3x1)
 		Eigen::Vector3f _gravity;
 		Eigen::Vector3f _toolComPositionFromSensor;
@@ -159,10 +164,11 @@ class dual_arm_control
 		// --------------------------------------------------------------------------------
 		Eigen::Vector3f _x[NB_ROBOTS];
 		Eigen::Vector4f _q[NB_ROBOTS];
-		Eigen::Matrix3f _wRb[NB_ROBOTS];             			// Orientation matrix (3x3)
+		Eigen::Matrix3f _wRb[NB_ROBOTS]; 									// Orientation matrix (3x3)
 		Eigen::Vector3f _xd[NB_ROBOTS];
 		Eigen::Vector4f _qd[NB_ROBOTS];
 		Eigen::Vector3f _aad[NB_ROBOTS];									// desired axis angle 
+
 		Eigen::Vector3f _vd[NB_ROBOTS];
 		Eigen::Vector3f _omegad[NB_ROBOTS];
 		Eigen::Vector3f _v[NB_ROBOTS];
@@ -180,6 +186,7 @@ class dual_arm_control
 		bool _firstWrenchReceived[NB_ROBOTS];
 		bool _sensedContact;
 		bool _goHome;
+		bool _startlogging;
 
 		Eigen::Matrix4f _w_H_ee[NB_ROBOTS];								// Homogenenous transform of the End-effectors poses (4x4)
 		Eigen::Matrix4f _w_H_eeStandby[NB_ROBOTS];				// Homogenenous transform of Standby pose of the End-effectors (4x4)
@@ -188,10 +195,10 @@ class dual_arm_control
 		Eigen::Vector3f _xrbStandby[NB_ROBOTS];		    		// quaternion orientation of EE standby poses relatve to robots base (3x1)
 		Eigen::Vector4f _qrbStandby[NB_ROBOTS];		    		// quaternion orientation of EE standby poses relatve to robots base (4x1)
 
-		Vector6f  		_wrench[NB_ROBOTS];          			// Wrench [N and Nm] (6x1)
-		Vector6f 		_wrenchBias[NB_ROBOTS];			 			// Wrench bias [N and Nm] (6x1)
+		Vector6f  		_wrench[NB_ROBOTS];          				// Wrench [N and Nm] (6x1)
+		Vector6f 		_wrenchBias[NB_ROBOTS];			 					// Wrench bias [N and Nm] (6x1)
 		Vector6f        _filteredWrench[NB_ROBOTS];  			// Filtered wrench [N and Nm] (6x1)
-		int 			_initPoseCount;										// Counter of received initial poses measurements 
+		int 			_initPoseCount;													// Counter of received initial poses measurements 
 
 		Eigen::Matrix4f _w_H_gp[NB_ROBOTS];
 		Eigen::Vector3f _xgp_o[NB_ROBOTS];
@@ -210,6 +217,8 @@ class dual_arm_control
 		Eigen::Vector3f _vo;
 		Eigen::Vector3f _wo;
 		Eigen::Matrix4f _w_H_o;
+		Vector6f 		_Vd_o;   								// desired object velocity (toss)
+		Vector6f _desired_object_wrench; 
 
 		Eigen::Vector3f _xDo; 
 		Eigen::Vector4f _qDo;
@@ -244,17 +253,22 @@ class dual_arm_control
 		float _delta_oDz;
 		float _desVtoss ;
 		float _desVimp;
+		float _desVreach;
+		float _refVreach;
 
 		bool _stop;                                     		// Check for CTRL+C
 		bool _isThrowing;										// if true execute throwing of the object
 		bool _goToAttractors;									// send the robots to their attractors
 		bool _isPlacing;
+		bool _isPickupSet;
 
 		// data logging
 		std::string   _DataID;
 		std::ofstream _OutRecord_pose;
 		std::ofstream _OutRecord_velo;
 		std::ofstream _OutRecord_efforts;
+		std::ofstream _OutRecord_tasks;
+		std::ofstream _OutRecord_jts_states;
 		////////////////////////////////////////////
 		ros::Subscriber _sub_N_objects_pose[NB_ROBOTS];			// subscribe to the base pose of the robots
 		Eigen::Matrix4f _w_H_No[NB_OBJECTS];
@@ -270,6 +284,12 @@ class dual_arm_control
 		Eigen::Matrix3f _E_xt_xd[NB_ROBOTS];
 		Vector6f _Vee[NB_ROBOTS];
 		bool _release_flag;
+
+		//
+		Vector7f _joints_positions[NB_ROBOTS];
+		Vector7f _joints_velocities[NB_ROBOTS];
+		Vector7f _joints_accelerations[NB_ROBOTS];
+		Vector7f _joints_torques[NB_ROBOTS];
 
 
 		void updateObjectsPoseCallback(const geometry_msgs::Pose::ConstPtr& msg , int k);
@@ -287,6 +307,8 @@ class dual_arm_control
 		/////////////////////
 		// SGF::SavitzkyGolayFilter _xo_filtered;    // Filter used for the object's center position
 	std::unique_ptr<SGF::SavitzkyGolayFilter> _xo_filtered;
+	std::unique_ptr<SGF::SavitzkyGolayFilter> _sgf_ddq_filtered_l;
+	std::unique_ptr<SGF::SavitzkyGolayFilter> _sgf_ddq_filtered_r;
 		// SGF::SavitzkyGolayFilter _x_filtered;    // Filter used for the object's dimension vector
 
 	private:
@@ -314,6 +336,7 @@ class dual_arm_control
 		void getGraspPointsVelocity();
 		void Keyboard_reference_object_control();
 		void Keyboard_object_control();
+		Eigen::Vector3f get_impact_direction(Eigen::Vector3f des_object_force, Eigen::Vector3f normal, float coeff_friction, float mod_radius);
 
 };
 

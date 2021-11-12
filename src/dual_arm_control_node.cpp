@@ -42,6 +42,7 @@ int main(int argc, char **argv)
 	topic_ee_commands[1]			= "/iiwa_blue/CustomControllers/command";
 	topic_sub_ForceTorque_Sensor[1]	= "/iiwa_blue/iiwa_blue_FTS_topic";
 
+
 	// LOADING PARAMETERS FROM THE ROS SERVER
 	// Topic names
 	// -------------
