@@ -60,6 +60,8 @@ class dualArmFreeMotionController
 		float a_normal_;
 		float a_tangent_;
 		float a_retract_;
+		float a_release_;
+		float v_a_release_;
 		bool  release_flag_;
 		//
 		float rho_;
@@ -70,7 +72,12 @@ class dualArmFreeMotionController
 		float sw_norm_;
 		float sw_tang_;
 		//
+		float a_normal_Do_;
+		//
 		Eigen::Matrix4f _w_H_eeStandby[NB_ROBOTS];
+		//
+		float _desVreach;
+		float _refVreach;
 		//
 		dualArmFreeMotionController();
 		~dualArmFreeMotionController();

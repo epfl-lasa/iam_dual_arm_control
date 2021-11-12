@@ -5,27 +5,27 @@
 
 float computeCouplingFactor(Eigen::Vector3f ep_, float alpha_, float beta_, float gamma_, bool secondOrder)
 {
-	float t_cpl_ = 1.0f/(alpha_*ep_.norm()+1e-15f);         
-	float cpl_   = 0.0f;
-	t_cpl_ = pow(t_cpl_,gamma_);
-	if(secondOrder)	cpl_   = 1.0f - exp(-t_cpl_/beta_) *(1.0f + t_cpl_/beta_);  // 2nd order critically damped
-	else						cpl_   = 1.0f - exp(-t_cpl_/beta_); 												// 1st order increase
+  float t_cpl_ = 1.0f/(alpha_*ep_.norm()+1e-15f);         
+  float cpl_   = 0.0f;
+  t_cpl_ = pow(t_cpl_,gamma_);
+  if(secondOrder) cpl_   = 1.0f - exp(-t_cpl_/beta_) *(1.0f + t_cpl_/beta_);  // 2nd order critically damped
+  else            cpl_   = 1.0f - exp(-t_cpl_/beta_);                         // 1st order increase
 
-	return cpl_;
+  return cpl_;
 }
 
 dualArmFreeMotionController::dualArmFreeMotionController()
 {
-	_error_abs.setZero();
-	_error_rel.setZero();
+  _error_abs.setZero();
+  _error_rel.setZero();
   _error_obj.setZero();
-	_V_abs.setZero();
-	_V_rel.setZero();
+  _V_abs.setZero();
+  _V_rel.setZero();
   _V_obj.setZero();
-	gain_p_abs.setZero();
-	gain_o_abs.setZero();
-	gain_p_rel.setZero();
-	gain_o_rel.setZero();
+  gain_p_abs.setZero();
+  gain_o_abs.setZero();
+  gain_p_rel.setZero();
+  gain_o_rel.setZero();
 
   _coord_abs2 = 0.0f;
   _cpl_rel    = 0.0f;
@@ -43,15 +43,20 @@ dualArmFreeMotionController::dualArmFreeMotionController()
   a_normal_       = 0.0f;
   a_tangent_      = 0.0f;
   a_retract_      = 0.0f;
+  a_release_      = 0.0f;
   release_flag_   = false;
   //
-  rho_          = 0.15;
-  range_norm_   = 0.03;
-  range_tang_   = 0.01;
+  rho_          = 0.12;
+  range_norm_   = 0.05;
+  range_tang_   = 0.015;
 
   sw_proxim_    = 100.0;
-  sw_norm_      = 100.0;
+  sw_norm_      = 150.0;
   sw_tang_      = 200.0;
+  //
+  a_normal_Do_  = 0.0f;
+  _desVreach    = 1.0f;
+  _refVreach    = 0.0f;
 
 }
 
@@ -60,19 +65,19 @@ dualArmFreeMotionController::~dualArmFreeMotionController(){}
 // publishing of the reference trajectories
 bool dualArmFreeMotionController::init(Eigen::Matrix4f w_H_eeStandby[], Matrix6f gain_abs_, Matrix6f gain_rel_)
 {
-	//
-	memcpy(_w_H_eeStandby, &w_H_eeStandby[0], NB_ROBOTS * sizeof * w_H_eeStandby);
-	//
-	reachable_p = 1.0f;
-	// _v_max 			= 0.7f;
-	// _w_max 			= 2.0f;
-  _v_max = 1.0f;     // velocity limits
+  //
+  memcpy(_w_H_eeStandby, &w_H_eeStandby[0], NB_ROBOTS * sizeof * w_H_eeStandby);
+  //
+  reachable_p = 1.0f;
+  // _v_max       = 0.7f;
+  // _w_max       = 2.0f;
+  _v_max = 2.0f;     // velocity limits
   _w_max = 4.0f;     // velocity limits
 
-	gain_p_abs = gain_abs_.topLeftCorner(3,3);
-	gain_o_abs = gain_abs_.bottomRightCorner(3,3);
-	gain_p_rel = gain_rel_.topLeftCorner(3,3);
-	gain_o_rel = gain_rel_.bottomRightCorner(3,3);
+  gain_p_abs = gain_abs_.topLeftCorner(3,3);
+  gain_o_abs = gain_abs_.bottomRightCorner(3,3);
+  gain_p_rel = gain_rel_.topLeftCorner(3,3);
+  gain_o_rel = gain_rel_.bottomRightCorner(3,3);
   //
   qdPrev[LEFT]  << 1.0f, 0.0f, 0.0f, 0.0f;
   qdPrev[RIGHT] << 1.0f, 0.0f, 0.0f, 0.0f;
@@ -124,7 +129,7 @@ void dualArmFreeMotionController::computeCoordinatedMotion(Eigen::Matrix4f w_H_e
   float coord_abs = computeCouplingFactor(_error_abs.head(3), 50.0f, 0.01f, 1.0f, true);
   // Coupling the orientation with the position error
   Eigen::Matrix3f d_R_rel = reachable_p* (coord_abs*lp_H_rp.block<3,3>(0,0) + (1.0f-coord_abs)*lp_H_rp_pgrasp.block<3,3>(0,0)) 
-                   				+ (1.0f- reachable_p)*lr_H_rr_stb.block<3,3>(0,0);
+                          + (1.0f- reachable_p)*lr_H_rr_stb.block<3,3>(0,0);
 
   Eigen::Matrix4f lr_H_rr_t = lr_H_rr;
   lr_H_rr_t.block<3,3>(0,0) = Utils<float>::getCombinedRotationMatrix(coord_abs, lr_H_rr.block<3,3>(0,0), d_R_rel); //desired
@@ -241,7 +246,7 @@ void dualArmFreeMotionController::computeConstrainedMotion(Eigen::Matrix4f w_H_e
   float coord_abs = 1.0f; //computeCouplingFactor(_error_abs.head(3), 50.0f, 0.02f, 1.0f, true);
   // Coupling the orientation with the position error
   Eigen::Matrix3f d_R_rel = reachable_p* (coord_abs*lp_H_rp.block<3,3>(0,0) + (1.0f-coord_abs)*lp_H_rp_pgrasp.block<3,3>(0,0)) 
-                   				+ (1.0f- reachable_p)*lr_H_rr_stb.block<3,3>(0,0);
+                          + (1.0f- reachable_p)*lr_H_rr_stb.block<3,3>(0,0);
 
   Eigen::Matrix4f lr_H_rr_t = lr_H_rr;
   lr_H_rr_t.block<3,3>(0,0) = Utils<float>::getCombinedRotationMatrix(coord_abs, lr_H_rr.block<3,3>(0,0), d_R_rel); //desired
@@ -266,7 +271,7 @@ void dualArmFreeMotionController::computeConstrainedMotion(Eigen::Matrix4f w_H_e
 
   // position error accounting for the reachability of the target
   Eigen::Vector3f d_p_rel = reachable_p *(cpl_rel * lp_H_rp.block<3,1>(0,3) + (1.0f-cpl_rel) *lp_H_rp_pgrasp.block<3,1>(0,3))
-                   				+ (1.0f-reachable_p) * lr_H_rr_stb.block<3,1>(0,3); // TBC  
+                          + (1.0f-reachable_p) * lr_H_rr_stb.block<3,1>(0,3); // TBC  
   _error_rel.head(3) = lr_H_rr.block<3,1>(0,3) - d_p_rel;
 
   // computing the velocity
@@ -293,34 +298,34 @@ void dualArmFreeMotionController::computeConstrainedMotion(Eigen::Matrix4f w_H_e
 
 void dualArmFreeMotionController::computeAsyncMotion(Eigen::Matrix4f w_H_ee[],  Eigen::Matrix4f w_H_gp[], Eigen::Matrix4f w_H_o, Vector6f (&Vd_ee)[NB_ROBOTS], Eigen::Vector4f (&qd)[NB_ROBOTS], bool isOrient3d)
 {
-	//
-	for(int k=0; k<NB_ROBOTS; k++)
-	{
-		Vector6f error_ee;	error_ee.setZero();
-		Eigen::Vector3f d_p_ee     = reachable_p *w_H_gp[k].block<3,1>(0,3) + (1.0f-reachable_p)*w_H_ee[k].block<3,1>(0,3);
-	    Eigen::Matrix3f d_R_ee   = reachable_p *w_H_gp[k].block<3,3>(0,0) + (1.0f-reachable_p)*w_H_ee[k].block<3,3>(0,0);
-	    Eigen::Matrix4f w_H_ee_t = w_H_ee[k];
-	    w_H_ee_t.block<3,3>(0,0) = Utils<float>::getCombinedRotationMatrix(1.0f, w_H_ee[k].block<3,3>(0,0), d_R_ee); //desired
-	    // relative transformation between desired and current frame
-	    Eigen::Matrix4f d_H_c_ee = w_H_ee_t.inverse() * w_H_ee[k];
-	    error_ee.head(3)      	 = w_H_ee[k].block<3,1>(0,3) - d_p_ee;
-	    error_ee.tail(3)      	 = Utils<float>::getPoseErrorCur2Des(d_H_c_ee).tail(3);
-	    // 3D Orientation Jacobian 
-	  	Eigen::Matrix3f jacMuTheta_ee = Utils<float>::getMuThetaJacobian(d_H_c_ee.block<3,3>(0,0)) * w_H_ee[k].block<3,3>(0,0).transpose();
-	  	// ---------------------------------
-	  	// computing of desired ee velocity
-	  	// ---------------------------------
-		Vd_ee[k].head(3) = -gain_p_abs * error_ee.head(3);
-	 	Vd_ee[k].tail(3) = -jacMuTheta_ee.inverse() * gain_o_abs * error_ee.tail(3);
-	 	Vd_ee[k]  		   = Utils<float>::SaturationTwist(_v_max, _w_max, Vd_ee[k]);
-	}
- 	// Computation of desired orientation
+  //
+  for(int k=0; k<NB_ROBOTS; k++)
+  {
+    Vector6f error_ee;  error_ee.setZero();
+    Eigen::Vector3f d_p_ee     = reachable_p *w_H_gp[k].block<3,1>(0,3) + (1.0f-reachable_p)*w_H_ee[k].block<3,1>(0,3);
+      Eigen::Matrix3f d_R_ee   = reachable_p *w_H_gp[k].block<3,3>(0,0) + (1.0f-reachable_p)*w_H_ee[k].block<3,3>(0,0);
+      Eigen::Matrix4f w_H_ee_t = w_H_ee[k];
+      w_H_ee_t.block<3,3>(0,0) = Utils<float>::getCombinedRotationMatrix(1.0f, w_H_ee[k].block<3,3>(0,0), d_R_ee); //desired
+      // relative transformation between desired and current frame
+      Eigen::Matrix4f d_H_c_ee = w_H_ee_t.inverse() * w_H_ee[k];
+      error_ee.head(3)         = w_H_ee[k].block<3,1>(0,3) - d_p_ee;
+      error_ee.tail(3)         = Utils<float>::getPoseErrorCur2Des(d_H_c_ee).tail(3);
+      // 3D Orientation Jacobian 
+      Eigen::Matrix3f jacMuTheta_ee = Utils<float>::getMuThetaJacobian(d_H_c_ee.block<3,3>(0,0)) * w_H_ee[k].block<3,3>(0,0).transpose();
+      // ---------------------------------
+      // computing of desired ee velocity
+      // ---------------------------------
+    Vd_ee[k].head(3) = -gain_p_abs * error_ee.head(3);
+    Vd_ee[k].tail(3) = -jacMuTheta_ee.inverse() * gain_o_abs * error_ee.tail(3);
+    Vd_ee[k]         = Utils<float>::SaturationTwist(_v_max, _w_max, Vd_ee[k]);
+  }
+  // Computation of desired orientation
   this->computeDesiredOrientation(0.5f, w_H_ee, w_H_gp, w_H_o, qd, isOrient3d);
 }
 
 void dualArmFreeMotionController::computeDesiredOrientation(float weight, Eigen::Matrix4f w_H_ee[],  Eigen::Matrix4f w_H_gp[], Eigen::Matrix4f w_H_o, Eigen::Vector4f (&qd)[NB_ROBOTS], bool isOrient3d)
 {
-	
+  
   if(isOrient3d)
   {
     for(int k = 0; k<NB_ROBOTS; k++)
@@ -373,6 +378,7 @@ void dualArmFreeMotionController::computeDesiredOrientation(float weight, Eigen:
       // Perform quaternion slerp interpolation to progressively orient the end effector while approaching the object surface
       // _qd[k] = Utils<float>::slerpQuaternion(q_[k],qf,1.0f-std::tanh(3.0f*_eD)); // _error_rel.head(3)
       qd[k] = Utils<float>::slerpQuaternion(q_,qf,1.0f-std::tanh(3.0f*_error_rel.head(3).norm())); // _error_rel.head(3)
+      // qd[k] = Utils<float>::slerpQuaternion(q_,qf,1.0f); // _error_rel.head(3)
 
       if(qd[k].dot(qdPrev[k])<0.0f)
       {
@@ -666,7 +672,7 @@ void dualArmFreeMotionController::computeCoordinatedMotion2(Eigen::Matrix4f w_H_
 
   Eigen::Vector3f o_error_pos_abs = w_H_o.block<3,3>(0,0).transpose() * _error_abs.head(3);
   Eigen::Vector3f o_error_pos_abs_paral = Eigen::Vector3f(o_error_pos_abs(0), 0.0f, o_error_pos_abs(2));
-  float cp_ap = computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.08f, 1.0f, true);  // 50.0f, 0.12f, 1.0f  (0.04f) (0.02f)
+  float cp_ap = computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.06f, 1.0f, true);  // 50.0f, 0.12f, 1.0f  (0.04f) (0.02f)
 
 
   // position error accounting for the reachability of the target
@@ -698,7 +704,7 @@ Eigen::Vector3f dualArmFreeMotionController::compute_modulated_motion(float acti
 {
   //
   Eigen::MatrixXf den_temp  = Areach_ee.transpose() * Areach_ee;
-  Eigen::RowVector3f Beta_j = 1.0f/(den_temp(0,0)) * (Areach_ee.transpose() * BasisQ);
+  Eigen::RowVector3f Beta_j = 1.0f/(den_temp(0,0)+1e-10) * (Areach_ee.transpose() * BasisQ);
 
   Eigen::Matrix3f Lambda = Eigen::MatrixXf::Zero(3,3);
   Lambda.block<1,1>(0,0) = activation*( BasisQ.col(0).transpose() * Amodul_ee_tang * Beta_j(0) ) + (1.0-activation)*Eigen::MatrixXf::Identity(1,1);
@@ -816,14 +822,24 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
     DS_ee_nominal.head(3)  = Vd_ee_nom[LEFT].head(3);
     DS_ee_nominal.tail(3)  = Vd_ee_nom[RIGHT].head(3);
 
-    float v_reach = (1.f - a_proximity_)*0.7f;
-    DS_ee_nominal.head(3)  = DS_ee_nominal.head(3)/(DS_ee_nominal.head(3).norm()+1e-10) *  v_reach;
-    DS_ee_nominal.tail(3)  = DS_ee_nominal.tail(3)/(DS_ee_nominal.tail(3).norm()+1e-10) *  v_reach;
+    // float v_reach = (1.f - a_proximity_)*0.7f;
+    float v_reach = sqrt(2.0f)*0.6f;
+  
+    Eigen::Vector3f error_p_abs     = w_H_o.block(0,3,3,1) - 0.5f*( w_H_ee[LEFT].block(0,3,3,1) +  w_H_ee[RIGHT].block(0,3,3,1));
+    Eigen::Vector3f o_error_pos_abs = w_H_o.block<3,3>(0,0).transpose() * error_p_abs;
+    Eigen::Vector3f o_error_pos_abs_paral = Eigen::Vector3f(o_error_pos_abs(0), 0.0f, o_error_pos_abs(2));
+    float cp_ap = Utils<float>::computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.08f, 1.0f, true);  // 50.0f, 0.05f, 2.8f /  50.0f, 0.15f, 1.0f
+    float  alp = 0.05f;
+    _refVreach = (1.0f-alp)*_refVreach + alp*((1.0f-cp_ap)*_desVreach + cp_ap* VdImp[LEFT].norm());
+    //
+    // DS_ee_nominal.head(3)  = DS_ee_nominal.head(3)/(DS_ee_nominal.head(3).norm()+1e-10) *  _refVreach;
+    // DS_ee_nominal.tail(3)  = DS_ee_nominal.tail(3)/(DS_ee_nominal.tail(3).norm()+1e-10) *  _refVreach;
+
 
     //
     Matrix6f A = Eigen::MatrixXf::Identity(6,6);
-    A.block<3,3>(0,0) = -5.0f * this->gain_p_abs;
-    A.block<3,3>(3,3) = -5.0f * this->gain_p_rel;
+    A.block<3,3>(0,0) = -3.0f * this->gain_p_abs;
+    A.block<3,3>(3,3) = -3.0f * this->gain_p_rel;
     Matrix6f A_prime  = _Tbi.inverse() * A * _Tbi;
     Matrix6f _Tbi_1_A = _Tbi.inverse() * A;
     //
@@ -837,6 +853,27 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
     Xb_dual.tail(3)     = Xb[RIGHT];
     VdImp_dual.head(3)  = VdImp[LEFT];
     VdImp_dual.tail(3)  = VdImp[RIGHT];
+    //
+    Eigen::Matrix3f Q_toss =  Eigen::MatrixXf::Identity(3,3);
+    if(Vd_o.head(3).norm() <= 1e-6){
+      Q_toss  = Utils<float>::create3dOrthonormalMatrixFromVector(Eigen::Vector3f(1.0f, 0.0f, 0.0f)); //
+    }
+    else{
+      Q_toss  = Utils<float>::create3dOrthonormalMatrixFromVector(Vd_o.head(3)); //
+    }
+    Eigen::Vector3f Xqo  = Q_toss.transpose()*(w_H_o.block<3,1>(0,3) - w_H_Do.block<3,1>(0,3));
+    float dist2line_toss = Xqo.tail(2).norm();
+    a_normal_Do_ = 0.5f*(std::tanh(1.0f*this->sw_norm_  * (0.99f*this->range_norm_ - dist2line_toss))  + 1.0f );
+    //
+    if(a_normal_Do_ >=0.90f){
+      a_release_ = 1.0f;
+    }
+    //
+    float sw_norm_Do = (a_normal_Do_ + a_release_);
+    if((a_normal_Do_ + a_release_) >= 1.0f){
+      sw_norm_Do = 1.0f;
+    }
+    sw_norm_Do = 1.0f;
 
     //
     Vector6f Xstar_dual = X_dual;
@@ -857,26 +894,77 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
       case 2:{ // point to point motion of the object 
         Vector6f X_bi = Eigen::VectorXf::Zero(6);
         X_bi.head(3)  = w_H_Do.block<3,1>(0,3) - w_H_o.block<3,1>(0,3)+ 0.5f*(X[LEFT] + X[RIGHT]);
-        X_bi.tail(3)  = X[RIGHT] - X[LEFT];
+        X_bi.tail(3)  = 0.99f*(X[RIGHT] - X[LEFT]);
 
         Xstar_dual =  _Tbi.inverse() * X_bi;
         //
-         Amodul_ee_norm = A_prime*(X_dual - Xstar_dual);          // Modulated DS that aligned  the EE with the desired velocity
-         Amodul_ee_tang = A_prime*(X_dual - Xstar_dual);  // ;
+        activation = 1.0f;
+        // a_normal_  = 1.0f;
+        // a_tangent_ = 0.0f;
+        Amodul_ee_norm = _Tbi.inverse() * A * _Tbi *(X_dual - Xstar_dual);          // Modulated DS that aligned  the EE with the desired velocity
+        Amodul_ee_tang = _Tbi.inverse() * A * _Tbi *(X_dual - Xstar_dual);  // ;
       }
       break;
 
       case 3:{ //  velocity based motion of the object
+        Vector6f X_bi = Eigen::VectorXf::Zero(6);
+        X_bi.head(3)  = 0.5f*(X[LEFT] + X[RIGHT]);
+        X_bi.tail(3)  = 0.95f*(X[RIGHT] - X[LEFT]);
+        Xstar_dual =  _Tbi.inverse() * X_bi;
+        //velocity based motion of the object
         Vector6f Xdot_bi = Eigen::VectorXf::Zero(6);
         Eigen::Vector3f X_rel = X[RIGHT] - X[LEFT];
         Eigen::Vector3f w_o   = Vd_o.tail(3);
 
         Xdot_bi.head(3)  = Vd_o.head(3);
         Xdot_bi.tail(3)  = w_o.cross(X_rel);
-        Amodul_ee_norm = _Tbi.inverse() * Xdot_bi;          // Modulated DS that aligned  the EE with the desired velocity
-        Amodul_ee_tang = _Tbi.inverse() * Xdot_bi;          // ;  
+        Amodul_ee_norm = _Tbi.inverse() * ( Xdot_bi +  A * _Tbi*(X_dual - Xstar_dual) );          // Modulated DS that aligned  the EE with the desired velocity
+        Amodul_ee_tang = _Tbi.inverse() * ( Xdot_bi +  A * _Tbi*(X_dual - Xstar_dual) );          // ;  
+        //
+        //
+        // Amodul_ee_norm.head(3) = Amodul_ee_norm.head(3)/( Amodul_ee_norm.head(3).norm() +1e-10) * Vd_o.head(3).norm();
+        // Amodul_ee_norm.tail(3) = Amodul_ee_norm.tail(3)/( Amodul_ee_norm.tail(3).norm() +1e-10) * Vd_o.head(3).norm();
+        // Amodul_ee_tang.head(3) = Amodul_ee_tang.head(3)/( Amodul_ee_tang.head(3).norm() +1e-10) * Vd_o.head(3).norm();
+        // Amodul_ee_tang.tail(3) = Amodul_ee_tang.tail(3)/( Amodul_ee_tang.tail(3).norm() +1e-10) * Vd_o.head(3).norm();
+        //
+        activation = 1.0f;
       }
       break;
+
+      case 4:{ // point to point motion of the object 
+        Vector6f X_bi = Eigen::VectorXf::Zero(6);
+        X_bi.head(3)  = (1.0f-1.0f*sw_norm_Do)*(w_H_Do.block<3,1>(0,3) - w_H_o.block<3,1>(0,3))+ 0.5f*(X[LEFT] + X[RIGHT]);
+        X_bi.tail(3)  = (1.0f-1.0f*sw_norm_Do)*0.95f*(X[RIGHT] - X[LEFT]) + 1.0f*sw_norm_Do*0.95f*(X[RIGHT] - X[LEFT]);
+        Xstar_dual    =  _Tbi.inverse() * X_bi;
+        //
+        //velocity based motion of the object
+        Vector6f Xdot_bi      = Eigen::VectorXf::Zero(6);
+        Eigen::Vector3f X_rel = X[RIGHT] - X[LEFT];
+        Eigen::Vector3f w_o   = Vd_o.tail(3);
+        Xdot_bi.head(3)       = Vd_o.head(3);
+        Xdot_bi.tail(3)       = w_o.cross(X_rel);
+
+        // Amodul_ee_norm = A_prime*(X_dual - Xstar_dual) + sw_norm_Do*_Tbi.inverse() * Xdot_bi;  // Modulated DS that aligned  the EE with the desired velocity
+        // Amodul_ee_tang = A_prime*(X_dual - Xstar_dual) + sw_norm_Do*_Tbi.inverse() * Xdot_bi;  // ;
+        
+        Vector6f v_task_bi = ( A * _Tbi*(X_dual - Xstar_dual) + 1.0f*sw_norm_Do* Xdot_bi );
+        // v_task_bi.head(3) = v_task_bi.head(3)/(v_task_bi.head(3).norm()+1e-10)*1.0f*v_task_bi.head(3).norm();
+        v_task_bi.head(3) = v_task_bi.head(3)/(v_task_bi.head(3).norm()+1e-10)*Vd_o.head(3).norm();
+
+        Amodul_ee_norm = _Tbi.inverse() * v_task_bi;  // 
+        Amodul_ee_tang = _Tbi.inverse() * v_task_bi;  //
+        //
+        // Amodul_ee_norm.head(3) = Amodul_ee_norm.head(3)/( Amodul_ee_norm.head(3).norm() +1e-10) * Vd_o.head(3).norm();
+        // Amodul_ee_norm.tail(3) = Amodul_ee_norm.tail(3)/( Amodul_ee_norm.tail(3).norm() +1e-10) * Vd_o.head(3).norm();
+        // Amodul_ee_tang.head(3) = Amodul_ee_tang.head(3)/( Amodul_ee_tang.head(3).norm() +1e-10) * Vd_o.head(3).norm();
+        // Amodul_ee_tang.tail(3) = Amodul_ee_tang.tail(3)/( Amodul_ee_tang.tail(3).norm() +1e-10) * Vd_o.head(3).norm();
+        //
+        activation = 1.0f;
+        // a_normal_  = 1.0f;
+        // a_tangent_ = 0.0f;
+      }
+      break;
+
     }
 
     // Vector6f Amodul_ee_norm = _Tbi.inverse() * ;          // Modulated DS that aligned  the EE with the desired velocity
@@ -886,6 +974,9 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
     Vector6f DS_ee_modulated = Eigen::VectorXf::Zero(6,1);
     DS_ee_modulated = this->compute_modulated_motion_dual(activation, BasisQ, DS_ee_nominal, Amodul_ee_norm, Amodul_ee_tang);
   // // }
+    // DS_ee_modulated.head(3)  = DS_ee_modulated.head(3)/(DS_ee_modulated.head(3).norm()+1e-10) *  _refVreach;
+    // DS_ee_modulated.tail(3)  = DS_ee_modulated.tail(3)/(DS_ee_modulated.tail(3).norm()+1e-10) *  _refVreach;
+
 
   //   //
     Vd_ee[LEFT].head(3) = DS_ee_modulated.head(3);
