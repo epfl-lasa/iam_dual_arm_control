@@ -39,6 +39,7 @@
 #include "dualArmFreeMotionController.h"
 #include "dualArmCooperativeController.h"
 #include "throwingDS.h"
+#include "toss_task_param_estimator.h"
 #include "data_logging.hpp"
 
 #define NB_ROBOTS 2                  // Number of robots
@@ -79,7 +80,8 @@ class dual_arm_control
     // 								PICK_AND_HANDOVER = 5, THROWING = 6, HANDINGOVER = 7, PAUSE_MOTION = 8};
     enum TASK_TYPE {REACH = 0, PICK_AND_LIFT = 1, TOSSING = 2, PICK_AND_TOSS = 3, PICK_AND_PLACE = 4, PICK_AND_HANDOVER = 5, THROWING = 6, HANDINGOVER = 7, PAUSE_MOTION = 8};
 
-		// 0=reach, 1=pick, 2=toss, 3=pick_and_toss, 4=pick_and_place
+	// 0=reach, 1=pick, 2=toss, 3=pick_and_toss, 4=pick_and_place
+
 
 	protected: 
 		std::mutex _mutex;
@@ -103,6 +105,8 @@ class dual_arm_control
 		ros::Subscriber _sub_ee_velo[NB_ROBOTS];						// subscribe to the end effectors velocity Twist
 		ros::Subscriber _subForceTorqueSensor[NB_ROBOTS];		// Subscribe to force torque sensors
 		ros::Subscriber _sub_joint_states[NB_ROBOTS];				// subscriber for the joint position
+		ros::Subscriber _sub_target_pose;
+		ros::Subscriber _sub_target_velo;
 		//////////////////////////////
 		// Publishers:
 		//////////////////////////////
@@ -189,10 +193,7 @@ class dual_arm_control
 		Eigen::Vector3f _xrbStandby[NB_ROBOTS];		    		// quaternion orientation of EE standby poses relatve to robots base (3x1)
 		Eigen::Vector4f _qrbStandby[NB_ROBOTS];		    		// quaternion orientation of EE standby poses relatve to robots base (4x1)
 
-
-
-		
-
+	
 		Eigen::Vector3f _n[NB_ROBOTS];               			// Normal vector to surface object for each robot (3x1)
 		Vector6f        _V_gpo[NB_ROBOTS];
 
@@ -224,6 +225,16 @@ class dual_arm_control
 		Eigen::Matrix4f _o_H_ee[NB_ROBOTS];
 		int 					  _objecPoseCount;
 		int 						_initPoseCount;										// Counter of received initial poses measurements 
+
+		// -------------------------------
+		// target (tossing)
+		Eigen::Vector3f _xt;
+		Eigen::Vector4f _qt;
+		Eigen::Vector3f _vt;
+		Eigen::Vector3f _wt;
+
+		Eigen::Vector3f _xd_landing;
+		Eigen::Vector3f _x_pickup;
 
 		Eigen::Vector3f _v_abs;
 		Eigen::Vector3f _w_abs;
@@ -308,9 +319,10 @@ class dual_arm_control
 		////////////////////////////////////////////////////////////////////////
 		// Objects for Unconstrained and contrained motion and force generation
 		////////////////////////////////////////////////////////////////////////
-		dualArmFreeMotionController 	FreeMotionCtrl;			// Motion generation
-		dualArmCooperativeController 	CooperativeCtrl;		// Force generation
-		throwingDS 										dsThrowing;					//
+		dualArmFreeMotionController 	FreeMotionCtrl;					// Motion generation
+		dualArmCooperativeController 	CooperativeCtrl;				// Force generation
+		throwingDS 						dsThrowing;						//
+		toss_task_param_estimator 		tossParamEstimator; 			// tossing task param estimator
 
 		// Callbacks
 		void objectPoseCallback(const geometry_msgs::Pose::ConstPtr& msg);
@@ -324,6 +336,8 @@ class dual_arm_control
 		void updateRobotStatesLeft(const sensor_msgs::JointState::ConstPtr &msg);
 		void updateRobotStatesRight(const sensor_msgs::JointState::ConstPtr &msg);
 		void updateObjectsPoseCallback(const geometry_msgs::Pose::ConstPtr& msg , int k);
+		void targetPoseCallback(const geometry_msgs::Pose::ConstPtr& msg);
+		void updateTargetTwistCallback(const geometry_msgs::Twist::ConstPtr& msg);
 
 	public :
 		/////////////////////

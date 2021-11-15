@@ -719,28 +719,28 @@ class Utils
 	}
 
 	static Eigen::Matrix<T,3,1> getEulerAnglesXYZ_FixedFrame(Eigen::Matrix<T,3,3> R)
-  {
-      // this function computed for a given rotation matrix the rotation angles around X, Y and Z axis considered as fixed.
-      // the rotation matrix is assumed to be a Euler rotation matrix of type ZYX
-      Eigen::Matrix<T,3,1> Angles;
-      T Psi_X, Theta_Y, Phi_Z;
-          Psi_X   = std::atan2(R(2,1),R(2,2));
-          Theta_Y = std::atan2(-R(2,0), fabs(std::sqrt(std::pow(R(0,0), 2.)+std::pow(R(1,0), 2.))));
-          Phi_Z   = std::atan2(R(1,0),R(0,0));
-      if ((Theta_Y>M_PI/2.)||(Theta_Y<-M_PI/2.))
-      {
-          Psi_X   = std::atan2(-R(2,1),-R(2,2));
-          Theta_Y = std::atan2(-R(2,0),-fabs(std::sqrt(std::pow(R(0,0), 2.)+std::pow(R(1,0), 2.))));
-          Phi_Z   = std::atan2(-R(1,0),-R(0,0));
-      }
-      Angles(0) = Psi_X;
-      Angles(1) = Theta_Y;
-      Angles(2) = Phi_Z;
+	{
+	  // this function computed for a given rotation matrix the rotation angles around X, Y and Z axis considered as fixed.
+	  // the rotation matrix is assumed to be a Euler rotation matrix of type ZYX
+	  Eigen::Matrix<T,3,1> Angles;
+	  T Psi_X, Theta_Y, Phi_Z;
+	      Psi_X   = std::atan2(R(2,1),R(2,2));
+	      Theta_Y = std::atan2(-R(2,0), fabs(std::sqrt(std::pow(R(0,0), 2.)+std::pow(R(1,0), 2.))));
+	      Phi_Z   = std::atan2(R(1,0),R(0,0));
+	  if ((Theta_Y>M_PI/2.)||(Theta_Y<-M_PI/2.))
+	  {
+	      Psi_X   = std::atan2(-R(2,1),-R(2,2));
+	      Theta_Y = std::atan2(-R(2,0),-fabs(std::sqrt(std::pow(R(0,0), 2.)+std::pow(R(1,0), 2.))));
+	      Phi_Z   = std::atan2(-R(1,0),-R(0,0));
+	  }
+	  Angles(0) = Psi_X;
+	  Angles(1) = Theta_Y;
+	  Angles(2) = Phi_Z;
 
-      return Angles;
-  }
+	  return Angles;
+	}
 
-  static T computeCouplingFactor(Eigen::Matrix<T,3,1> ep_, T alpha_, T beta_, T gamma_, bool secondOrder)
+  	static T computeCouplingFactor(Eigen::Matrix<T,3,1> ep_, T alpha_, T beta_, T gamma_, bool secondOrder)
 	{
 		T t_cpl_ = 1.0/(alpha_*ep_.norm()+1e-15);         
 		T cpl_   = 0.0;
@@ -753,57 +753,58 @@ class Utils
 
 	static Eigen::Matrix<T,3,3> create3dOrthonormalMatrixFromVector(Eigen::Matrix<T,3,1> inVec)
 	{
-	  //
-	  int n = inVec.rows();
-	  Eigen::Matrix<T,3,3> basis; // = Eigen::MatrixXf::Random(n,n); 
-	  basis.setRandom(3,3);
-	  basis.col(0) = 1./inVec.norm() * inVec;
+		//
+		int n = inVec.rows();
+		Eigen::Matrix<T,3,3> basis; // = Eigen::MatrixXf::Random(n,n); 
+		basis.setRandom(3,3);
+		basis.col(0) = 1./inVec.norm() * inVec;
 
-	  assert(basis.rows() == basis.cols());
-	  uint dim = basis.rows();
-	  basis.col(0).normalize();
-	  for(uint i=1;i<dim;i++){
-	      for(uint j=0;j<i;j++)
-	          basis.col(i) -= basis.col(j).dot(basis.col(i))*basis.col(j);
-	      basis.col(i).normalize();
-	  }
+		assert(basis.rows() == basis.cols());
+		uint dim = basis.rows();
+		basis.col(0).normalize();
+		for(uint i=1;i<dim;i++){
+		  for(uint j=0;j<i;j++)
+		      basis.col(i) -= basis.col(j).dot(basis.col(i))*basis.col(j);
+		  basis.col(i).normalize();
+		}
 
-	  if (basis.rows() == 3){
-	  	Eigen::Matrix<T,3,1> u = basis.col(0);
-	  	Eigen::Matrix<T,3,1> v = basis.col(1);
-	  	Eigen::Matrix<T,3,1> w = u.cross(v);
-	  	basis.col(2) = w;
-	  }
-	  return basis;
+		if (basis.rows() == 3){
+			Eigen::Matrix<T,3,1> u = basis.col(0);
+			Eigen::Matrix<T,3,1> v = basis.col(1);
+			Eigen::Matrix<T,3,1> w = u.cross(v);
+			basis.col(2) = w;
+		}
+		return basis;
 	} 
 	
 	static void Orthobasis(Eigen::Matrix<T,3,1> v1,Eigen::Matrix<T,3,1> v0, Eigen::Matrix<T,3,3> &R1, Eigen::Matrix<T,3,3> &R0)
 	{
-	  Eigen::Matrix<T,3,1> i  = v1; 
-	  Eigen::Matrix<T,3,1> id = v0; 
+		Eigen::Matrix<T,3,1> i  = v1; 
+		Eigen::Matrix<T,3,1> id = v0; 
 
-	  i.normalize();
-	  id.normalize();
-	  Eigen::Matrix<T,3,1> j  = i.cross(id);
+		i.normalize();
+		id.normalize();
+		Eigen::Matrix<T,3,1> j  = i.cross(id);
 
-	    if(j.norm() <1e-6){
-        Eigen::Matrix<T,3,3> Rq = Utils<T>::create3dOrthonormalMatrixFromVector(i);
-        j  = Rq.col(1);
-      }
+		if(j.norm() <1e-6){
+			Eigen::Matrix<T,3,3> Rq = Utils<T>::create3dOrthonormalMatrixFromVector(i);
+			j  = Rq.col(1);
+		}
 
-	    j.normalize();
-	    Eigen::Matrix<T,3,1> jd = j;
-	    Eigen::Matrix<T,3,1> k  = i.cross(j);
-	    Eigen::Matrix<T,3,1> kd = id.cross(jd);
-	    //
-	    R1.col(0) = i;
-	    R1.col(1) = j;
-	    R1.col(2) = k;
-	    //
-	    R0.col(0) = id;
-	    R0.col(1) = jd;
-	    R0.col(2) = kd;
-	  }
+		j.normalize();
+		Eigen::Matrix<T,3,1> jd = j;
+		Eigen::Matrix<T,3,1> k  = i.cross(j);
+		Eigen::Matrix<T,3,1> kd = id.cross(jd);
+		//
+		R1.col(0) = i;
+		R1.col(1) = j;
+		R1.col(2) = k;
+		//
+		R0.col(0) = id;
+		R0.col(1) = jd;
+		R0.col(2) = kd;
+	}
+
 
 };
 

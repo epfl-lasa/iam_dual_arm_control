@@ -50,6 +50,7 @@ set(SOURCES_DS  ${SRC_FOLDER}/dual_arm_control.cpp
                 ${SRC_FOLDER}/dualArmFreeMotionController.cpp
                 ${SRC_FOLDER}/dualArmCooperativeController.cpp
                 ${SRC_FOLDER}/throwingDS.cpp
+                ${SRC_FOLDER}/toss_task_param_estimator.cpp
                 )
 
 file(GLOB BWC_SOURCES   "${SOLVER_BWC}/*.c")
