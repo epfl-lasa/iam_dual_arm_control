@@ -5,7 +5,7 @@ tool:
     right: 0.115 #0.20
 
 #
-desVimp:   0.4
+desVimp:   0.5
 desVreach: 1.0
 # tossing task parameters
 tossing:

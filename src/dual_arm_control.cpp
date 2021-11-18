@@ -707,7 +707,7 @@ void dual_arm_control::computeCommands()
 	//
 	_desired_object_wrench.head(3) = -40.0f * (_w_H_o.block(0,3,3,1) - _w_H_Do.block(0,3,3,1)) - _objectMass * _gravity;
 
-	float y_2_go = _xd_landing(1) - _vt(1) * (_xd_landing(0) - _x_pickup(0))/(0.085f*_desVtoss);
+	float y_2_go = _xd_landing(1) - _vt(1) * (_xd_landing(0) - _x_pickup(0))/(0.28f*_desVtoss);
 
 	if(_goHome)
 	{
@@ -727,9 +727,10 @@ void dual_arm_control::computeCommands()
 
 		// float y_2_go = _xd_landing(1) - _vt(1) * (_xd_landing(0) - _x_pickup(0))/(0.5f*_desVtoss);
 		// if(fabs(_xt(1)-1.55f) < 0.02f) //(fabs(_xt(1)-y_2_go) < 0.05f){
-		if(fabs(_xo(0)-1.0f) < 0.02f)//(fabs(_xt(0)-1.55f) < 0.02f) //(fabs(_xt(1)-y_2_go) < 0.05f){
+		// if(fabs(_xo(0)-1.0f) < 0.02f)//(fabs(_xt(0)-1.55f) < 0.02f) //(fabs(_xt(1)-y_2_go) < 0.05f){
+		if((_initPoseCount > 50) && (fabs(_xt(1)-y_2_go) < 0.02f)) // 0.80
 		{
-			// _goHome = false;
+			_goHome = false;
 		}
 
 		std::cout << "[dual_arm_control]: DIST TO TOSS : \t"  << y_2_go << std::endl;
@@ -859,8 +860,8 @@ void dual_arm_control::computeCommands()
 	std::cout << " EEEE----------- EEEPPP   _x_pickup(0)  IIIIIIII ----------- ONNNNNNNN \t " <<  _x_pickup(0) <<  std::endl;
 	std::cout << " EEEE----------- EEEPPP   _xd_landing(0)  IIIIIIII ----------- ONNNNNNNN \t " <<  _xd_landing(0) <<  std::endl;
 
-	// std::cout << " STATE 2 G0 IIIIIIII ----------- ONNNNNNNN \t " << _xt(1) - (_xd_landing(1) - _vt(1) * (_xd_landing(0) - _x_pickup(0))/(2.0f*_desVtoss)) <<  std::endl;
-	// std::cout << "XXXXXXXXXXXXXXXXXXXXXXXX      XXXXXXXXXXXX : DIST TO TOSS : \t"  << y_2_go << std::endl;
+	std::cout << " STATE 2 G0 IIIIIIII ----------- ONNNNNNNN \t " << _xt(1) - (_xd_landing(1) - _vt(1) * (_xd_landing(0) - _x_pickup(0))/(2.0f*_desVtoss)) <<  std::endl;
+	std::cout << "XXXXXXXXXXXXXXXXXXXXXXXX      XXXXXXXXXXXX : DIST TO TOSS : \t"  << y_2_go << std::endl;
 }
 
 //
