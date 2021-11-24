@@ -33,7 +33,7 @@ dual_arm_control::dual_arm_control(	ros::NodeHandle &n, double frequency, 	//std
 	//
 	_gravity << 0.0f, 0.0f, -9.80665f;
 	_objectMass = 1.0f;
-	_objectDim << 0.20f, 0.20f, 0.20f;
+	_objectDim << 0.20f, 0.20f, 0.16f;
 	// _objectDim << 0.16f, 0.16f, 0.16f;
 	_toolOffsetFromEE[0] = 0.115f; //0.17f;
 	_toolOffsetFromEE[1] = 0.115f; //0.15f;
@@ -115,6 +115,7 @@ dual_arm_control::dual_arm_control(	ros::NodeHandle &n, double frequency, 	//std
 	//
 	_vo.setZero();
 	_wo.setZero();
+	_Vo.setZero();
 	_xo.setZero(); 
 	_xDo.setZero(); 
 	_qo  << 1.0f, 0.0f, 0.0f, 0.0f;
@@ -128,8 +129,8 @@ dual_arm_control::dual_arm_control(	ros::NodeHandle &n, double frequency, 	//std
 	// object desired grasping points
 	// _xgp_o[0] << 0.0f, -_objectDim(1)/2.0f,  0.02f;  // left   
 	// _xgp_o[1] << 0.0f,  _objectDim(1)/2.0f,  0.02f; 	// right 
-	_xgp_o[0] << 0.0f, -_objectDim(1)/2.0f,  0.01f;  // left   
-	_xgp_o[1] << 0.0f,  _objectDim(1)/2.0f,  0.01f; 	// right 	
+	_xgp_o[0] << 0.0f, -_objectDim(1)/2.0f,  -0.05f;  // left   
+	_xgp_o[1] << 0.0f,  _objectDim(1)/2.0f,  -0.05f; 	// right 	
 
 	Eigen::Matrix3f o_R_gpl;	o_R_gpl.setZero();		
 	Eigen::Matrix3f o_R_gpr;	o_R_gpr.setZero();	
@@ -152,6 +153,7 @@ dual_arm_control::dual_arm_control(	ros::NodeHandle &n, double frequency, 	//std
 	_wt.setZero();
 	_qt  << 1.0f, 0.0f, 0.0f, 0.0f;
 	_x_pickup.setZero();
+	_x_intercept.setZero();
 
 	_c   = 0.0f;
 	_v_max = 2.00f;     // velocity limits
@@ -373,6 +375,7 @@ bool dual_arm_control::init()
 	// initialize the Free motion generator DS
 	//------------------------------------------
 	FreeMotionCtrl.init(_w_H_eeStandby, this->_gain_abs, this->_gain_rel);
+	FreeMotionCtrl._objectDim = _objectDim;
 
 	// initialize the cooperative controller
 	//---------------------------------------
@@ -423,6 +426,7 @@ bool dual_arm_control::init()
 	FreeMotionCtrl._modulated_reaching = modulated_reaching;
 	FreeMotionCtrl._isNorm_impact_vel  = isNorm_impact_vel;
 	FreeMotionCtrl._height_via_point = _height_via_point;
+
 
 	//--------------------------------------------------------------------------------------------------
 	// Data recording:
@@ -599,12 +603,28 @@ void dual_arm_control::updatePoses()
 		FreeMotionCtrl._w_H_eeStandby[LEFT]  = _w_H_eeStandby[LEFT];
 		FreeMotionCtrl._w_H_eeStandby[RIGHT] = _w_H_eeStandby[RIGHT];
 		//
+		_x_intercept = Eigen::Vector3f(_xo(0), 0.0, _xo(2));
+		FreeMotionCtrl.set_virtual_object_frame(Utils<float>::pose2HomoMx(_x_intercept, _qo));
+		//
 		_xDo    = Eigen::Vector3f(_xo(0), _xo(1), _xDo_lifting(2));   // set attractor of lifting task   
 		_qDo    = _qo; // _qDo_lifting
 		_w_H_Do = Utils<float>::pose2HomoMx(_xDo, _qDo);
 
 		_initPoseCount ++;
 	}
+	// update reachability
+	bool x_wskplim = (_xo(0) >=  0.30f) && (_xo(0) <= 0.80f);  // For now approximate with box bounds // TODO: learn the reachability
+	bool y_wskplim = (_xo(1) >= -0.60f) && (_xo(1) <= 0.60f);  // For now approximate with box bounds // TODO: learn the reachability
+	bool z_wskplim = (_xo(2) >= -0.20f) && (_xo(2) <= 1.00f);  // For now approximate with box bounds // TODO: learn the reachability
+	
+	// if(x_wskplim && y_wskplim && z_wskplim){
+	// 	// FreeMotionCtrl.reachable_p = 1.0f;
+	// 	FreeMotionCtrl._go2object = 1.0f;
+	// }
+	// else{
+	// 	// FreeMotionCtrl.reachable_p = 0.0f;
+	// 	FreeMotionCtrl._go2object = 0.0f;
+	// }	
 	// 
 	if( _sensedContact && CooperativeCtrl._ContactConfidence == 1.0 && _xo(2) >= 0.98f*_xDo(2)) {
 		// _isThrowing = true;
@@ -684,6 +704,11 @@ void dual_arm_control::updatePoses()
 	_eoD = fabs(le_H_re(2,3)) - fabs(lgp_H_rgp(2,3)); //(_xD-_xoD).dot(_xoD.normalized());
 	_eoC = t_o_absEE.norm(); //(_xoC-_xC).norm();
   	//
+	if((_initPoseCount > 50) && (_eoC < 0.07f)){
+		FreeMotionCtrl._go2object = 1.0f;
+	}
+
+
 	// printing for analysis
 	std::cout << "[dual_arm_control]: _w_H_ee[LEFT]: \n" <<  _w_H_ee[0] << std::endl;
 	std::cout << "[dual_arm_control]: _w_H_gp[LEFT]: \n" << _w_H_gp[0] << std::endl;
@@ -707,7 +732,8 @@ void dual_arm_control::computeCommands()
 	//
 	_desired_object_wrench.head(3) = -40.0f * (_w_H_o.block(0,3,3,1) - _w_H_Do.block(0,3,3,1)) - _objectMass * _gravity;
 
-	float y_2_go = _xd_landing(1) - _vt(1) * (_xd_landing(0) - _x_pickup(0))/(0.28f*_desVtoss);
+	// float y_2_go = _xd_landing(1) - _vt(1) * (_xd_landing(0) - _x_pickup(0))/(0.28f*_desVtoss);
+	float y_2_go = _x_intercept(1) - _vo(1) * (_x_intercept(0) - 0.5f*(_xrbStandby[LEFT](0) + _xrbStandby[RIGHT](0)) )/(0.28f*0.80f);
 
 	if(_goHome)
 	{
@@ -728,7 +754,8 @@ void dual_arm_control::computeCommands()
 		// float y_2_go = _xd_landing(1) - _vt(1) * (_xd_landing(0) - _x_pickup(0))/(0.5f*_desVtoss);
 		// if(fabs(_xt(1)-1.55f) < 0.02f) //(fabs(_xt(1)-y_2_go) < 0.05f){
 		// if(fabs(_xo(0)-1.0f) < 0.02f)//(fabs(_xt(0)-1.55f) < 0.02f) //(fabs(_xt(1)-y_2_go) < 0.05f){
-		if((_initPoseCount > 50) && (fabs(_xt(1)-y_2_go) < 0.02f)) // 0.80
+		// if((_initPoseCount > 50) && (fabs(_xt(1)-y_2_go) < 0.02f)) // 0.80   // tossing
+		if((_initPoseCount > 50) && (fabs(_xo(1)-y_2_go) < 0.02f)) // 0.80   // catching
 		{
 			_goHome = false;
 		}
@@ -806,15 +833,17 @@ void dual_arm_control::computeCommands()
 			else  // Free-motion: reaching
 			{
 				if(_old_dual_method){
-					FreeMotionCtrl.computeCoordinatedMotion2(_w_H_ee, _w_H_gp, _w_H_o, _Vd_ee, _qd, false);
+					// FreeMotionCtrl.computeCoordinatedMotion2(_w_H_ee, _w_H_gp, _w_H_o, _Vd_ee, _qd, false);
+					// FreeMotionCtrl.computeCoordinatedMotion2(_w_H_ee, _w_H_gp, _w_H_o, _Vd_ee, _qd, false);
+					FreeMotionCtrl.computeCoordinatedMotion3(_w_H_ee, _w_H_gp, _w_H_o, _Vo, _x_intercept, _Vd_ee, _qd, false);
 					//
 					Eigen::Vector3f error_p_abs     = _w_H_o.block(0,3,3,1) - 0.5f*( _w_H_ee[LEFT].block(0,3,3,1) +  _w_H_ee[RIGHT].block(0,3,3,1));
 					Eigen::Vector3f o_error_pos_abs = _w_H_o.block<3,3>(0,0).transpose() * error_p_abs;
 					Eigen::Vector3f o_error_pos_abs_paral = Eigen::Vector3f(o_error_pos_abs(0), 0.0f, o_error_pos_abs(2));
 					float cp_ap = Utils<float>::computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.17f, 1.0f, true);  // 50.0f, 0.05f, 2.8f
 					// create impact in the normal direction
-					_Vd_ee[LEFT].head(3)  = _Vd_ee[LEFT].head(3)  + _n[LEFT]  * cp_ap * 0.20f; //_desVimp;
-					_Vd_ee[RIGHT].head(3) = _Vd_ee[RIGHT].head(3) + _n[RIGHT] * cp_ap * 0.20f; //_desVimp;
+					_Vd_ee[LEFT].head(3)  = _Vd_ee[LEFT].head(3)  + _n[LEFT]  * cp_ap * 0.20f; //_desVimp; //_desVimp;
+					_Vd_ee[RIGHT].head(3) = _Vd_ee[RIGHT].head(3) + _n[RIGHT] * cp_ap * 0.20f; //_desVimp; //_desVimp;
 				}
 				else{
 					FreeMotionCtrl.dual_arm_motion(_w_H_ee,  _Vee, _w_H_gp,  _w_H_o, _w_H_Do, _Vd_o, _BasisQ, _VdImpact, false, 0, _Vd_ee, _qd, _release_flag);    // 0: reach
@@ -838,8 +867,8 @@ void dual_arm_control::computeCommands()
   // Extract linear velocity commands and desired axis angle command
 	prepareCommands(_Vd_ee, _qd, _V_gpo);
 
-	std::cout << "[dual_arm_control]: _w_H_o: \n" << _w_H_o << std::endl; 
-	std::cout << "[dual_arm_control]: _w_H_Do: \n" <<  _w_H_Do << std::endl;
+	// std::cout << "[dual_arm_control]: _w_H_o: \n" << _w_H_o << std::endl; 
+	// std::cout << "[dual_arm_control]: _w_H_Do: \n" <<  _w_H_Do << std::endl;
 	std::cout << "[dual_arm_control]:  ------------- _sensedContact: \t" << _sensedContact << std::endl;
 	std::cout << "[dual_arm_control]: _Vd_ee[LEFT]:  \t" << _Vd_ee[LEFT].transpose() << std::endl;
 	std::cout << "[dual_arm_control]: _Vd_ee[RIGHT]: \t" << _Vd_ee[RIGHT].transpose() << std::endl;
@@ -856,11 +885,10 @@ void dual_arm_control::computeCommands()
 	std::cout << " EEEE----------- EEEPPP   _desVtoss IIIIIIII ----------- ONNNNNNNN \t " << _desVtoss << std::endl; 
 	std::cout << " EEEE----------- EEEPPP   _desVimp  IIIIIIII ----------- ONNNNNNNN \t " <<  _desVimp <<  std::endl;
 	// std::cout << " EEEE----------- EEEPPP   target pos  IIIIIIII ----------- ONNNNNNNN \t " <<  _xt.transpose() <<  std::endl;
-	std::cout << " EEEE----------- EEEPPP   target vel  IIIIIIII ----------- ONNNNNNNN \t " <<  _vt.transpose() <<  std::endl;
+	// std::cout << " EEEE----------- EEEPPP   target vel  IIIIIIII ----------- ONNNNNNNN \t " <<  _vt.transpose() <<  std::endl;
+	std::cout << " EEEE----------- EEEPPP   vel object vel  IIIIIIII ----------- ONNNNNNNN \t " <<  _vo.transpose() <<  std::endl;
 	std::cout << " EEEE----------- EEEPPP   _x_pickup(0)  IIIIIIII ----------- ONNNNNNNN \t " <<  _x_pickup(0) <<  std::endl;
 	std::cout << " EEEE----------- EEEPPP   _xd_landing(0)  IIIIIIII ----------- ONNNNNNNN \t " <<  _xd_landing(0) <<  std::endl;
-
-	std::cout << " STATE 2 G0 IIIIIIII ----------- ONNNNNNNN \t " << _xt(1) - (_xd_landing(1) - _vt(1) * (_xd_landing(0) - _x_pickup(0))/(2.0f*_desVtoss)) <<  std::endl;
 	std::cout << "XXXXXXXXXXXXXXXXXXXXXXXX      XXXXXXXXXXXX : DIST TO TOSS : \t"  << y_2_go << std::endl;
 }
 
@@ -912,6 +940,9 @@ void dual_arm_control::objectPoseCallback(const geometry_msgs::Pose::ConstPtr& m
 
 	_qo << msg->orientation.w, 	msg->orientation.x, msg->orientation.y, msg->orientation.z;
 	_w_H_o = Utils<float>::pose2HomoMx(_xo, _qo);
+	//
+	_Vo.head(3) = _vo;
+	_Vo.tail(3) = _wo;
 }
 
 //
@@ -1154,7 +1185,8 @@ void dual_arm_control::getGraspPointsVelocity()    // in object struct or object
   //velocity of grasp points on the object
   for(int i=0; i<NB_ROBOTS; i++)
   {
-    Eigen::Vector3f t = _w_H_o.block<3,3>(0,0) * _xgp_o[i];
+    // Eigen::Vector3f t = _w_H_o.block<3,3>(0,0) * _xgp_o[i];
+    Eigen::Vector3f t = _w_H_ee[i].block<3,1>(0,3) - _w_H_o.block<3,1>(0,3);
     Eigen::Matrix3f skew_Mx_gpo;
     skew_Mx_gpo <<   0.0f,  -t(2),     t(1),
                      t(2),   0.0f,    -t(0),
@@ -1163,8 +1195,10 @@ void dual_arm_control::getGraspPointsVelocity()    // in object struct or object
     _V_gpo[i].head(3) = _vo - skew_Mx_gpo * _wo;
     _V_gpo[i].tail(3) = _wo;
     //
-    _V_gpo[i].head(3) *= 0.0f;
-    _V_gpo[i].tail(3) *= 0.0f;
+    // if(CooperativeCtrl._ContactConfidence == 1.0f){
+    	_V_gpo[i].head(3) *= 0.0f;
+    	_V_gpo[i].tail(3) *= 0.0f;
+    // }
   }
 }
 

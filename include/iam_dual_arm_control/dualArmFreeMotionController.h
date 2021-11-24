@@ -43,19 +43,26 @@ class dualArmFreeMotionController
 		Eigen::Matrix3f gain_o_rel;
 		float _cpl_grasp;
 
-    float reachable_p;
-    float _v_max;
-    float _w_max;
+	    float _v_max;
+	    float _w_max;
 
-    float _coord_abs2;
-    float _cpl_rel;
+	    float _coord_abs2;
+	    float _cpl_rel;
 		float _cp_ap;
 
-    Eigen::Vector4f qdPrev[NB_ROBOTS];
-    Matrix6f _Tbi;
+	    Eigen::Vector4f qdPrev[NB_ROBOTS];
+	    Matrix6f _Tbi;
+
+	    Vector6f _Twist_vo;
+		Eigen::Matrix4f  _w_H_vo;
+		Eigen::Matrix4f  _w_H_vgp[NB_ROBOTS];
+		Eigen::Vector3f  _xvgp_o[NB_ROBOTS];
+		Eigen::Matrix4f  _qvgp_o[NB_ROBOTS];
 
 	public :
 		//
+		float reachable_p;
+		float _go2object;
 		float a_proximity_;
 		float a_normal_;
 		float a_tangent_;
@@ -82,6 +89,11 @@ class dualArmFreeMotionController
 		bool _modulated_reaching = true;
 		bool _isNorm_impact_vel  = false;
 		float _height_via_point = 0.25f;
+		int _smoothcount;
+
+		float _dt;
+		Eigen::Vector3f _objectDim;
+		float _alpha_obs[NB_ROBOTS];
 		//
 		dualArmFreeMotionController();
 		~dualArmFreeMotionController();
@@ -108,6 +120,10 @@ class dualArmFreeMotionController
 		Eigen::Vector3f getAbsoluteTangentError(Eigen::Matrix4f w_H_o, Eigen::Matrix4f w_H_ee[], Eigen::Matrix4f w_H_gp[]);
 
 		Vector6f generatePlacingMotion2(Eigen::Matrix4f w_H_o, Eigen::Matrix4f w_H_Do, float via_height, Vector6f Vo);
+
+		void computeCoordinatedMotion3(Eigen::Matrix4f w_H_ee[],  Eigen::Matrix4f w_H_gp[], Eigen::Matrix4f w_H_o, Vector6f Vo, Eigen::Vector3f _x_intercept, 
+                                                            Vector6f (&Vd_ee)[NB_ROBOTS], Eigen::Vector4f (&qd)[NB_ROBOTS], bool isOrient3d);
+		void set_virtual_object_frame(Eigen::Matrix4f w_H_vo);
 
 };
 

@@ -219,6 +219,7 @@ class dual_arm_control
 		Eigen::Matrix4f _w_H_Dgp[NB_ROBOTS];
 		Eigen::Vector3f _vo;
 		Eigen::Vector3f _wo;
+		Vector6f 		_Vo; 							// Object velocity screw
 		Vector6f 				_Vd_o;   													// desired object velocity (toss)
 		Vector6f  			_desired_object_wrench; 
 		//-------------------------------------------------------------------------------------------------
@@ -235,6 +236,7 @@ class dual_arm_control
 
 		Eigen::Vector3f _xd_landing;
 		Eigen::Vector3f _x_pickup;
+		Eigen::Vector3f _x_intercept;   // intercept point of the moving object
 
 		Eigen::Vector3f _v_abs;
 		Eigen::Vector3f _w_abs;

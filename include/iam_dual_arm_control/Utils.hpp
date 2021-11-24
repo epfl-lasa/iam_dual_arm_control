@@ -777,7 +777,7 @@ class Utils
 		return basis;
 	} 
 	
-	static void Orthobasis(Eigen::Matrix<T,3,1> v1,Eigen::Matrix<T,3,1> v0, Eigen::Matrix<T,3,3> &R1, Eigen::Matrix<T,3,3> &R0)
+	static void Orthobasis(Eigen::Matrix<T,3,1> v1, Eigen::Matrix<T,3,1> v0, Eigen::Matrix<T,3,3> &R1, Eigen::Matrix<T,3,3> &R0)
 	{
 		Eigen::Matrix<T,3,1> i  = v1; 
 		Eigen::Matrix<T,3,1> id = v0; 
@@ -803,6 +803,67 @@ class Utils
 		R0.col(0) = id;
 		R0.col(1) = jd;
 		R0.col(2) = kd;
+	}
+
+	static void UpdatePose_From_VelocityTwist(T dt, Eigen::Matrix<T,6,1> in_veloTwist, Eigen::Matrix<T,4,4> &Hmg_Trsf)
+	{
+	    //
+	    Eigen::Matrix<T,3,1> pos = Hmg_Trsf.block(0,3,3,1);
+	    Eigen::Matrix<T,3,3> rot = Hmg_Trsf.block(0,0,3,3);
+
+	    // update position
+	    pos = pos + dt * in_veloTwist.head(3);
+
+	    // update orientation
+	    Eigen::Quaternion<T> q(rot);
+
+	    Eigen::Matrix<T,4,3> Trf_quat;
+	    Trf_quat << -q.x(), -q.y(), -q.z(),
+	                 q.w(),  q.z(), -q.y(),
+	                -q.z(),  q.w(),  q.x(),
+	                 q.y(), -q.x(),  q.w(); 
+	    // update the quaternion
+	    Eigen::Matrix<T,4,1> qcoeff;
+	    qcoeff << q.w(), q.x(), q.y(), q.z();
+	    qcoeff =  qcoeff + dt* 0.5 *Trf_quat * in_veloTwist.tail(3);
+
+	    // normalizing the quaternion
+	    qcoeff.normalize();
+	    if(qcoeff.norm() <= 1e-8){
+	      qcoeff = Eigen::Matrix<T,4,1>(1.0, 0.0, 0.0, 0.0);
+	    }
+	    //
+	    Eigen::Quaternion<T> q_new(qcoeff(0), qcoeff(1), qcoeff(2), qcoeff(3)); // w, x, y, z
+	    //
+	    Hmg_Trsf.setZero();
+	    //
+	    Hmg_Trsf.block(0,0,3,3) = rot; //q_new.toRotationMatrix();
+	    Hmg_Trsf.block(0,3,3,1) = pos;
+	    Hmg_Trsf(3,3) = 1.0;
+	}
+
+	static void UpdatePose_From_VelocityTwist(T dt, Eigen::Matrix<T,6,1> in_veloTwist, Eigen::Matrix<T,3,1> &curPos, Eigen::Matrix<T,4,1> &curOrient)
+	{
+	    //
+	    Eigen::Matrix<T,4,4> cur_Hmg_Trsf = Utils<T>::pose2HomoMx(curPos, curOrient);
+
+	    // update position
+	    curPos = curPos + dt * in_veloTwist.head(3);
+
+	    // update orientation
+	    Eigen::Matrix<T,4,3> Trf_quat;
+	    Trf_quat << -curOrient(1), -curOrient(2), -curOrient(3),
+	                 curOrient(0),  curOrient(3), -curOrient(2),
+	                -curOrient(3),  curOrient(0),  curOrient(1),
+	                 curOrient(2), -curOrient(1),  curOrient(0); 
+	    // update the quaternion
+	    curOrient = curOrient + dt* 0.5 *Trf_quat * in_veloTwist.tail(3);
+
+	    // normalizing the quaternion
+	    curOrient.normalize();
+	    if(curOrient.norm() <= 1e-8){
+	      curOrient = Eigen::Matrix<T,4,1>(1.0, 0.0, 0.0, 0.0);
+	    }
 	}
 
 

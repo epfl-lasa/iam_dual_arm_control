@@ -64,6 +64,17 @@ dualArmFreeMotionController::dualArmFreeMotionController()
   _isNorm_impact_vel  = false;
   _height_via_point = 0.25f;
 
+  _Twist_vo.setZero();
+  _w_H_vo.setIdentity();
+  _w_H_vgp[0].setIdentity();
+  _w_H_vgp[1].setIdentity();
+  _dt = 0.005;
+  _objectDim << 0.20f, 0.20f, 0.20f;
+  _go2object = 0.0f;
+  _alpha_obs[LEFT]  = 0.0f;
+  _alpha_obs[RIGHT] = 0.0f;
+  _smoothcount = -100;
+
 }
 
 dualArmFreeMotionController::~dualArmFreeMotionController(){}
@@ -261,7 +272,7 @@ void dualArmFreeMotionController::computeConstrainedMotion(Eigen::Matrix4f w_H_e
 
   // computing the velocity
   // ~~~~~~~~~~~~~~~~~~~~~~~
-  _V_abs.head(3) = -4.0f*gain_p_abs * _error_abs.head(3);
+  _V_abs.head(3) = -3.0f*gain_p_abs * _error_abs.head(3);
   _V_abs.tail(3) = -1.0f*jacMuTheta_abs.inverse() * gain_o_abs * _error_abs.tail(3);
 
   std::cout << "[dual_arm_control]: Absolute Velo: \n" <<  _V_abs.transpose() << std::endl;
@@ -328,19 +339,21 @@ void dualArmFreeMotionController::computeAsyncMotion(Eigen::Matrix4f w_H_ee[],  
   for(int k=0; k<NB_ROBOTS; k++)
   {
     Vector6f error_ee;  error_ee.setZero();
-    Eigen::Vector3f d_p_ee     = reachable_p *w_H_gp[k].block<3,1>(0,3) + (1.0f-reachable_p)*w_H_ee[k].block<3,1>(0,3);
-      Eigen::Matrix3f d_R_ee   = reachable_p *w_H_gp[k].block<3,3>(0,0) + (1.0f-reachable_p)*w_H_ee[k].block<3,3>(0,0);
-      Eigen::Matrix4f w_H_ee_t = w_H_ee[k];
-      w_H_ee_t.block<3,3>(0,0) = Utils<float>::getCombinedRotationMatrix(1.0f, w_H_ee[k].block<3,3>(0,0), d_R_ee); //desired
-      // relative transformation between desired and current frame
-      Eigen::Matrix4f d_H_c_ee = w_H_ee_t.inverse() * w_H_ee[k];
-      error_ee.head(3)         = w_H_ee[k].block<3,1>(0,3) - d_p_ee;
-      error_ee.tail(3)         = Utils<float>::getPoseErrorCur2Des(d_H_c_ee).tail(3);
-      // 3D Orientation Jacobian 
-      Eigen::Matrix3f jacMuTheta_ee = Utils<float>::getMuThetaJacobian(d_H_c_ee.block<3,3>(0,0)) * w_H_ee[k].block<3,3>(0,0).transpose();
-      // ---------------------------------
-      // computing of desired ee velocity
-      // ---------------------------------
+    // Eigen::Vector3f d_p_ee   = reachable_p *w_H_gp[k].block<3,1>(0,3) + (1.0f-reachable_p)*w_H_ee[k].block<3,1>(0,3);
+    // Eigen::Matrix3f d_R_ee   = reachable_p *w_H_gp[k].block<3,3>(0,0) + (1.0f-reachable_p)*w_H_ee[k].block<3,3>(0,0); this->_w_H_eeStandby[LEFT]
+    Eigen::Vector3f d_p_ee   = reachable_p *w_H_gp[k].block<3,1>(0,3) + (1.0f-reachable_p)*this->_w_H_eeStandby[k].block<3,1>(0,3);
+    Eigen::Matrix3f d_R_ee   = reachable_p *w_H_gp[k].block<3,3>(0,0) + (1.0f-reachable_p)*this->_w_H_eeStandby[k].block<3,3>(0,0); 
+    Eigen::Matrix4f w_H_ee_t = w_H_ee[k];
+    w_H_ee_t.block<3,3>(0,0) = Utils<float>::getCombinedRotationMatrix(1.0f, w_H_ee[k].block<3,3>(0,0), d_R_ee); //desired
+    // relative transformation between desired and current frame
+    Eigen::Matrix4f d_H_c_ee = w_H_ee_t.inverse() * w_H_ee[k];
+    error_ee.head(3)         = w_H_ee[k].block<3,1>(0,3) - d_p_ee;
+    error_ee.tail(3)         = Utils<float>::getPoseErrorCur2Des(d_H_c_ee).tail(3);
+    // 3D Orientation Jacobian 
+    Eigen::Matrix3f jacMuTheta_ee = Utils<float>::getMuThetaJacobian(d_H_c_ee.block<3,3>(0,0)) * w_H_ee[k].block<3,3>(0,0).transpose();
+    // ---------------------------------
+    // computing of desired ee velocity
+    // ---------------------------------
     Vd_ee[k].head(3) = -gain_p_abs * error_ee.head(3);
     Vd_ee[k].tail(3) = -jacMuTheta_ee.inverse() * gain_o_abs * error_ee.tail(3);
     Vd_ee[k]         = Utils<float>::SaturationTwist(_v_max, _w_max, Vd_ee[k]);
@@ -699,7 +712,7 @@ void dualArmFreeMotionController::computeCoordinatedMotion2(Eigen::Matrix4f w_H_
 
   // computing the velocity
   // ~~~~~~~~~~~~~~~~~~~~~~~
-  _V_abs.head(3) = -3.0f* gain_p_abs * _error_abs.head(3);
+  _V_abs.head(3) = -4.0f* gain_p_abs * _error_abs.head(3);
   _V_abs.tail(3) = -1.0f* jacMuTheta_abs.inverse() * gain_o_abs * _error_abs.tail(3);
 
   // =====================================
@@ -745,7 +758,7 @@ void dualArmFreeMotionController::computeCoordinatedMotion2(Eigen::Matrix4f w_H_
   _error_rel.head(3) = lr_H_rr.block<3,1>(0,3) - d_p_rel;  // 
 
   // computing the velocity
-  _V_rel.head(3) = -3.0f* gain_p_rel * _error_rel.head(3);
+  _V_rel.head(3) = -5.0f* gain_p_rel * _error_rel.head(3);
   _V_rel.tail(3) = -3.0f* jacMuTheta_rel.inverse() * gain_o_rel * _error_rel.tail(3);
 
   // ========================================
@@ -758,6 +771,181 @@ void dualArmFreeMotionController::computeCoordinatedMotion2(Eigen::Matrix4f w_H_
 
   Vd_ee[LEFT]  = Utils<float>::SaturationTwist(_v_max, _w_max, Vd_ee[LEFT]);
   Vd_ee[RIGHT] = Utils<float>::SaturationTwist(_v_max, _w_max, Vd_ee[RIGHT]);
+
+}
+//
+void dualArmFreeMotionController::set_virtual_object_frame(Eigen::Matrix4f w_H_vo){
+  _w_H_vo = w_H_vo;
+}
+
+//
+void dualArmFreeMotionController::computeCoordinatedMotion3(Eigen::Matrix4f w_H_ee[],  Eigen::Matrix4f w_H_gp[], Eigen::Matrix4f w_H_o, Vector6f Vo, Eigen::Vector3f _x_intercept, 
+                                                            Vector6f (&Vd_ee)[NB_ROBOTS], Eigen::Vector4f (&qd)[NB_ROBOTS], bool isOrient3d){
+  //
+  float coord_abs = computeCouplingFactor(_error_abs.head(3), 50.0f, 0.02f, 1.0f, true);
+  // Computation of desired orientation
+  this->computeDesiredOrientation(coord_abs, w_H_ee, w_H_gp, w_H_o, qd, isOrient3d);
+  Eigen::Matrix4f w_H_dgp_l = w_H_gp[LEFT];  
+  w_H_dgp_l.block<3,3>(0,0) = Utils<float>::quaternionToRotationMatrix(qd[LEFT]);
+  Eigen::Matrix4f w_H_dgp_r = w_H_gp[RIGHT]; 
+  w_H_dgp_r.block<3,3>(0,0) = Utils<float>::quaternionToRotationMatrix(qd[RIGHT]);
+
+  // get the task transformations
+  Eigen::Matrix4f w_H_ar, lr_H_rr;               // absolute and relative EE poses
+  Eigen::Matrix4f w_H_ap, lp_H_rp;               // absolute and relative object's grasp points
+  Eigen::Matrix4f w_H_avp, lp_H_rvp;             // absolute and relative virtual object's grasp points
+  Eigen::Matrix4f w_H_ar_stb, lr_H_rr_stb;       // absolute and relative EE standby poses
+  Eigen::Matrix4f lp_H_rp_pgrasp;                // relative pregrasp EE pose
+  //
+  //---------------------------------------
+  //velocity of grasp points on the object
+  //---------------------------------------
+  Vector6f V_gpo[NB_ROBOTS];
+  for(int i=0; i<NB_ROBOTS; i++)
+  {
+    // Eigen::Vector3f t = _w_H_o.block<3,3>(0,0) * _xgp_o[i];
+    Eigen::Vector3f t = w_H_ee[i].block<3,1>(0,3) - w_H_o.block<3,1>(0,3);
+    Eigen::Matrix3f skew_Mx_gpo;
+    skew_Mx_gpo <<   0.0f,  -t(2),     t(1),
+                     t(2),   0.0f,    -t(0),
+                    -t(1),   t(0),     0.0f;             
+    // velocity
+    V_gpo[i].head(3) = Vo.head(3) - skew_Mx_gpo * Vo.tail(3);
+    V_gpo[i].tail(3) = Vo.tail(3);
+    //
+  }
+  //---------------------------------------
+  _w_H_vo.block<3,3>(0,0) = w_H_o.block<3,3>(0,0);
+  // Eigen::Vector3f pvo_star = (1.f - reachable_p)* _x_intercept + reachable_p* w_H_o.block<3,1>(0,3);           // _go2object
+  Eigen::Vector3f pvo_star = (1.f - _go2object)* _x_intercept + _go2object* w_H_o.block<3,1>(0,3);                // 
+  _Twist_vo.head(3) = -2.0f*gain_p_abs * (_w_H_vo.block<3,1>(0,3) - pvo_star) + _go2object * 0.0* Vo.head(3);     
+  _Twist_vo.tail(3) = 0.0* Vo.tail(3);
+
+  Utils<float>::UpdatePose_From_VelocityTwist(this->_dt, _Twist_vo, _w_H_vo);                                     // ////
+
+  _w_H_vo = (1.f - _go2object)* _w_H_vo + _go2object* w_H_o;
+
+  Eigen::Vector3f xvgp_o_d[NB_ROBOTS];
+
+  bool object_between_ee = ((w_H_ee[LEFT](1,3) - (w_H_o(1,3)-_objectDim(1)/2.f) < 0.0f ) && (w_H_ee[RIGHT](1,3) - (w_H_o(1,3)+_objectDim(1)/2.f) > 0.0f ));
+  Eigen::MatrixXf  p_rel_dot_vo = (w_H_ee[RIGHT].block<3,1>(0,3) - w_H_ee[LEFT].block<3,1>(0,3)).transpose() *Vo.head(3);
+
+  if(!object_between_ee && (p_rel_dot_vo(0,0) < 0.0f)){       // object moving from right to left
+    _alpha_obs[LEFT]  = 0.0f;
+    _alpha_obs[RIGHT] = 1.0f;
+  }
+  else if(!object_between_ee && (p_rel_dot_vo(0,0) > 0.0f)){  // object moving from left to right
+    _alpha_obs[LEFT]  = 1.0f;
+    _alpha_obs[RIGHT] = 0.0f;
+  }
+  else{
+    float tau = 0.20;
+    _alpha_obs[LEFT]  =  (1.f-tau)*_alpha_obs[LEFT]  + tau * 0.0f;  // 0.0f;
+    _alpha_obs[RIGHT] =  (1.f-tau)*_alpha_obs[RIGHT] + tau * 0.0f;  // 0.0f;
+    // _smoothcount ++;
+  }
+  //
+  Eigen::Matrix4f o_H_gp[NB_ROBOTS];
+  for(int k=0; k<NB_ROBOTS; k++){
+    o_H_gp[k]   = w_H_o.inverse() * w_H_gp[k];
+    xvgp_o_d[k] = o_H_gp[k].block<3,1>(0,3)  + (1.f - _go2object) *_alpha_obs[k]  * Eigen::Vector3f(0.0f, 0.0f, _objectDim(2)/2.f + 0.05f);
+    _w_H_vgp[k].block<3,3>(0,0) = _w_H_vo.block<3,3>(0,0) * o_H_gp[k].block<3,3>(0,0);
+    _w_H_vgp[k].block<3,1>(0,3) = _w_H_vo.block<3,3>(0,0) * xvgp_o_d[k] + _w_H_vo.block<3,1>(0,3);
+  }
+
+  // Bimanual coordinated task-space transforms
+  Utils<float>::getBimanualTransforms(w_H_ee[LEFT], w_H_ee[RIGHT], w_H_ar, lr_H_rr);                                      // EE
+  Utils<float>::getBimanualTransforms(_w_H_vgp[LEFT], _w_H_vgp[RIGHT], w_H_avp, lp_H_rvp);                                // EE
+  // Utils<float>::getBimanualTransforms(w_H_gp[LEFT], w_H_gp[RIGHT], w_H_ap, lp_H_rp);                                   // object's grasp points
+  Utils<float>::getBimanualTransforms(w_H_dgp_l, w_H_dgp_r, w_H_ap, lp_H_rp);                                             // object's grasp points
+  Utils<float>::getBimanualTransforms(this->_w_H_eeStandby[LEFT], this->_w_H_eeStandby[RIGHT], w_H_ar_stb, lr_H_rr_stb);  // standby arms
+  //
+  // lp_H_rp_pgrasp       = lp_H_rp;
+  // lp_H_rp_pgrasp(1, 3) = lp_H_rp(1,3)/fabs(lp_H_rp(1,3)) * (fabs(lp_H_rp(1,3)) + 0.30f);
+  lp_H_rp_pgrasp       = lp_H_rvp;
+  lp_H_rp_pgrasp(1, 3) = lp_H_rvp(1,3)/fabs(lp_H_rvp(1,3)) * (fabs(lp_H_rvp(1,3)) + 0.25f);
+
+  // =======================================
+  // Absolute velocity of the End-effectors
+  // =======================================
+  Eigen::Vector3f d_p_abs = reachable_p *w_H_avp.block<3,1>(0,3) + (1.0f-reachable_p)*w_H_ar_stb.block<3,1>(0,3);
+  _error_abs.head(3)      = w_H_ar.block<3,1>(0,3) - d_p_abs;
+  Eigen::Vector3f error_abs_ro = w_H_ar.block<3,1>(0,3) - w_H_o.block<3,1>(0,3);
+  
+  // Coupling the orientation with the position error
+  float cpl_abs = computeCouplingFactor(_error_abs.head(3), 50.0f, 0.02f, 1.0f, false);
+
+  Eigen::Matrix3f d_R_abs  = reachable_p *w_H_avp.block<3,3>(0,0) + (1.0f-reachable_p)*w_H_ar_stb.block<3,3>(0,0);
+  Eigen::Matrix4f w_H_ar_t = w_H_ar;
+  w_H_ar_t.block<3,3>(0,0) = Utils<float>::getCombinedRotationMatrix(cpl_abs, w_H_ar.block<3,3>(0,0), d_R_abs); //desired
+  // relative transformation
+  Eigen::Matrix4f d_H_c_abs = w_H_ar_t.inverse() * w_H_ar;
+  // orientation error
+  _error_abs.tail(3) = Utils<float>::getPoseErrorCur2Des(d_H_c_abs).tail(3);
+  // 3D Orientation Jacobian 
+  Eigen::Matrix3f jacMuTheta_abs = Utils<float>::getMuThetaJacobian(d_H_c_abs.block<3,3>(0,0)) * w_H_ar.block<3,3>(0,0).transpose();
+
+  // computing the velocity
+  // ~~~~~~~~~~~~~~~~~~~~~~~
+  _V_abs.head(3) = -8.0f* gain_p_abs * _error_abs.head(3);
+  // _V_abs.head(3) = -((1.f - _go2object)*0.5f + _go2object *1.0f)* gain_p_abs * _error_abs.head(3);
+  _V_abs.tail(3) = -1.0f* jacMuTheta_abs.inverse() * gain_o_abs * _error_abs.tail(3);
+
+  // =====================================
+  // Relative velocity of the hands
+  // =====================================
+  // Coupling the orientation with the position error
+  Eigen::Matrix3f d_R_rel = reachable_p* (coord_abs*lp_H_rvp.block<3,3>(0,0) + (1.0f-coord_abs)*lp_H_rp_pgrasp.block<3,3>(0,0)) 
+                          + (1.0f- reachable_p)*lr_H_rr_stb.block<3,3>(0,0);
+
+  Eigen::Matrix4f lr_H_rr_t = lr_H_rr;
+  // ///////////////////////////////////////////////////////////////////////////////////////////
+  // relative transformation
+  lr_H_rr_t.block<3,3>(0,0) = Utils<float>::quaternionToRotationMatrix(qd[LEFT]).transpose() * Utils<float>::quaternionToRotationMatrix(qd[RIGHT]);
+  Eigen::Matrix4f d_H_c_rel = lr_H_rr_t.inverse() * lr_H_rr;  // expressed in the left hand frame 
+  
+  // orientation error
+  _error_rel.tail(3) = Utils<float>::getPoseErrorCur2Des(d_H_c_rel).tail(3);
+  // 3D Orientation Jacobian 
+  Eigen::Matrix3f jacMuTheta_rel = Utils<float>::getMuThetaJacobian(d_H_c_rel.block<3,3>(0,0)) * w_H_ee[RIGHT].block<3,3>(0,0).transpose(); // wrt. the world
+
+  // ///////////////////////////////////////////////////////////////////////////////////////
+  float cpl_rel    = computeCouplingFactor(_error_abs.head(3), 50.0f, 0.08f, 1.0f, true);  // 50.0f, 0.05f, 2.8f  0.5
+  // float cpl_rel    = computeCouplingFactor(error_abs_ro, 50.0f, 0.08f, 1.0f, true);  // 50.0f, 0.05f, 2.8f  0.5
+
+  // Eigen::Vector3f o_error_pos_abs = w_H_o.block<3,3>(0,0).transpose() * _error_abs.head(3);
+  Eigen::Vector3f o_error_pos_abs = _w_H_vo.block<3,3>(0,0).transpose() * error_abs_ro; 
+  Eigen::Vector3f o_error_pos_abs_paral = Eigen::Vector3f(o_error_pos_abs(0), 0.0f, o_error_pos_abs(2));
+  // float cp_ap = computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.06f, 1.0f, true);  // 50.0f, 0.12f, 1.0f  (0.04f) (0.02f)
+  float cp_ap = computeCouplingFactor(error_abs_ro, 60.0f, 0.15f, 1.0f, true);  // 50.0f, 0.12f, 1.0f  (0.04f) (0.02f)
+
+
+  // position error accounting for the reachability of the target
+  // Eigen::Vector3f d_p_rel = reachable_p *(cpl_rel*cp_ap* lp_H_rp.block<3,1>(0,3) + (1.0f-cpl_rel*cp_ap) *lp_H_rp_pgrasp.block<3,1>(0,3)) + (1.0f-reachable_p) * lr_H_rr_stb.block<3,1>(0,3); // TBC 
+  Eigen::Vector3f d_p_rel = cpl_rel *(cp_ap * lp_H_rvp.block<3,1>(0,3) + (1.0f-cp_ap) *lp_H_rp_pgrasp.block<3,1>(0,3)) + (1.0f-cpl_rel) * lr_H_rr_stb.block<3,1>(0,3); // TBC 
+
+  _error_rel.head(3) = lr_H_rr.block<3,1>(0,3) - d_p_rel;  // 
+
+  // computing the velocity
+  _V_rel.head(3) = -20.0f* gain_p_rel * _error_rel.head(3);
+  _V_rel.tail(3) = -3.0f* jacMuTheta_rel.inverse() * gain_o_rel * _error_rel.tail(3);
+
+  // ========================================
+  // Computation of individual EE motion
+  // ========================================
+  // velocity
+  float a_bi = 0.5f;
+  float b_bi = 1.0f;
+  Utils<float>::getBimanualTwistDistribution(a_bi, b_bi, _V_abs, _V_rel, Vd_ee[LEFT], Vd_ee[RIGHT]);
+
+  Vd_ee[LEFT]  = Vd_ee[LEFT]  + _go2object * V_gpo[LEFT];
+  Vd_ee[RIGHT] = Vd_ee[RIGHT] + _go2object * V_gpo[RIGHT];
+
+  Vd_ee[LEFT]  = Utils<float>::SaturationTwist(_v_max, _w_max, Vd_ee[LEFT]);
+  Vd_ee[RIGHT] = Utils<float>::SaturationTwist(_v_max, _w_max, Vd_ee[RIGHT]);
+
+  std::cout << "[dualArmFreeMotionController]: --------------- cpl_rel ------- : \t"  << cpl_rel << std::endl;
+  std::cout << "[dualArmFreeMotionController]: --------------- cp_ap ------- : \t"  << cp_ap << std::endl;
 
 }
 
