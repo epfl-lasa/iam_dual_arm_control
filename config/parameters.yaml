@@ -1,3 +1,10 @@
+# object
+object:
+  mass : 1.0
+  dimension:    [0.20, 0.20, 0.20]
+  graspOffset:  [0.00, 0.00, 0.01]
+
+
 # End-effector tool # left real : 0.175 # right real : 0.20
 tool:
   offset2end_effector:
@@ -38,10 +45,11 @@ impact_direction:
 
 # dual arm task
 dual_arm_task:
-  dualTaskSelector: 3
+  dualTaskSelector: 4
   old_dual_method: false
   modulated_reaching: true
   isNorm_impact_vel: false
+  isQP_wrench_generation: false
   lifting: 
     position: [0.40, 0.00, 0.60] #[0.45, 0.00, 0.70] z0.6
     orientation: [1.00, 0.00, 0.00, 0.00]

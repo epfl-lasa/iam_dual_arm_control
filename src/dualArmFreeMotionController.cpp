@@ -64,6 +64,23 @@ dualArmFreeMotionController::dualArmFreeMotionController()
   _isNorm_impact_vel  = false;
   _height_via_point = 0.25f;
 
+  //
+  _sw_EE_obsAv  = 100.0f;
+  _min_dist_EE  = 0.09f;
+  //
+  Eigen::Vector2f P1 = Eigen::Vector2f(0.f, 0.085f);
+  Eigen::Vector2f P2 = Eigen::Vector2f(0.f,-0.085f);
+  Eigen::Vector2f P3 = Eigen::Vector2f(0.04f, 0.f);
+
+  Eigen::Matrix3f Mdelta, Mx0, My0;
+  Mdelta <<                     P1(0), P1(1), 1,                       P2(0), P2(1), 1,                        P3(0), P3(1), 1;
+  Mx0    << pow(P1(0),2)+pow(P1(1),2), P1(1), 1,   pow(P2(0),2)+pow(P2(1),2), P2(1), 1,    pow(P3(0),2)+pow(P3(1),2), P3(1), 1;
+  My0    << pow(P1(0),2)+pow(P1(1),2), P1(0), 1,   pow(P2(0),2)+pow(P2(1),2), P2(0), 1,    pow(P3(0),2)+pow(P3(1),2), P3(0), 1;
+
+  float delta = 2* Mdelta.determinant();
+  Eigen::Vector2f center_ssphere_xz = Eigen::Vector2f(1/delta * Mx0.determinant(), -1/delta * My0.determinant());
+  _safe_radius= center_ssphere_xz.norm();
+
 }
 
 dualArmFreeMotionController::~dualArmFreeMotionController(){}
@@ -1169,4 +1186,18 @@ Eigen::Vector3f dualArmFreeMotionController::getAbsoluteTangentError(Eigen::Matr
   Eigen::Vector3f error_p_abs     = w_H_o.block(0,3,3,1) - 0.5f*( w_H_ee[LEFT].block(0,3,3,1) +  w_H_ee[RIGHT].block(0,3,3,1));
   
   return  oSpace * error_p_abs;
+}
+
+void dualArmFreeMotionController::compute_EE_avoidance_velocity(Eigen::Matrix4f w_H_ee[], Vector6f (&VEE_oa)[NB_ROBOTS]){
+
+  Eigen::Vector3f center_ssphere_EE_l = w_H_ee[LEFT].block(0,3,3,1) +(0.5f*_min_dist_EE - _safe_radius)*w_H_ee[LEFT].block(0,0,3,3).col(2);
+  Eigen::Vector3f center_ssphere_EE_r = w_H_ee[RIGHT].block(0,3,3,1) +(0.5f*_min_dist_EE - _safe_radius)*w_H_ee[RIGHT].block(0,0,3,3).col(2);
+
+  float dist_EE = (center_ssphere_EE_l -  center_ssphere_EE_r).norm() - 2.0f * _safe_radius;
+  float alpha_active = 0.5f*(std::tanh(_sw_EE_obsAv  * (_min_dist_EE - dist_EE)) + 1.0 );
+  //
+  Eigen::Vector3f uEE_LR = w_H_ee[RIGHT].block(0,3,3,1) -  w_H_ee[LEFT].block(0,3,3,1);
+  Eigen::Vector3f uEE_RL = w_H_ee[LEFT].block(0,3,3,1) -  w_H_ee[RIGHT].block(0,3,3,1);
+  VEE_oa[LEFT].head(3)  = -alpha_active * _v_max * (w_H_ee[RIGHT].block(0,3,3,1) -  w_H_ee[LEFT].block(0,3,3,1)).normalized();
+  VEE_oa[RIGHT].head(3) = -alpha_active * _v_max * (w_H_ee[LEFT].block(0,3,3,1) -  w_H_ee[RIGHT].block(0,3,3,1)).normalized();
 }

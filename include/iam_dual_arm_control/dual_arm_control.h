@@ -168,6 +168,8 @@ class dual_arm_control
 		Eigen::Vector3f _omegad[NB_ROBOTS];
 		Eigen::Vector3f _v[NB_ROBOTS];
 		Eigen::Vector3f _w[NB_ROBOTS];
+		Vector6f 				_Vee[NB_ROBOTS];									// measured (estimated) EE velocity twist
+		Matrix6f 				_tcp_W_EE[NB_ROBOTS];							// Velocity Twist transformation between the robot EE and the tool center point (tcp)
 		Vector6f 				_Vd_ee[NB_ROBOTS];								// desired velocity twist
 		Eigen::Vector3f _fxc[NB_ROBOTS];     							// Desired conservative parts of the nominal DS [m/s] (3x1)
 		Vector6f  			_wrench[NB_ROBOTS];          			// Wrench [N and Nm] (6x1)
@@ -302,7 +304,6 @@ class dual_arm_control
 		//
 		Eigen::Matrix3f _BasisQ[NB_ROBOTS];
 		Eigen::Matrix3f _E_xt_xd[NB_ROBOTS];
-		Vector6f _Vee[NB_ROBOTS];
 		Eigen::Vector3f _dirImp[NB_ROBOTS];
 		Eigen::Vector3f _VdImpact[NB_ROBOTS]; 
 		bool _release_flag;
@@ -315,6 +316,8 @@ class dual_arm_control
 
 		float _delta_Imp  = 0.0f;
 		float _delta_Toss = 0.0f;
+
+		Vector6f _VEE_oa[NB_ROBOTS];
 
 		////////////////////////////////////////////////////////////////////////
 		// Objects for Unconstrained and contrained motion and force generation
