@@ -66,7 +66,7 @@ dualArmFreeMotionController::dualArmFreeMotionController()
 
   //
   _sw_EE_obsAv  = 100.0f;
-  _min_dist_EE  = 0.09f;
+  _min_dist_EE  = 0.08f;
   //
   Eigen::Vector2f P1 = Eigen::Vector2f(0.f, 0.085f);
   Eigen::Vector2f P2 = Eigen::Vector2f(0.f,-0.085f);
@@ -359,7 +359,7 @@ void dualArmFreeMotionController::computeAsyncMotion(Eigen::Matrix4f w_H_ee[],  
       // computing of desired ee velocity
       // ---------------------------------
     Vd_ee[k].head(3) = -gain_p_abs * error_ee.head(3);
-    Vd_ee[k].tail(3) = -jacMuTheta_ee.inverse() * gain_o_abs * error_ee.tail(3);
+    Vd_ee[k].tail(3) = -3.f*jacMuTheta_ee.inverse() * gain_o_abs * error_ee.tail(3);
     Vd_ee[k]         = Utils<float>::SaturationTwist(_v_max, _w_max, Vd_ee[k]);
   }
   // Computation of desired orientation
@@ -374,6 +374,12 @@ void dualArmFreeMotionController::computeDesiredOrientation(float weight, Eigen:
     for(int k = 0; k<NB_ROBOTS; k++)
     {
       qd[k]  = Utils<float>::getSlerpInterpolation(weight, w_H_ee[k].block(0,0, 3,3), w_H_gp[k].block(0,0, 3,3));
+      if(qd[k].dot(qdPrev[k])<0.0f)
+      {
+        qd[k] *=-1.0f;
+      }
+
+      qdPrev[k] = qd[k];
     }
   }
   else
@@ -717,7 +723,7 @@ void dualArmFreeMotionController::computeCoordinatedMotion2(Eigen::Matrix4f w_H_
   // computing the velocity
   // ~~~~~~~~~~~~~~~~~~~~~~~
   _V_abs.head(3) = -3.0f* gain_p_abs * _error_abs.head(3);
-  _V_abs.tail(3) = -1.0f* jacMuTheta_abs.inverse() * gain_o_abs * _error_abs.tail(3);
+  _V_abs.tail(3) = -3.0f* jacMuTheta_abs.inverse() * gain_o_abs * _error_abs.tail(3);
 
   // =====================================
   // Relative velocity of the hands
@@ -772,6 +778,22 @@ void dualArmFreeMotionController::computeCoordinatedMotion2(Eigen::Matrix4f w_H_
   float a_bi = 0.5f;
   float b_bi = 1.0f;
   Utils<float>::getBimanualTwistDistribution(a_bi, b_bi, _V_abs, _V_rel, Vd_ee[LEFT], Vd_ee[RIGHT]);
+
+
+  Eigen::Matrix4f d_H_c_l = w_H_dgp_l.inverse() * w_H_ee[LEFT];
+  Eigen::Matrix4f d_H_c_r = w_H_dgp_r.inverse() * w_H_ee[RIGHT];
+
+  // orientation error
+  Eigen::Vector3f error_ori_l = Utils<float>::getPoseErrorCur2Des(d_H_c_l).tail(3);
+  Eigen::Vector3f error_ori_r = Utils<float>::getPoseErrorCur2Des(d_H_c_r).tail(3);
+
+  // 3D Orientation Jacobian 
+  Eigen::Matrix3f jacMuTheta_l = Utils<float>::getMuThetaJacobian(d_H_c_l.block<3,3>(0,0)) * w_H_ee[LEFT].block<3,3>(0,0).transpose(); // wrt. the world
+  Eigen::Matrix3f jacMuTheta_r = Utils<float>::getMuThetaJacobian(d_H_c_r.block<3,3>(0,0)) * w_H_ee[RIGHT].block<3,3>(0,0).transpose(); // wrt. the world
+
+  Vd_ee[LEFT].tail(3)  = -3.0f* jacMuTheta_l.inverse() * gain_o_rel * error_ori_l;
+  Vd_ee[RIGHT].tail(3) = -3.0f* jacMuTheta_r.inverse() * gain_o_rel * error_ori_r;
+
 
   Vd_ee[LEFT]  = Utils<float>::SaturationTwist(_v_max, _w_max, Vd_ee[LEFT]);
   Vd_ee[RIGHT] = Utils<float>::SaturationTwist(_v_max, _w_max, Vd_ee[RIGHT]);
@@ -929,10 +951,10 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
   // state-dependent gain matrix
   // ----------------------------
     Eigen::Matrix4f w_H_gp_t[NB_ROBOTS];  // <----------------------
-    w_H_gp_t[LEFT].block<3,3>(0,0) = w_H_gp[LEFT].block<3,3>(0,0);
+    w_H_gp_t[LEFT] = w_H_gp[LEFT];
     w_H_gp_t[LEFT].block<3,1>(0,3) = Xb[LEFT];
     //
-    w_H_gp_t[RIGHT].block<3,3>(0,0) = w_H_gp[RIGHT].block<3,3>(0,0);
+    w_H_gp_t[RIGHT] = w_H_gp[RIGHT];
     w_H_gp_t[RIGHT].block<3,1>(0,3) = Xb[RIGHT];
 
     std::cout << " POSITION : ---------- [w_H_gp_t] \t" << w_H_gp_t[LEFT].block<3,1>(0,3).transpose() << " and \t" << w_H_gp_t[RIGHT].block<3,1>(0,3).transpose() << std::endl;
@@ -1125,9 +1147,13 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
         Xdot_bi.tail(3)       = w_o.cross(X_rel);
        
         Vector6f v_task_bi = ( A * _Tbi*(X_dual - Xstar_dual) + Xdot_bi );
-
-        v_task_bi.head(3) = v_task_bi.head(3)/(v_task_bi.head(3).norm()+1e-10)*(cp_obj*v_task_bi.head(3).norm() +(1.0f -cp_obj)*0.8f*Vd_o.head(3).norm());
-        // v_task_bi.head(3) = v_task_bi.head(3)/(v_task_bi.head(3).norm()+1e-10)*Vd_o.head(3).norm();
+        // 
+        if(true){
+            v_task_bi.head(3) = v_task_bi.head(3)/(v_task_bi.head(3).norm()+1e-10)*(cp_obj*v_task_bi.head(3).norm() +(1.0f -cp_obj)*0.8f*Vd_o.head(3).norm());
+        }
+        else{
+            v_task_bi.head(3) = v_task_bi.head(3)/(v_task_bi.head(3).norm()+1e-10)*Vd_o.head(3).norm();
+        }
 
         Amodul_ee_norm = _Tbi.inverse() * v_task_bi;  // 
         Amodul_ee_tang = _Tbi.inverse() * v_task_bi;  //
@@ -1201,3 +1227,10 @@ void dualArmFreeMotionController::compute_EE_avoidance_velocity(Eigen::Matrix4f 
   VEE_oa[LEFT].head(3)  = -alpha_active * _v_max * (w_H_ee[RIGHT].block(0,3,3,1) -  w_H_ee[LEFT].block(0,3,3,1)).normalized();
   VEE_oa[RIGHT].head(3) = -alpha_active * _v_max * (w_H_ee[LEFT].block(0,3,3,1) -  w_H_ee[RIGHT].block(0,3,3,1)).normalized();
 }
+
+
+
+// void constrained_ang_velocity_correction(){
+
+  
+// }

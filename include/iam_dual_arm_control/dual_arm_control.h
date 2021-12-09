@@ -121,6 +121,8 @@ class dual_arm_control
 		ros::Publisher _pubAttractor[NB_ROBOTS];
 		ros::Publisher _pubNormLinVel[NB_ROBOTS];						// Publish norms of EE linear velocities
 
+		ros::Publisher _pubAppliedWrench[NB_ROBOTS];				// Publish applied EE wrench
+
 		//////////////////////////////
 		// List of the topics
 		//////////////////////////////
@@ -318,6 +320,7 @@ class dual_arm_control
 		float _delta_Toss = 0.0f;
 
 		Vector6f _VEE_oa[NB_ROBOTS];
+		std::string _dsDampingTopic[NB_ROBOTS];
 
 		////////////////////////////////////////////////////////////////////////
 		// Objects for Unconstrained and contrained motion and force generation
