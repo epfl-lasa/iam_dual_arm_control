@@ -278,6 +278,8 @@ bool dual_arm_control::init()
 	_pubAppliedWrench[LEFT]			= nh_.advertise<geometry_msgs::Wrench>("/dual_arm_control/robot_left/applied_wrench", 1);
 	_pubAppliedWrench[RIGHT]		= nh_.advertise<geometry_msgs::Wrench>("/dual_arm_control/robot_right/applied_wrench", 1);
 	//
+	_pubApplied_fnornMoment[LEFT] 	= nh_.advertise<geometry_msgs::Wrench>("/dual_arm_control/robot_left/desired/ext_nforce_moments", 1);
+	_pubApplied_fnornMoment[RIGHT] 	= nh_.advertise<geometry_msgs::Wrench>("/dual_arm_control/robot_right/desired/ext_nforce_moments", 1);
 	//
 	
 	// initialize the tossing DS
@@ -1418,13 +1420,23 @@ void dual_arm_control::publishData()
 
 	// applied wrench
 	geometry_msgs::Wrench msgAppliedWrench;
-	msgAppliedWrench.force.x  = -CooperativeCtrl._f_applied[k](0);
+	msgAppliedWrench.force.x  	= -CooperativeCtrl._f_applied[k](0);
     msgAppliedWrench.force.y  = -CooperativeCtrl._f_applied[k](1);
     msgAppliedWrench.force.z  = -CooperativeCtrl._f_applied[k](2);
     msgAppliedWrench.torque.x = -CooperativeCtrl._f_applied[k](3);
     msgAppliedWrench.torque.y = -CooperativeCtrl._f_applied[k](4);
     msgAppliedWrench.torque.z = -CooperativeCtrl._f_applied[k](5);
 	_pubAppliedWrench[k].publish(msgAppliedWrench);
+
+	// contact normal and applied moment
+	geometry_msgs::Wrench msgFnormMoment;
+		msgFnormMoment.force.x 	= _n[k](0);
+		msgFnormMoment.force.y 	= _n[k](1);
+		msgFnormMoment.force.z 	= _n[k](2);
+		msgFnormMoment.torque.x = -CooperativeCtrl._f_applied[k](3);
+		msgFnormMoment.torque.y = -CooperativeCtrl._f_applied[k](4);
+		msgFnormMoment.torque.z = -CooperativeCtrl._f_applied[k](5);
+	_pubApplied_fnornMoment[k].publish(msgFnormMoment);
   }
 }
 
@@ -1443,13 +1455,13 @@ void dual_arm_control::saveData()
 	// To o : add desired quaternion
 	// if(_startlogging)
 	// {
-		datalog._OutRecord_pose			<< (float)(_cycle_count * _dt) << ", ";																																																						// cycle time
-		datalog._OutRecord_pose			<< _x[LEFT].transpose().format(CSVFormat)  	<< " , " << _q[LEFT].transpose().format(CSVFormat) 	<< " , ";																				// left end-effector
-		datalog._OutRecord_pose   	<< _x[RIGHT].transpose().format(CSVFormat) 	<< " , " << _q[RIGHT].transpose().format(CSVFormat) << " , ";																					// right end-effector
-		datalog._OutRecord_pose   	<< _xo.transpose().format(CSVFormat) 			 	<< " , " << _qo.transpose().format(CSVFormat) 			<< " , ";																		// object
-		datalog._OutRecord_pose   	<< _w_H_Do(0,3) << " , " << _w_H_Do(1,3) 		<< " , " << _w_H_Do(2,3) << " , ";																											// desired object
-		datalog._OutRecord_pose   	<< xgrL.transpose().format(CSVFormat) 			<< " , " << qgrL.transpose().format(CSVFormat) 			<< " , ";																			// left  grasping point
-		datalog._OutRecord_pose   	<< xgrR.transpose().format(CSVFormat) 			<< " , " << qgrR.transpose().format(CSVFormat) 			<< " , ";																			// right grasping point
+		datalog._OutRecord_pose			<< (float)(_cycle_count * _dt) << ", ";																																																							// cycle time
+		datalog._OutRecord_pose			<< _x[LEFT].transpose().format(CSVFormat)  	<< " , " << _q[LEFT].transpose().format(CSVFormat) 	<< " , ";																						// left end-effector
+		datalog._OutRecord_pose   	<< _x[RIGHT].transpose().format(CSVFormat) 	<< " , " << _q[RIGHT].transpose().format(CSVFormat) << " , ";																						// right end-effector
+		datalog._OutRecord_pose   	<< _xo.transpose().format(CSVFormat) 			 	<< " , " << _qo.transpose().format(CSVFormat) 			<< " , ";																						// object
+		datalog._OutRecord_pose   	<< _w_H_Do(0,3) << " , " << _w_H_Do(1,3) 		<< " , " << _w_H_Do(2,3) << " , ";																																			// desired object
+		datalog._OutRecord_pose   	<< xgrL.transpose().format(CSVFormat) 			<< " , " << qgrL.transpose().format(CSVFormat) 			<< " , ";																						// left  grasping point
+		datalog._OutRecord_pose   	<< xgrR.transpose().format(CSVFormat) 			<< " , " << qgrR.transpose().format(CSVFormat) 			<< " , ";																						// right grasping point
 		datalog._OutRecord_pose   	<< _tossVar.release_position.transpose().format(CSVFormat) 	<< " , " << _tossVar.release_orientation.transpose().format(CSVFormat)   << " , ";			// release pose
 		datalog._OutRecord_pose   	<< _tossVar.rest_position.transpose().format(CSVFormat) 			<< " , " << _tossVar.rest_orientation.transpose().format(CSVFormat) 			<< std::endl;	// rest pose 
 		

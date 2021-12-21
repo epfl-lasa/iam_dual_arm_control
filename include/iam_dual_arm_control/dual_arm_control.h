@@ -122,6 +122,7 @@ class dual_arm_control
 		ros::Publisher _pubNormLinVel[NB_ROBOTS];						// Publish norms of EE linear velocities
 
 		ros::Publisher _pubAppliedWrench[NB_ROBOTS];				// Publish applied EE wrench
+		ros::Publisher _pubApplied_fnornMoment[NB_ROBOTS]; 	// Publish the contact normal and the moment of the applied wrench
 
 		//////////////////////////////
 		// List of the topics
