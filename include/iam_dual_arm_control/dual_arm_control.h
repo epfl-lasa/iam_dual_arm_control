@@ -310,6 +310,7 @@ class dual_arm_control
 		Eigen::Matrix3f _BasisQ[NB_ROBOTS];
 		Eigen::Matrix3f _E_xt_xd[NB_ROBOTS];
 		Vector6f _Vee[NB_ROBOTS];
+		Matrix6f 		_tcp_W_EE[NB_ROBOTS];			// Velocity Twist transformation between the robot EE and the tool center point (tcp)
 		Eigen::Vector3f _dirImp[NB_ROBOTS];
 		Eigen::Vector3f _VdImpact[NB_ROBOTS]; 
 		bool _release_flag;
@@ -322,6 +323,10 @@ class dual_arm_control
 
 		float _delta_Imp  = 0.0f;
 		float _delta_Toss = 0.0f;
+
+		Vector6f _VEE_oa[NB_ROBOTS];
+		std::string _dsDampingTopic[NB_ROBOTS];
+
 		Eigen::Vector3f _delta_rel_pos;
 		bool _increment_release_pos = false;
 		spherical_position release_pos;

@@ -14,16 +14,16 @@ bool dualArmCooperativeController::init()
 {
 	_tol_dist2contact   = 0.045f;
 	_ContactConfidence  = 0.0f;
-	_min_Fz 		    = 30.0f; //15.0;  // 40.0f;  
-	_min_nF 			= 30.0f;          // 40.0f;
-	_max_nF 			= 45.0f;          // 60.0f;
+	_min_Fz 		    		= 30.0f; //15.0;  // 40.0f;  
+	_min_nF 						= 30.0f;          // 40.0f;
+	_max_nF 						= 60.0f; // 45.0f; // 60.0f;
 	//
-	_mu_ee				= 0.9f;
-	_gamma_ee			= 0.9f;
-	_deltaX_ee			= 0.5f;
-	_deltaY_ee			= 0.5f;
-	_contactOccured     = false;
-	_targetForce     	= 45.0f;   // 40
+	_mu_ee							= 0.9f;
+	_gamma_ee						= 0.9f;
+	_deltaX_ee					= 0.5f;
+	_deltaY_ee					= 0.5f;
+	_contactOccured    	= false;
+	_targetForce     		= 60.0f; //45.0f; //  40
 	//
 	_GraspMatrixEEs.setZero();
 	_optimal_contact_wrench_EEs.setZero();
@@ -337,6 +337,9 @@ void dualArmCooperativeController::computeControlWrench(Eigen::Matrix4f w_H_o, E
 		this->thresholdNormalForcesEEs(_min_nF, _max_nF, w_H_ee[LEFT].block<3,3>(0,0),  _f_applied[LEFT]); 
     this->thresholdNormalForcesEEs(_min_nF, _max_nF, w_H_ee[RIGHT].block<3,3>(0,0), _f_applied[RIGHT]);
 	}
+	_f_applied[LEFT]  = _ContactConfidence * _f_applied[LEFT];
+  _f_applied[RIGHT] = _ContactConfidence * _f_applied[RIGHT];
+
 	// Printing some results
 	// ---------------------
 	std::cout << " OPTIMAL HAND WRENCH   LEFT \t " << _optimal_contact_wrench_EEs.head(6).transpose() << std::endl;
@@ -385,14 +388,54 @@ void dualArmCooperativeController::getPredefinedContactForceProfile(bool goHome,
 	std::cout << " APPLIED HAND WRENCH RIGHT \t " << _f_applied[RIGHT].transpose() << std::endl;
 }
 
-void dualArmCooperativeController::getAppliedWrenches(bool goHome, int contactState, Eigen::Matrix4f w_H_o, Eigen::Matrix4f w_H_ee[], Eigen::Matrix4f w_H_cp[], Vector6f desired_object_wrench, bool qp_wrench_generation)
+void dualArmCooperativeController::getPredefinedContactForceProfile(bool goHome, int contactState, Eigen::Matrix4f w_H_o, Eigen::Matrix4f w_H_ee[], Eigen::Matrix4f w_H_cp[], float object_mass)
+{
+	//
+	this->getGraspKineDynVariables(w_H_o, w_H_ee, w_H_cp);
+	this->check_contact_proximity(w_H_ee, w_H_cp);
+	//
+	_f_applied[LEFT].setZero(); 
+	_f_applied[RIGHT].setZero();
+	//
+
+
+  if(goHome)
+  {
+    _f_applied[LEFT].setZero(); 
+    _f_applied[RIGHT].setZero();
+  }
+  else
+  {
+    if(contactState==CONTACT)
+    {
+		_f_applied[LEFT].head(3)  = _targetForce * _nC[LEFT]   + 0.5f*object_mass * Eigen::Vector3f(0.0f, 0.0f, 9.81f);
+		_f_applied[RIGHT].head(3) = _targetForce * _nC[RIGHT]  + 0.5f*object_mass * Eigen::Vector3f(0.0f, 0.0f, 9.81f);
+    }
+    else if(contactState==CLOSE_TO_CONTACT)
+    {
+      	_f_applied[LEFT].head(3)  = 3.0f * _nC[LEFT];
+		_f_applied[RIGHT].head(3) = 3.0f * _nC[RIGHT];
+    }
+    else
+    {
+    	_f_applied[LEFT].setZero(); 
+    	_f_applied[RIGHT].setZero();
+    }
+  }
+
+  std::cout << " APPLIED HAND WRENCH  LEFT \t " << _f_applied[LEFT].transpose() << std::endl;
+	std::cout << " APPLIED HAND WRENCH RIGHT \t " << _f_applied[RIGHT].transpose() << std::endl;
+}
+
+void dualArmCooperativeController::getAppliedWrenches(bool goHome, int contactState, Eigen::Matrix4f w_H_o, Eigen::Matrix4f w_H_ee[], Eigen::Matrix4f w_H_cp[], Vector6f desired_object_wrench, float object_mass, bool qp_wrench_generation)
 {
 	if(qp_wrench_generation){
 	  	this->computeControlWrench(w_H_o, w_H_ee, w_H_cp, desired_object_wrench);
   }
   else{
   	// using Predefined normal forcve
-  	this->getPredefinedContactForceProfile(goHome, contactState, w_H_o, w_H_ee, w_H_cp);
+  	// this->getPredefinedContactForceProfile(goHome, contactState, w_H_o, w_H_ee, w_H_cp);
+  	this->getPredefinedContactForceProfile(goHome, contactState, w_H_o, w_H_ee, w_H_cp, object_mass);
   }	
   std::cout << " APPLIED HAND WRENCH  LEFT \t " << _f_applied[LEFT].transpose() << std::endl;
 	std::cout << " APPLIED HAND WRENCH RIGHT \t " << _f_applied[RIGHT].transpose() << std::endl;

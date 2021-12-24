@@ -1,3 +1,24 @@
+# DS Damping gains
+passiveDS:
+  dampingTopic:
+    # left : "/iiwa1/CustomControllers/controllers/PassiveDS/params" # "/control/lambda_Pos" #
+    # right: "/iiwa_blue/CustomControllers/controllers/PassiveDS/params" #"/control/lambda_Pos" #
+    left : "/iiwa1/control/lambda_Pos" #
+    right: "/iiwa_blue/control/lambda_Pos" #
+
+# object
+object:
+  mass : 1.0
+  dimension:       [0.26, 0.26, 0.26] #[0.20, 0.30, 0.20] 
+  graspOffset:     [0.00, 0.00, -0.03] #[-0.04, 0.00,-0.035] #[0.00, 0.00, 0.00] #
+
+  cubicBox :       [0.26, 0.26, 0.26]
+  coronaBottePack: [0.13, 0.19, 0.14] 
+  openBox:         [0.20, 0.30, 0.20]
+  bottlesPack:     [0.25, 0.19, 0.20]
+  drGabsPack:      [0.13, 0.14, 0.15]
+
+
 # End-effector tool
 tool:
   offset2end_effector:
@@ -9,7 +30,7 @@ desVimp:   0.4
 desVreach: 1.0
 # tossing task parameters
 tossing:
-  desVtoss:           0.6
+  desVtoss:           0.5
   releasePos:         [0.65, 0.00, 0.40] #[0.70, 0.00, 0.60]
   releaseOrient:      [1.00, 0.00, 0.00, 0.00]
   releaseLinVel_dir:  [1.00, 0.00, 1.00]
@@ -33,16 +54,17 @@ ds_relative_gains: [2.0, 2.0, 2.0, 1.0, 1.0, 1.0]
 
 # impact direction (angle in degree)
 impact_direction:
-  friction_angle: 20 #36
+  friction_angle: 5 #36
   max_friction_angle: 40
   impact_dir_preset: false
 
 # dual arm task
 dual_arm_task:
-  dualTaskSelector: 3
+  dualTaskSelector: 1
   old_dual_method: false
-  modulated_reaching: true
+  modulated_reaching: false
   isNorm_impact_vel: false
+  isQP_wrench_generation: false
   lifting: 
     position: [0.45, 0.00, 0.40] #[0.45, 0.00, 0.70]
     orientation: [1.00, 0.00, 0.00, 0.00]

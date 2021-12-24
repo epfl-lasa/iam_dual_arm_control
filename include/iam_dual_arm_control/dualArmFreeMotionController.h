@@ -84,6 +84,12 @@ class dualArmFreeMotionController
 		bool _modulated_reaching = true;
 		bool _isNorm_impact_vel  = false;
 		float _height_via_point = 0.25f;
+
+		//
+		float _sw_EE_obsAv;
+		float _min_dist_EE;
+		float _safe_radius;
+		
 		//
 		dualArmFreeMotionController();
 		~dualArmFreeMotionController();
@@ -110,6 +116,10 @@ class dualArmFreeMotionController
 		Eigen::Vector3f getAbsoluteTangentError(Eigen::Matrix4f w_H_o, Eigen::Matrix4f w_H_ee[], Eigen::Matrix4f w_H_gp[]);
 
 		Vector6f generatePlacingMotion2(Eigen::Matrix4f w_H_o, Eigen::Matrix4f w_H_Do, float via_height, Vector6f Vo);
+
+		void compute_EE_avoidance_velocity(Eigen::Matrix4f w_H_ee[], Vector6f (&VEE_oa)[NB_ROBOTS]);
+
+		void constrained_ang_vel_correction(Eigen::Matrix4f w_H_ee[], Eigen::Matrix4f w_H_gp[], Eigen::Matrix4f w_H_o, Eigen::Matrix4f w_H_Do, Vector6f (&VEE)[NB_ROBOTS]);
 
 };
 
