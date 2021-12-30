@@ -65,7 +65,7 @@ class dual_arm_control
 
 	public :
 		// Robot ID: left or right
-	    enum ROBOT {LEFT = 0, RIGHT = 1};
+	  enum ROBOT {LEFT = 0, RIGHT = 1};
 	  // Contact state:
     // CONTACT: Both robots are in contact with the object
     // CLOSE_TO_CONTACT: Both robots are close to make contact with the object

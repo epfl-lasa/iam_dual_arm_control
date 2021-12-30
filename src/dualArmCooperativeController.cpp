@@ -10,18 +10,19 @@ bwc_Settings 	bwc_settings;
 dualArmCooperativeController::dualArmCooperativeController(){}
 dualArmCooperativeController::~dualArmCooperativeController(){}
 
-bool dualArmCooperativeController::init()
+bool dualArmCooperativeController::init(float dt)
 {
+	_dt = dt;
 	_tol_dist2contact   = 0.045f;
 	_ContactConfidence  = 0.0f;
-	_min_Fz 		    = 30.0f; //15.0;  // 40.0f;  
-	_min_nF 			= 30.0f;          // 40.0f;
+	_min_Fz 		    = 45.0f; //15.0;  // 40.0f;  
+	_min_nF 			= 45.0f;          // 40.0f;
 	_max_nF 			= 60.0f; //45.0f;          // 60.0f; //
 	//
-	_mu_ee				= 0.9f;
-	_gamma_ee			= 0.9f;
-	_deltaX_ee			= 0.5f;
-	_deltaY_ee			= 0.5f;
+	_mu_ee				= 0.5f;
+	_gamma_ee			= 0.5f;
+	_deltaX_ee			= 0.05f;
+	_deltaY_ee			= 0.05f;
 	_contactOccured     = false;
 	_targetForce     	= 60.0f; //45.0f;   // 40
 	//
@@ -57,6 +58,16 @@ bool dualArmCooperativeController::init()
 	// initialization of the cvxgen solver for the cooperative manipulation
 	bwc_set_defaults();
 	bwc_setup_indexing();
+
+	//
+	Jo_.setZero();
+	Mo_ = 1e-6*Eigen::MatrixXf::Identity(6,6);
+	bo_.setZero();
+	Ke_ = 30.f *Eigen::MatrixXf::Identity(6,6);
+	f_u_.setZero();
+	sigma_t_.setZero();
+
+	_fu_filtered  = std::make_unique<SGF::SavitzkyGolayFilter>(6,3,20,_dt); // dim, order. window lenght
 
 	return true;
 
@@ -444,3 +455,35 @@ void dualArmCooperativeController::getAppliedWrenches(bool goHome, int contactSt
   	std::cout << " APPLIED HAND WRENCH  LEFT \t " << _f_applied[LEFT].transpose() << std::endl;
 	std::cout << " APPLIED HAND WRENCH RIGHT \t " << _f_applied[RIGHT].transpose() << std::endl;
 }
+
+
+void dualArmCooperativeController::estimate_object_unknown_wrench(Eigen::Matrix4f w_H_o, Eigen::MatrixXf Go, Eigen::VectorXf Vo, Eigen::VectorXf fm_l, Eigen::VectorXf fm_r){
+	//
+	Mo_.topLeftCorner(3,3)     = object_mass_ * Eigen::MatrixXf::Identity(3,3);
+	Mo_.bottomRightCorner(3,3) = w_H_o.block<3,3>(0,0) * Jo_ * w_H_o.block<3,3>(0,0).transpose();
+	//
+	Eigen::Vector3f JoWo = Mo_.bottomRightCorner(3,3)*Vo.tail(3);
+	bo_.head(3) =  Eigen::Vector3f(0.0f, 0.0f, -9.81f) * object_mass_;
+	Eigen::Vector3f Wo = Vo.tail(3);
+	bo_.tail(3)  =  -Wo.cross(JoWo);
+
+	sigma_t_ = sigma_t_ - Ke_ *(f_u_ - bo_ + Go.leftCols(6)*fm_l + Go.rightCols(6)*fm_r)*_dt;
+	f_u_ = sigma_t_ + Ke_*(Mo_*Vo);
+	SGF::Vec temp(6);
+	_fu_filtered->AddData(f_u_); 
+  _fu_filtered->GetOutput(0,temp);
+  f_u_ = temp;
+
+}
+
+void dualArmCooperativeController::set_object_inertia(float mo, Eigen::Matrix3f Jo){
+	object_mass_ = mo;
+	Jo_ = Jo;
+}
+
+Eigen::VectorXf dualArmCooperativeController::get_unkwon_wrench_object(){
+	return f_u_; 
+}
+
+
+

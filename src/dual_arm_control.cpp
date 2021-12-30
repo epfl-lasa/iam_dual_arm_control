@@ -113,7 +113,7 @@ dual_arm_control::dual_arm_control(	ros::NodeHandle &n, double frequency, 	//std
 	}
 	// 
 	// Filtered variable (SG)
-	_xo_filtered 			  = std::make_unique<SGF::SavitzkyGolayFilter>(3,3,6,_dt);
+	_xo_filtered 			  = std::make_unique<SGF::SavitzkyGolayFilter>(3,3,6,_dt); // dim, order. window lenght
 	_sgf_ddq_filtered_l = std::make_unique<SGF::SavitzkyGolayFilter>(7,3,6,_dt); // dim, order. window lenght
 	_sgf_ddq_filtered_r = std::make_unique<SGF::SavitzkyGolayFilter>(7,3,6,_dt); // dim, order. window lenght
 	//
@@ -414,7 +414,7 @@ bool dual_arm_control::init()
 
 	// initialize the cooperative controller
 	//---------------------------------------
-	CooperativeCtrl.init();
+	CooperativeCtrl.init(_dt);
 	_qp_wrench_generation = isQP_wrench_generation;
 	//
 	// initialization of the toss task parameter estimator
@@ -869,14 +869,14 @@ void dual_arm_control::computeCommands()
 					FreeMotionCtrl.dual_arm_motion(_w_H_ee,  _Vee, _w_H_Dgp,  _w_H_o, _w_H_Do, _Vd_o, _BasisQ, _VdImpact, false, _dualTaskSelector, _Vd_ee, _qd, _release_flag); // 0=reach, 1=pick, 2=toss, 3=pick_and_toss, 4=pick_and_place
 				}
 				// force feedback to grab objects
-				float f_gain = 0.05f;
+				float f_gain = 0.01f;
 				float abs_force_correction = f_gain * 0.5f*( (_filteredWrench[LEFT].segment(0,3)  - CooperativeCtrl._f_applied[LEFT].head(3)).dot(_n[LEFT])  
 				 			   			     + (_filteredWrench[RIGHT].segment(0,3) - CooperativeCtrl._f_applied[RIGHT].head(3)).dot(_n[RIGHT]) );   
 				if(fabs(abs_force_correction)  > 0.3f){
 					abs_force_correction = abs_force_correction/fabs(abs_force_correction) * 0.3f;
 				}
-				_Vd_ee[LEFT].head(3)  =  _Vd_ee[LEFT].head(3)  - abs_force_correction * _n[LEFT];
-				_Vd_ee[RIGHT].head(3) =  _Vd_ee[RIGHT].head(3) - abs_force_correction * _n[RIGHT];
+				_Vd_ee[LEFT].head(3)  =  _Vd_ee[LEFT].head(3)  - 0.0*abs_force_correction * _n[LEFT];
+				_Vd_ee[RIGHT].head(3) =  _Vd_ee[RIGHT].head(3) - 0.0*abs_force_correction * _n[RIGHT];
 
 			}
 			else  // Free-motion: reaching
@@ -906,7 +906,7 @@ void dual_arm_control::computeCommands()
 		getGraspPointsVelocity();
 	  	//
 	  	// _desired_object_wrench.head(3) = -40.0f * (_w_H_o.block(0,3,3,1) - _w_H_Do.block(0,3,3,1)) - _objectMass * _gravity;
-		_desired_object_wrench.head(3) = 0.5f*(_d1[LEFT]+_d1[RIGHT])* 0.5f*(_Vd_ee[LEFT].head(3) + _Vd_ee[RIGHT].head(3)) 
+		_desired_object_wrench.head(3) = 0.5f*(_d1[LEFT]+_d1[RIGHT])* (0.5f*(_Vd_ee[LEFT].head(3) + _Vd_ee[RIGHT].head(3)) - 0.5f*(_Vee[LEFT].head(3) + _Vee[RIGHT].head(3))) 
 																	 + 2.f*std::sqrt(0.5f*(_d1[LEFT]+_d1[RIGHT]) * 0.0f*_gain_abs(0)) * 0.5f*(_Vee[LEFT].head(3) + _Vee[RIGHT].head(3));
 																	 - _objectMass * _gravity;
 		_desired_object_wrench.head(3) = CooperativeCtrl._ContactConfidence * _desired_object_wrench.head(3);

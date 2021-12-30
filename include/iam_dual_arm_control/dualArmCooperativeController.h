@@ -13,6 +13,7 @@
 #include "eigen3/Eigen/Core"
 #include "eigen3/Eigen/Geometry"
 #include "eigen3/Eigen/Dense"
+#include "sg_filter.h"
 
 extern "C" {
 #include "bwc_solver.h"
@@ -70,6 +71,20 @@ class dualArmCooperativeController
 	//
 	Eigen::Vector3f _nC[NB_ROBOTS];               					// Normal vector to surface object for each robot (3x1)
 
+	//
+	float _s_time;
+	SGF::real _dt;
+	float object_mass_;
+	Eigen::Matrix3f Jo_;
+	Matrix6f Mo_;
+	Vector6f bo_;
+	Matrix6f Ke_;
+	Vector6f f_u_;
+	Vector6f sigma_t_;
+
+	std::unique_ptr<SGF::SavitzkyGolayFilter> _fu_filtered;
+
+
 	public :
 		float _ContactConfidence ;
 		Eigen::Matrix<float,12,1>  _optimal_contact_wrench_EEs;
@@ -79,7 +94,7 @@ class dualArmCooperativeController
 		dualArmCooperativeController();
 		~dualArmCooperativeController();
 
-		bool init();
+		bool init(float dt);
 		void check_contact_proximity(Eigen::Matrix4f w_H_ee[], Eigen::Matrix4f w_H_cp[]);
 
 		void getGraspKineDynVariables(Eigen::Matrix4f w_H_o, Eigen::Matrix4f w_H_ee[], Eigen::Matrix4f w_H_cp[]);
@@ -94,6 +109,9 @@ class dualArmCooperativeController
 		void getPredefinedContactForceProfile(bool goHome, int contactState, Eigen::Matrix4f w_H_o, Eigen::Matrix4f w_H_ee[], Eigen::Matrix4f w_H_cp[]);
 		void getPredefinedContactForceProfile(bool goHome, int contactState, Eigen::Matrix4f w_H_o, Eigen::Matrix4f w_H_ee[], Eigen::Matrix4f w_H_cp[], float object_mass);
 		void getAppliedWrenches(bool goHome, int contactState, Eigen::Matrix4f w_H_o, Eigen::Matrix4f w_H_ee[], Eigen::Matrix4f w_H_cp[], Vector6f desired_object_wrench_, float object_mass, bool qp_wrench_generation);
+		void estimate_object_unknown_wrench(Eigen::Matrix4f w_H_o, Eigen::MatrixXf Go, Eigen::VectorXf Vo, Eigen::VectorXf fm_l, Eigen::VectorXf fm_r);
+		void set_object_inertia(float mo, Eigen::Matrix3f Jo);
+		Eigen::VectorXf get_unkwon_wrench_object();
 };
 
 #endif // dualArmFreeMotionController_H
