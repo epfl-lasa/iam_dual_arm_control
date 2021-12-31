@@ -55,7 +55,7 @@ class dualArmFreeMotionController
 
 	public :
 		//
-
+		float _dt;
     	float reachable_p;
 		//
 		float a_proximity_;
@@ -89,6 +89,8 @@ class dualArmFreeMotionController
 		float _sw_EE_obsAv;
 		float _min_dist_EE;
 		float _safe_radius;
+		Eigen::Vector3f Omega_object_d_;
+		Eigen::Vector3f _integral_Vee_d[NB_ROBOTS];
 		
 		//
 		dualArmFreeMotionController();
@@ -119,7 +121,7 @@ class dualArmFreeMotionController
 
 		void compute_EE_avoidance_velocity(Eigen::Matrix4f w_H_ee[], Vector6f (&VEE_oa)[NB_ROBOTS]);
 
-		void constrained_ang_vel_correction(Eigen::Matrix4f w_H_ee[], Eigen::Matrix4f w_H_gp[], Eigen::Matrix4f w_H_o, Eigen::Matrix4f w_H_Do, Vector6f (&VEE)[NB_ROBOTS]);
+		void constrained_ang_vel_correction(Eigen::Matrix4f w_H_ee[], Eigen::Matrix4f w_H_gp[], Eigen::Matrix4f w_H_o, Eigen::Matrix4f w_H_Do, Vector6f (&VEE)[NB_ROBOTS], bool wIntegral);
 
 };
 

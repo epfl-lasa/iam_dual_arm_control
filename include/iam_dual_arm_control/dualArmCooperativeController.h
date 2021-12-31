@@ -80,7 +80,7 @@ class dualArmCooperativeController
 		~dualArmCooperativeController();
 
 		bool init();
-		void check_contact_proximity(Eigen::Matrix4f w_H_ee[], Eigen::Matrix4f w_H_cp[]);
+		void check_contact_proximity(Eigen::Matrix4f w_H_ee[], Eigen::Matrix4f w_H_cp[], bool isForceDetected);
 
 		void getGraspKineDynVariables(Eigen::Matrix4f w_H_o, Eigen::Matrix4f w_H_ee[], Eigen::Matrix4f w_H_cp[]);
 		bool computeBimanualGraspMatrix(Eigen::Matrix4f w_H_o, Eigen::Matrix4f w_H_ee[], Eigen::Matrix<float,6,12> &GraspMxHands_);
@@ -90,11 +90,11 @@ class dualArmCooperativeController
 		bool getComplementaryConstraints(Matrix6f world_Xstar_desEE[], float dist2contact[], float tol_dist2contact);
 		bool getContactConstraints(Matrix6f world_Xstar_EE[]);
 		void load_wrench_data(Vector6f desired_object_wrench_);
-		void computeControlWrench(Eigen::Matrix4f w_H_o, Eigen::Matrix4f w_H_ee[], Eigen::Matrix4f w_H_cp[], Vector6f desired_object_wrench_);
-		void getPredefinedContactForceProfile(bool goHome, int contactState, Eigen::Matrix4f w_H_o, Eigen::Matrix4f w_H_ee[], Eigen::Matrix4f w_H_cp[]);
+		void computeControlWrench(Eigen::Matrix4f w_H_o, Eigen::Matrix4f w_H_ee[], Eigen::Matrix4f w_H_cp[], Vector6f desired_object_wrench_, bool isForceDetected);
+		void getPredefinedContactForceProfile(bool goHome, int contactState, Eigen::Matrix4f w_H_o, Eigen::Matrix4f w_H_ee[], Eigen::Matrix4f w_H_cp[], bool isForceDetected);
 		// void getAppliedWrenches(bool goHome, int contactState, Eigen::Matrix4f w_H_o, Eigen::Matrix4f w_H_ee[], Eigen::Matrix4f w_H_cp[], Vector6f desired_object_wrench_, bool qp_wrench_generation);
-		void getAppliedWrenches(bool goHome, int contactState, Eigen::Matrix4f w_H_o, Eigen::Matrix4f w_H_ee[], Eigen::Matrix4f w_H_cp[], Vector6f desired_object_wrench, float object_mass, bool qp_wrench_generation);
-		void getPredefinedContactForceProfile(bool goHome, int contactState, Eigen::Matrix4f w_H_o, Eigen::Matrix4f w_H_ee[], Eigen::Matrix4f w_H_cp[], float object_mass);
+		void getAppliedWrenches(bool goHome, int contactState, Eigen::Matrix4f w_H_o, Eigen::Matrix4f w_H_ee[], Eigen::Matrix4f w_H_cp[], Vector6f desired_object_wrench, float object_mass, bool qp_wrench_generation, bool isForceDetected);
+		void getPredefinedContactForceProfile(bool goHome, int contactState, Eigen::Matrix4f w_H_o, Eigen::Matrix4f w_H_ee[], Eigen::Matrix4f w_H_cp[], float object_mass, bool isForceDetected);
 };
 
 #endif // dualArmFreeMotionController_H

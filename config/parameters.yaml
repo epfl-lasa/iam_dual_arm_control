@@ -8,8 +8,8 @@ passiveDS:
 
 # object
 object:
-  mass : 1.0
-  dimension:       [0.26, 0.26, 0.26] #[0.20, 0.30, 0.20] 
+  mass : 3.5
+  dimension:       [0.20, 0.30, 0.20] #[0.16, 0.29, 0.14] #
   graspOffset:     [0.00, 0.00, -0.03] #[-0.04, 0.00,-0.035] #[0.00, 0.00, 0.00] #
 
   cubicBox :       [0.26, 0.26, 0.26]
@@ -17,6 +17,7 @@ object:
   openBox:         [0.20, 0.30, 0.20]
   bottlesPack:     [0.25, 0.19, 0.20]
   drGabsPack:      [0.13, 0.14, 0.15]
+  smallOpenBox:    [0.16, 0.29, 0.14]
 
 
 # End-effector tool
@@ -62,9 +63,9 @@ impact_direction:
 dual_arm_task:
   dualTaskSelector: 1
   old_dual_method: false
-  modulated_reaching: false
+  modulated_reaching: true
   isNorm_impact_vel: false
-  isQP_wrench_generation: false
+  isQP_wrench_generation: true
   lifting: 
     position: [0.45, 0.00, 0.40] #[0.45, 0.00, 0.70]
     orientation: [1.00, 0.00, 0.00, 0.00]

@@ -116,11 +116,11 @@ class dual_arm_control
 		// Subscribers declarations //
 		//////////////////////////////
 		ros::Subscriber _sub_object_pose;
-		ros::Subscriber _sub_base_pose[NB_ROBOTS];					// subscribe to the base pose of the robots
-		ros::Subscriber _sub_ee_pose[NB_ROBOTS];						// subscribe to the end effectors poses
-		ros::Subscriber _sub_ee_velo[NB_ROBOTS];						// subscribe to the end effectors velocity Twist
-		ros::Subscriber _subForceTorqueSensor[NB_ROBOTS];		// Subscribe to force torque sensors
-		ros::Subscriber _sub_joint_states[NB_ROBOTS];				// subscriber for the joint position
+		ros::Subscriber _sub_base_pose[NB_ROBOTS];				// subscribe to the base pose of the robots
+		ros::Subscriber _sub_ee_pose[NB_ROBOTS];					// subscribe to the end effectors poses
+		ros::Subscriber _sub_ee_velo[NB_ROBOTS];					// subscribe to the end effectors velocity Twist
+		ros::Subscriber _subForceTorqueSensor[NB_ROBOTS];	// Subscribe to force torque sensors
+		ros::Subscriber _sub_joint_states[NB_ROBOTS];			// subscriber for the joint position
 		//////////////////////////////
 		// Publishers:
 		//////////////////////////////
@@ -135,6 +135,9 @@ class dual_arm_control
 		ros::Publisher _pubAttractor[NB_ROBOTS];
 		ros::Publisher _pubNormLinVel[NB_ROBOTS];						// Publish norms of EE linear velocities
 
+		ros::Publisher _pubAppliedWrench[NB_ROBOTS];				// Publish applied EE wrench
+		ros::Publisher _pubApplied_fnornMoment[NB_ROBOTS]; 	// Publish the contact normal and the moment of the applied wrench
+
 		//////////////////////////////
 		// List of the topics
 		//////////////////////////////
@@ -145,51 +148,51 @@ class dual_arm_control
 		std::string _topic_subForceTorqueSensor[NB_ROBOTS];
 
 		// Velocity commands to be sent to the robots
-		std_msgs::Float64MultiArray _pubVelo[NB_ROBOTS]; // velocity Twist data to be published
+		std_msgs::Float64MultiArray _pubVelo[NB_ROBOTS]; 	// velocity Twist data to be published
 
 		geometry_msgs::WrenchStamped _msgFilteredWrench;
 
 		// --------------------------------------------------------------------------------
-		float _toolMass;                             			// Tool mass [kg]
-		float _toolOffsetFromEE[NB_ROBOTS];          			// Tool offset along z axis of end effector [m]   
+		float _toolMass;                             				// Tool mass [kg]
+		float _toolOffsetFromEE[NB_ROBOTS];          				// Tool offset along z axis of end effector [m]   
 		Eigen::Vector3f _gravity;
 		Eigen::Vector3f _toolComPositionFromSensor;
-		int _wrenchCount[NB_ROBOTS];                      // Counter used to pre-process the force data
-		ContactState _contactState;                       // Contact state with the object
-		std::deque<float> _normalForceWindow[NB_ROBOTS];  // Moving window saving the robots' measured normal force to the object's surface [N]  
-		float _normalForceAverage[NB_ROBOTS];             // Average normal force measured through the force windows [N]
-		float _normalForce[NB_ROBOTS];                    // Normal force to the surface [N] 
-		float _c;                                         // Contact value (1 = CONTACT, 0 otherwise)
-		bool _wrenchBiasOK[NB_ROBOTS];                 		// Check if computation of force/torque sensor bias is OK
+		int _wrenchCount[NB_ROBOTS];                      	// Counter used to pre-process the force data
+		ContactState _contactState;                       	// Contact state with the object
+		std::deque<float> _normalForceWindow[NB_ROBOTS];  	// Moving window saving the robots' measured normal force to the object's surface [N]  
+		float _normalForceAverage[NB_ROBOTS];             	// Average normal force measured through the force windows [N]
+		float _normalForce[NB_ROBOTS];                    	// Normal force to the surface [N] 
+		float _c;                                         	// Contact value (1 = CONTACT, 0 otherwise)
+		bool _wrenchBiasOK[NB_ROBOTS];                 			// Check if computation of force/torque sensor bias is OK
 
-		float _eD;                                        // Error to desired distance vector [m]                       
-		float _eoD;                                       // Error to object dimension vector [m]                       
-		float _eC;                                        // Error to desired center position [m]
-		float _eoC;                                       // Error to object center position [m]  
+		float _eD;                                        	// Error to desired distance vector [m]                       
+		float _eoD;                                       	// Error to object dimension vector [m]                       
+		float _eC;                                        	// Error to desired center position [m]
+		float _eoC;                                       	// Error to object center position [m]  
 
 		
-		Eigen::Vector3f _xdC;                             // Desired center position [m] (3x1)
-		Eigen::Vector3f _xdD;                             // Desired distance vector [m] (3x1)
+		Eigen::Vector3f _xdC;                             	// Desired center position [m] (3x1)
+		Eigen::Vector3f _xdD;                             	// Desired distance vector [m] (3x1)
 		// --------------------------------------------------------------------------------
 		Eigen::Vector3f _x[NB_ROBOTS];
 		Eigen::Vector4f _q[NB_ROBOTS];
-		Eigen::Matrix3f _wRb[NB_ROBOTS]; 									// Orientation matrix (3x3)
+		Eigen::Matrix3f _wRb[NB_ROBOTS]; 					// Orientation matrix (3x3)
 		Eigen::Vector3f _xd[NB_ROBOTS];
 		Eigen::Vector4f _qd[NB_ROBOTS];
-		Eigen::Vector3f _aad[NB_ROBOTS];									// desired axis angle 
+		Eigen::Vector3f _aad[NB_ROBOTS];					// desired axis angle 
 
 		Eigen::Vector3f _vd[NB_ROBOTS];
 		Eigen::Vector3f _omegad[NB_ROBOTS];
 		Eigen::Vector3f _v[NB_ROBOTS];
 		Eigen::Vector3f _w[NB_ROBOTS];
-		Vector6f 				_Vd_ee[NB_ROBOTS];								// desired velocity twist
-		Eigen::Vector3f _fxc[NB_ROBOTS];     							// Desired conservative parts of the nominal DS [m/s] (3x1)
-		Vector6f  			_wrench[NB_ROBOTS];          			// Wrench [N and Nm] (6x1)
-		Vector6f 				_wrenchBias[NB_ROBOTS];			 			// Wrench bias [N and Nm] (6x1)
-		Vector6f        _filteredWrench[NB_ROBOTS];  			// Filtered wrench [N and Nm] (6x1)
+		Vector6f 				_Vd_ee[NB_ROBOTS];			// desired velocity twist
+		Eigen::Vector3f _fxc[NB_ROBOTS];     				// Desired conservative parts of the nominal DS [m/s] (3x1)
+		Vector6f  			_wrench[NB_ROBOTS];          	// Wrench [N and Nm] (6x1)
+		Vector6f 				_wrenchBias[NB_ROBOTS];		// Wrench bias [N and Nm] (6x1)
+		Vector6f        _filteredWrench[NB_ROBOTS];  		// Filtered wrench [N and Nm] (6x1)
 
-		float _Fd[NB_ROBOTS];                							// Desired force profiles [N]
-		float _targetForce;                  							// Target force in contact [N]
+		float _Fd[NB_ROBOTS];                				// Desired force profiles [N]
+		float _targetForce;                  				// Target force in contact [N]
 		float _d1[NB_ROBOTS];
 		float _err[NB_ROBOTS];
 		bool _qp_wrench_generation;
