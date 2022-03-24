@@ -2,20 +2,6 @@
 #include "iam_dual_arm_control/toss_task_param_estimator.h"
 
 
-// // function to compute pseudo inverse of a maxtrix
-// // Compute the pseudo inverse of a matrix
-// template<typename _Matrix_Type_> _Matrix_Type_ get_pseudoInverse(const _Matrix_Type_ &a, float epsilon = std::numeric_limits<float>::epsilon())
-// {
-    
-//     Eigen::JacobiSVD< _Matrix_Type_ > svd(a ,Eigen::ComputeThinU | Eigen::ComputeThinV);
-
-//     int svdSize = svd.singularValues().size();
-
-//     T tolerance = epsilon * std::max(a.cols(), a.rows()) *svd.singularValues().array().abs()(0);
-
-//     return svd.matrixV().leftCols(svdSize) *  (svd.singularValues().array().abs() > tolerance).select(svd.singularValues().array().inverse(), 0).matrix().asDiagonal() * svd.matrixU().leftCols(svdSize).adjoint();
-// }
-
 //
 toss_task_param_estimator::toss_task_param_estimator(){}
 
@@ -29,8 +15,87 @@ void toss_task_param_estimator::init(std::string file_gmm[], Eigen::Vector3f x_r
 	v_release_ = v_release;
 	w_release_ = w_release;
 
-	datalog.Load_gmm_param2(file_gmm, Prior_gmm_toss_, Mean_gmm_toss_, CovMx_gmm_toss_);
+	myGMR.init(file_gmm);
+	// datalog.Load_gmm_param2(file_gmm, Prior_gmm_toss_, Mean_gmm_toss_, CovMx_gmm_toss_);
 }
+
+// float toss_task_param_estimator::gaussPDF(Eigen::VectorXf Data, Eigen::VectorXf Mu, Eigen::MatrixXf Sigma)
+// {
+// 	Eigen::VectorXf delta_x = Data - Mu;
+// 	float x_mu = delta_x.transpose() * Psdinv.pseudoInverse(Sigma) * delta_x;
+
+// 	return exp(-0.5f*x_mu)/std::sqrt(std::pow(2*M_PI, Data.rows()) * (std::fabs(Sigma.determinant()) + 1e-30));
+// }
+
+
+// bool toss_task_param_estimator::get_GMR_IO(Eigen::VectorXf Prior, Eigen::MatrixXf Mean_gmm, Eigen::MatrixXf CovMx, Eigen::VectorXf Input_, 
+// 										   Eigen::VectorXf &Output_, Eigen::MatrixXf &E_Cov_I, Eigen::MatrixXf &E_Cov_O)
+// {
+// 	// Extract the number of Gaussian
+// 	int nStates = Prior.rows();
+// 	// Extract dimension of q_star and xi_star
+// 	int nI = Input_.rows();
+// 	int nO = Mean_gmm.rows() - nI;
+
+// 	Output_.resize(nO);
+// 	Output_.setZero();
+// 	//
+// 	E_Cov_I.resize(nI, nI);		    E_Cov_I.setZero();	// Expected Input covariance q
+// 	E_Cov_O.resize(nO, nO);			E_Cov_O.setZero();  // Expected Output covariance xi
+// 	//
+// 	Eigen::MatrixXf Cov_I_k(nI,nI);
+// 	Eigen::MatrixXf Cov_O_k(nO,nO);
+// 	Eigen::MatrixXf Cov_IO_k(nI,nO);
+// 	Eigen::MatrixXf Cov_OI_k(nO,nI);
+
+// 	// |  nI | nIO |  
+// 	// |-----------|
+// 	// | nOI | nO  | 
+
+	
+// 	// Computation of h
+// 	Eigen::VectorXf h = Eigen::VectorXf::Zero(nStates);
+// 	Eigen::VectorXf Normal_h = Eigen::VectorXf::Zero(nStates);
+// 	//
+// 	int dim = nI+nO;
+// 	//
+// 	for(int k=0; k<nStates; k++)
+// 	{
+// 		Cov_I_k = CovMx.block(k*dim,  0, nI, nI);
+// 		//
+// 		h(k) = Prior(k) * this->gaussPDF(Input_, Mean_gmm.col(k).head(nI), Cov_I_k);
+// 	}
+
+// 	Normal_h = h/h.sum();
+// 	//
+// 	Eigen::MatrixXf Cov_k(dim, dim);
+// 	//
+// 	for(int k=0; k<nStates; k++)
+// 	{
+// 		//
+// 		Cov_k 	 = CovMx.block(k*dim, 0, dim, dim);
+// 		//
+// 		Cov_I_k  = Cov_k.block( 0,   0,  nI, nI);	//
+// 		Cov_IO_k = Cov_k.block( 0,  nI,  nI, nO);   //
+// 		Cov_OI_k = Cov_k.block(nI,   0,  nO, nI);	//
+// 		Cov_O_k  = Cov_k.block(nI,  nI,  nO, nO);   //
+// 		//
+// 		// Posterior of q
+// 		Eigen::VectorXf D_In_mu 			= Input_ - Mean_gmm.col(k).head(nI);
+
+// 		Eigen::MatrixXf Sigma_OI_invSigma_I = Cov_OI_k * Psdinv.pseudoInverse(Cov_I_k);
+
+// 		Output_ += Normal_h(k)*( Mean_gmm.col(k).tail(nO) + Sigma_OI_invSigma_I * D_In_mu );
+// 		// Associated covaraince of Posterior q
+// 		E_Cov_O += Normal_h(k)*Normal_h(k)*(Cov_O_k - Sigma_OI_invSigma_I * Cov_IO_k);
+// 		//
+// 		E_Cov_I += Normal_h(k)*Normal_h(k)*(Cov_I_k);		
+// 	}
+
+// 	return true;
+// }
+
+
 
 void toss_task_param_estimator::cartesian2planar(Eigen::Vector3f Pos_3d_in, Eigen::Vector2f &pos_bar, float &phi_d, float &theta_d)
 {
@@ -44,6 +109,41 @@ void toss_task_param_estimator::cartesian2planar(Eigen::Vector3f Pos_3d_in, Eige
     theta_d = std::atan2(pos_bar(1), pos_bar(0));
 }
 
+Eigen::Vector3f toss_task_param_estimator::cartesian2planar(Eigen::Vector3f Pos_d){
+	//
+	Eigen::Vector3f out = Eigen::VectorXf::Zero(3);
+	out(0) = Pos_d.head(2).norm();  									// r
+  out(1) = Pos_d(2);																// z
+  out(2) = std::atan2(Pos_d(1), Pos_d(0));					// phi
+	return out;
+}
+
+Eigen::Vector3f toss_task_param_estimator::cartesian2spherical(Eigen::Vector3f Pos_d){
+	//
+	Eigen::Vector3f out = Eigen::VectorXf::Zero(3);
+	out(0) = Pos_d.norm(); 																// r
+  // out(1) = std::acos( Pos_d(2), out(0));							// theta
+  out(1) = std::atan2( Pos_d.head(2).norm(), Pos_d(2)); // theta				
+  out(2) = std::atan2(Pos_d(1), Pos_d(0));							// phi
+
+	return out;
+}
+
+Eigen::Vector3f toss_task_param_estimator::get_state_variation(float dt, Eigen::Vector3f X, Eigen::Vector3f Xd){ // DO REPLACE DS_ROBOT
+	//
+	Eigen::Vector3f X1, X2, X3;
+	Eigen::Vector3f k_1, k_2, k_3, k_4;
+
+	// k_1 = ds_robot(X, Xd);
+	// X1  = X + 0.5*dt*k_1;
+	// k_2 = ds_robot(X1, Xd);
+	// X2  = X + 0.5*dt*k_2;
+	// k_3 = ds_robot(X2, Xd);
+	// X3  = X + dt*k_3;
+	// k_4 = ds_robot(X3, Xd);
+
+	return dt/6.f * (k_1 + 2.f*k_2 + 2.f*k_3 + k_4);
+}
 //
 void toss_task_param_estimator::get_min_release_speed(Eigen::Vector2f pos_d, float &ang_release_i, float &v_release_i, float &t_flight_i)
 {
@@ -91,13 +191,15 @@ void toss_task_param_estimator::estimate_2d_throwing_param(ProjectileType type, 
 		Eigen::MatrixXf E_Cov_O;
 		Eigen::VectorXf theta_vel_release;
 
-		this->get_GMR_IO(this->Prior_gmm_toss_, this->Mean_gmm_toss_, this->CovMx_gmm_toss_, pos_d,  theta_vel_release, E_Cov_I, E_Cov_O);
+		// this->get_GMR_IO(this->Prior_gmm_toss_, this->Mean_gmm_toss_, this->CovMx_gmm_toss_, pos_d,  theta_vel_release, E_Cov_I, E_Cov_O);
+
+		myGMR.compute_gmr_outputs(pos_d,  theta_vel_release, E_Cov_I, E_Cov_O);
+
 		ang_release_i = theta_vel_release(0);
 		v_release_i   = theta_vel_release(1);
 	}
 
 	//
-
 }
 
 //
@@ -125,96 +227,81 @@ bool toss_task_param_estimator::estimate_tossing_param(ProjectileType type, Eige
 
 }
 
-Eigen::Vector3f toss_task_param_estimator::get_release_position()
-{
+Eigen::Vector3f toss_task_param_estimator::get_release_position(){
 	return x_release_;
 }
-Eigen::Vector4f toss_task_param_estimator::get_release_orientation()
-{
+Eigen::Vector4f toss_task_param_estimator::get_release_orientation(){
 	return q_release_;
 }
-Eigen::Vector3f toss_task_param_estimator::get_release_linear_velocity()
-{
+Eigen::Vector3f toss_task_param_estimator::get_release_linear_velocity(){
 	return v_release_;
 }
-Eigen::Vector3f toss_task_param_estimator::get_release_angular_velocity()
-{
+Eigen::Vector3f toss_task_param_estimator::get_release_angular_velocity(){
 	return w_release_;
 }
 
 
-float toss_task_param_estimator::gaussPDF(Eigen::VectorXf Data, Eigen::VectorXf Mu, Eigen::MatrixXf Sigma)
-{
-	Eigen::VectorXf delta_x = Data - Mu;
-	float x_mu = delta_x.transpose() * Psdinv.pseudoInverse(Sigma) * delta_x;
 
-	return exp(-0.5f*x_mu)/std::sqrt(std::pow(2*M_PI, Data.rows()) * (std::fabs(Sigma.determinant()) + 1e-30));
+
+Eigen::Vector4f toss_task_param_estimator::ds_projectile2d(Eigen::Vector4f rz, float g, float mu){
+
+	// dynamics of a projectile with newton air drag 
+	Eigen::Vector4f dxdt = Eigen::VectorXf::Zero(4);
+
+	float v_rz = rz.tail(2).norm();
+	dxdt << rz(2), rz(3), -mu*rz(2)*v_rz, -mu*rz(3)*v_rz-g;
+
+	return dxdt;
 }
 
+void toss_task_param_estimator::projectileMotion2d(float T, float g, float mu, Eigen::Vector2f pos_i, Eigen::Vector2f pos_d, float v0_i, float theta_i, 
+																									 float& flytime, Eigen::Vector2f& Xland2d){
+	float dt = T; // intergration time
+	float tol = 1e-5;
+	Eigen::Vector4d rz_0 = {pos_i(0), pos_i(1), v0_i*cos(theta_i), v0_i*sin(theta_i)};
+	Eigen::Vector4d rz = rz_0;
+	Eigen::Vector4d rz_rot = rz_0;
 
-bool toss_task_param_estimator::get_GMR_IO(Eigen::VectorXf Prior, Eigen::MatrixXf Mean_gmm, Eigen::MatrixXf CovMx, Eigen::VectorXf Input_, 
-										   Eigen::VectorXf &Output_, Eigen::MatrixXf &E_Cov_I, Eigen::MatrixXf &E_Cov_O)
-{
-	// Extract the number of Gaussian
-	int nStates = Prior.rows();
-	// Extract dimension of q_star and xi_star
-	int nI = Input_.rows();
-	int nO = Mean_gmm.rows() - nI;
+	float theta_dd  	 = std::atan2(pos_d(1), pos_d(0));
+	Eigen::Matrix2d Rt;
+	Rt << cos(theta_dd), sin(theta_dd),
+			 -sin(theta_dd) cos(theta_dd);
+	// projectile dynamics
+	Eigen::Vector4d dxdt  = ds_projectile2d_1(rz,g,mu);
 
-	Output_.resize(nO);
-	Output_.setZero();
-	//
-	E_Cov_I.resize(nI, nI);		    E_Cov_I.setZero();	// Expected Input covariance q
-	E_Cov_O.resize(nO, nO);			E_Cov_O.setZero();  // Expected Output covariance xi
-	//
-	Eigen::MatrixXf Cov_I_k(nI,nI);
-	Eigen::MatrixXf Cov_O_k(nO,nO);
-	Eigen::MatrixXf Cov_IO_k(nI,nO);
-	Eigen::MatrixXf Cov_OI_k(nO,nI);
+	int iter = 0;
+	bool isStopping = true;
 
-	// |  nI | nIO |  
-	// |-----------|
-	// | nOI | nO  | 
+	firstOrderFilter myRK4;
+	myRK4.InitializeFilter(T, 1.f, 0.f, rz);
+	flytime = 0.0f;
 
-	
-	// Computation of h
-	Eigen::VectorXf h = Eigen::VectorXf::Zero(nStates);
-	Eigen::VectorXf Normal_h = Eigen::VectorXf::Zero(nStates);
-	//
-	int dim = nI+nO;
-	//
-	for(int k=0; k<nStates; k++)
-	{
-		Cov_I_k = CovMx.block(k*dim,  0, nI, nI);
-		//
-		h(k) = Prior(k) * this->gaussPDF(Input_, Mean_gmm.col(k).head(nI), Cov_I_k);
+
+	while(isStopping){
+		if((T > 0.001f) && (rz.tail(2).norm() >5.f)){
+			dt = 0.001;
+			myRK4.setSampleTime(dt);
+		}   
+    else{
+      dt = T;
+      myRK4.setSampleTime(dt);
+    }
+    // integrate
+    rz    = myRK4.getRK4Integral(dxdt);
+    rz_rot= Rt*rz;
+    // 
+    dxdt  = ds_projectile2d_1(rz,g,mu);
+    flytime +=dt;
+    iter    +=1;
+
+    if(theta_dd < 0.f){
+    	isStopping = ((rz(1)+tol >= pos_d(1)) && (rz_r(0)+tol != rz_0(0)) && iter<=2000);
+    }
+    else{
+    	isStopping = ((rz_r(1)+tol >= 0) && (rz_r(0)+tol != rz_0(0)) && iter<=2000);
+    }
 	}
 
-	Normal_h = h/h.sum();
-	//
-	Eigen::MatrixXf Cov_k(dim, dim);
-	//
-	for(int k=0; k<nStates; k++)
-	{
-		//
-		Cov_k 	 = CovMx.block(k*dim, 0, dim, dim);
-		//
-		Cov_I_k  = Cov_k.block( 0,   0,  nI, nI);	//
-		Cov_IO_k = Cov_k.block( 0,  nI,  nI, nO);   //
-		Cov_OI_k = Cov_k.block(nI,   0,  nO, nI);	//
-		Cov_O_k  = Cov_k.block(nI,  nI,  nO, nO);   //
-		//
-		// Posterior of q
-		Eigen::VectorXf D_In_mu 			= Input_ - Mean_gmm.col(k).head(nI);
-
-		Eigen::MatrixXf Sigma_OI_invSigma_I = Cov_OI_k * Psdinv.pseudoInverse(Cov_I_k);
-
-		Output_ += Normal_h(k)*( Mean_gmm.col(k).tail(nO) + Sigma_OI_invSigma_I * D_In_mu );
-		// Associated covaraince of Posterior q
-		E_Cov_O += Normal_h(k)*Normal_h(k)*(Cov_O_k - Sigma_OI_invSigma_I * Cov_IO_k);
-		//
-		E_Cov_I += Normal_h(k)*Normal_h(k)*(Cov_I_k);		
-	}
-
-	return true;
+	Xland2d = rz.head(2);
+	flytime = flytime;
 }

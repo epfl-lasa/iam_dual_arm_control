@@ -285,7 +285,7 @@ class dual_arm_control
 		bool _isPickupSet;
 		bool _impact_dir_preset = true;
 		int  _dualTaskSelector  = 1;
-		bool _old_dual_method   = false;
+		bool _no_dual_mds_method   = false;
  
 		// data logging
 		std::string   _DataID;
@@ -317,6 +317,9 @@ class dual_arm_control
 
 		float _delta_Imp  = 0.0f;
 		float _delta_Toss = 0.0f;
+
+		Vector6f _VEE_oa[NB_ROBOTS];
+		std::string _dsDampingTopic[NB_ROBOTS];
 
 		////////////////////////////////////////////////////////////////////////
 		// Objects for Unconstrained and contrained motion and force generation
