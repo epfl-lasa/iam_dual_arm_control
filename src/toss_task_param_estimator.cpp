@@ -258,21 +258,20 @@ void toss_task_param_estimator::projectileMotion2d(float T, float g, float mu, E
 																									 float& flytime, Eigen::Vector2f& Xland2d){
 	float dt = T; // intergration time
 	float tol = 1e-5;
-	Eigen::Vector4d rz_0 = {pos_i(0), pos_i(1), v0_i*cos(theta_i), v0_i*sin(theta_i)};
-	Eigen::Vector4d rz = rz_0;
-	Eigen::Vector4d rz_rot = rz_0;
+	Eigen::Vector4f rz_0 = {pos_i(0), pos_i(1), v0_i*cos(theta_i), v0_i*sin(theta_i)};
+	Eigen::Vector4f rz = rz_0;
+	Eigen::Vector2f rz_rot = rz_0.head(2);
 
 	float theta_dd  	 = std::atan2(pos_d(1), pos_d(0));
-	Eigen::Matrix2d Rt;
+	Eigen::Matrix2f Rt;
 	Rt << cos(theta_dd), sin(theta_dd),
-			 -sin(theta_dd) cos(theta_dd);
+			 -sin(theta_dd), cos(theta_dd);
 	// projectile dynamics
-	Eigen::Vector4d dxdt  = ds_projectile2d_1(rz,g,mu);
+	Eigen::Vector4f dxdt  = ds_projectile2d(rz,g,mu);
 
 	int iter = 0;
 	bool isStopping = true;
 
-	firstOrderFilter myRK4;
 	myRK4.InitializeFilter(T, 1.f, 0.f, rz);
 	flytime = 0.0f;
 
@@ -288,17 +287,17 @@ void toss_task_param_estimator::projectileMotion2d(float T, float g, float mu, E
     }
     // integrate
     rz    = myRK4.getRK4Integral(dxdt);
-    rz_rot= Rt*rz;
+    rz_rot= Rt*rz.head(2);
     // 
-    dxdt  = ds_projectile2d_1(rz,g,mu);
+    dxdt  = ds_projectile2d(rz,g,mu);
     flytime +=dt;
     iter    +=1;
 
     if(theta_dd < 0.f){
-    	isStopping = ((rz(1)+tol >= pos_d(1)) && (rz_r(0)+tol != rz_0(0)) && iter<=2000);
+    	isStopping = ((rz(1)+tol >= pos_d(1)) && (rz_rot(0)+tol != rz_0(0)) && iter<=2000);
     }
     else{
-    	isStopping = ((rz_r(1)+tol >= 0) && (rz_r(0)+tol != rz_0(0)) && iter<=2000);
+    	isStopping = ((rz_rot(1)+tol >= 0) && (rz_rot(0)+tol != rz_0(0)) && iter<=2000);
     }
 	}
 
