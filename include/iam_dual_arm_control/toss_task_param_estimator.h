@@ -303,14 +303,14 @@ class toss_task_param_estimator
 
 
 		// 
-		Eigen::Vector3f get_state_variation(float dt, Eigen::Vector3f X, Eigen::Vector3f Xd); //  need to add ds
+		Eigen::Vector3f get_state_variation(float dt, Eigen::Vector3f X, Eigen::Vector3f Xd, Eigen::Vector3f dX_d); //  need to add ds
 		Eigen::Vector3f cartesian2spherical(Eigen::Vector3f Pos_d); //
 		Eigen::Vector3f cartesian2planar(Eigen::Vector3f Pos_d);		//
 		Eigen::Vector4f ds_projectile2d(Eigen::Vector4f rz, float g, float mu); //
 		void projectileMotion2d(float T, float g, float mu, Eigen::Vector2f pos_i, Eigen::Vector2f pos_d, float v0_i, float theta_i, float& flytime, Eigen::Vector2f& Xland2d);//
-		Eigen::Vector2f estimate_target_Lpath_avgVel(Eigen::Vector3f X, Eigen::Vector3f Xd);
+		Eigen::Vector2f estimate_target_SimpLpath_avgVel(Eigen::Vector3f X, Eigen::Vector3f Xd, Eigen::Vector3f aVtarget); //
 		Eigen::Vector2f estimate_robot_Lpath_avgVel(Eigen::Vector3f X, Eigen::Vector3f Xd);
-		void estimate_landing_state(float T, float g, float mu, Vector7f Xd_land, Vector7f Xrelease, Eigen::Vector3f Vel_feas, float &flytime, Eigen::Vector3f &Xf_land);
+		void estimate_landing_state(float T, float g, float mu, Vector7f Xd_land, Vector7f Xrelease, Eigen::Vector3f Vel_feas, float &flytime, Eigen::Vector3f &Xf_land); //
 		Eigen::Vector3f estimate_state_to_go(float T, float g, float mu, Vector7f X_bot, Vector7f Xrelease, Eigen::Vector3f Vel_feas, Eigen::Vector3f X_tgt, Eigen::Vector3f dX_tgt, Vector7f Xd_land);
 
 

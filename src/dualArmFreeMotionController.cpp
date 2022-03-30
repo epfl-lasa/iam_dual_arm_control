@@ -1358,3 +1358,141 @@ Eigen::Vector3f dualArmFreeMotionController::getAbsoluteTangentError(Eigen::Matr
   
   return  oSpace * error_p_abs;
 }
+
+
+void dualArmFreeMotionController::updateDesiredGraspingPoints(bool no_dual_mds_method, 
+                                                              bool isPlacing,
+                                                              bool isThrowing,
+                                                              bool isClose2Release,
+                                                              Eigen::Vector3f xgp_o[],
+                                                              Eigen::Vector4f qgp_o[],
+                                                              Eigen::Matrix4f o_H_ee[],
+                                                              Eigen::Matrix4f w_H_o,
+                                                              Eigen::Vector3f xDo_placing,
+                                                              Eigen::Vector4f qDo_placing,
+                                                              Eigen::Vector3f release_position,
+                                                              Eigen::Vector4f release_orientation,
+                                                              Eigen::Matrix4f &w_H_DesObj,
+                                                              Eigen::Matrix4f (&w_H_gp)[NB_ROBOTS],
+                                                              Eigen::Matrix4f (&w_H_Dgp)[NB_ROBOTS])
+{
+  //
+  // Eigen::Matrix4f w_H_gp[NB_ROBOTS];
+  for(int k=0; k<NB_ROBOTS; k++){
+    w_H_gp[k]  = w_H_o * Utils<float>::pose2HomoMx(xgp_o[k],  qgp_o[k]);
+  }
+  //
+  if(no_dual_mds_method)
+  {
+    if(isPlacing){
+        w_H_DesObj = Utils<float>::pose2HomoMx(xDo_placing, qDo_placing);
+        w_H_Dgp[LEFT].block(0,0,3,3)  = w_H_DesObj.block(0,0,3,3) * Utils<float>::pose2HomoMx(xgp_o[LEFT],  qgp_o[LEFT]).block(0,0,3,3);
+        w_H_Dgp[RIGHT].block(0,0,3,3) = w_H_DesObj.block(0,0,3,3) * Utils<float>::pose2HomoMx(xgp_o[RIGHT],  qgp_o[RIGHT]).block(0,0,3,3);
+    }
+    if(isThrowing){
+      w_H_DesObj = Utils<float>::pose2HomoMx(release_position, release_orientation);
+      w_H_Dgp[LEFT]  = w_H_DesObj * o_H_ee[LEFT];
+      w_H_Dgp[RIGHT] = w_H_DesObj * o_H_ee[RIGHT];
+    }
+  }
+  else
+  {
+    w_H_DesObj    = w_H_o;
+    w_H_Dgp[LEFT].block(0,0,3,3)  = w_H_o.block(0,0,3,3) * Utils<float>::pose2HomoMx(xgp_o[LEFT],  qgp_o[LEFT]).block(0,0,3,3);
+    w_H_Dgp[RIGHT].block(0,0,3,3) = w_H_o.block(0,0,3,3) * Utils<float>::pose2HomoMx(xgp_o[RIGHT],  qgp_o[RIGHT]).block(0,0,3,3);
+    if(isClose2Release){
+      w_H_Dgp[LEFT]  = w_H_o * o_H_ee[LEFT];
+      w_H_Dgp[RIGHT] = w_H_o * o_H_ee[RIGHT];
+    }
+  }
+
+}
+
+
+void dualArmFreeMotionController::getDesiredMotion( bool no_dual_mds_method,
+                                                    bool isContact, 
+                                                    bool isPlacing,
+                                                    bool isThrowing,
+                                                    bool isClose2Release,
+                                                    int dualTaskSelector,
+                                                    Eigen::Matrix4f w_H_ee[], 
+                                                    Eigen::Vector3f xgp_o[],
+                                                    Eigen::Vector4f qgp_o[],
+                                                    Eigen::Matrix4f o_H_ee[],
+                                                    Eigen::Matrix4f w_H_o, 
+                                                    Eigen::Matrix4f w_H_Do,
+                                                    Eigen::Vector3f xDo_placing,
+                                                    Eigen::Vector4f qDo_placing,
+                                                    Eigen::Vector3f release_position,
+                                                    Eigen::Vector4f release_orientation,
+                                                    float height_via_point,
+                                                    Vector6f Vee[],
+                                                    Vector6f Vd_o,
+                                                    Eigen::Matrix3f BasisQ[],
+                                                    Eigen::Vector3f VdImpact[],
+                                                    Eigen::Vector3f n[],
+                                                    Vector6f (&Vd_ee)[NB_ROBOTS], 
+                                                    Eigen::Vector4f (&qd)[NB_ROBOTS], 
+                                                    bool &release_flag)
+{
+  //
+  Eigen::Matrix4f w_H_DesObj;
+  Eigen::Matrix4f w_H_gp[NB_ROBOTS];
+  Eigen::Matrix4f w_H_Dgp[NB_ROBOTS];
+  //
+  if(isContact)  // constrained motion : lifting, placing and tossing
+  {
+
+    this->updateDesiredGraspingPoints(no_dual_mds_method, 
+                                      isPlacing,
+                                      isThrowing,
+                                      isClose2Release,
+                                      xgp_o,
+                                      qgp_o,
+                                      o_H_ee,
+                                      w_H_o,
+                                      xDo_placing,
+                                      qDo_placing,
+                                      release_position,
+                                      release_orientation,
+                                      w_H_DesObj,
+                                      w_H_gp,
+                                      w_H_Dgp);
+
+    if(no_dual_mds_method)
+    {
+      this->computeConstrainedMotion(w_H_ee, w_H_Dgp, w_H_o, Vd_ee, qd, false);
+      if(isPlacing){
+          this->generatePlacingMotion(w_H_ee, w_H_Dgp,  w_H_o, w_H_DesObj, height_via_point, Vd_ee, qd, false);
+      }
+      if(isThrowing){
+        this->computeConstrainedMotion(w_H_ee, w_H_Dgp, w_H_o, Vd_ee, qd, false);
+      }
+    }
+    else  // mds
+    {
+      // dualTaskSelector : 0=reach, 1=pick, 2=toss, 3=pick_and_toss, 4=pick_and_place
+      this->dual_arm_motion(w_H_ee,  Vee, w_H_Dgp,  w_H_o, w_H_Do, Vd_o, BasisQ, VdImpact, false, dualTaskSelector, Vd_ee, qd, release_flag); 
+    }
+  }
+  else // Free-motion: reaching
+  {
+    if(no_dual_mds_method)
+    {
+      this->computeCoordinatedMotion2(w_H_ee, w_H_gp, w_H_o, Vd_ee, qd, false);
+      //
+      Eigen::Vector3f error_p_abs     = w_H_o.block(0,3,3,1) - 0.5f*( w_H_ee[LEFT].block(0,3,3,1) +  w_H_ee[RIGHT].block(0,3,3,1));
+      Eigen::Vector3f o_error_pos_abs = w_H_o.block<3,3>(0,0).transpose() * error_p_abs;
+      Eigen::Vector3f o_error_pos_abs_paral = Eigen::Vector3f(o_error_pos_abs(0), 0.0f, o_error_pos_abs(2));
+      float cp_ap = Utils<float>::computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.17f, 1.0f, true);  // 50.0f, 0.05f, 2.8f
+      // create impact in the normal direction
+      Vd_ee[LEFT].head(3)  = Vd_ee[LEFT].head(3)  + n[LEFT]  * cp_ap * 0.20f; //
+      Vd_ee[RIGHT].head(3) = Vd_ee[RIGHT].head(3) + n[RIGHT] * cp_ap * 0.20f; //
+    }
+    else  // mds
+    {
+      this->dual_arm_motion(w_H_ee,  Vee, w_H_gp,  w_H_o, w_H_Do, Vd_o, BasisQ, VdImpact, false, 0, Vd_ee, qd, release_flag);    // 0: reach
+    }
+  }
+}
+

@@ -129,18 +129,18 @@ Eigen::Vector3f toss_task_param_estimator::cartesian2spherical(Eigen::Vector3f P
 	return out;
 }
 
-Eigen::Vector3f toss_task_param_estimator::get_state_variation(float dt, Eigen::Vector3f X, Eigen::Vector3f Xd){ // DO REPLACE DS_ROBOT
+Eigen::Vector3f toss_task_param_estimator::get_state_variation(float dt, Eigen::Vector3f X, Eigen::Vector3f Xd, Eigen::Vector3f dX_d){ // DO REPLACE DS_ROBOT
 	//
 	Eigen::Vector3f X1, X2, X3;
 	Eigen::Vector3f k_1, k_2, k_3, k_4;
 
-	// k_1 = ds_robot(X, Xd);
-	// X1  = X + 0.5*dt*k_1;
-	// k_2 = ds_robot(X1, Xd);
-	// X2  = X + 0.5*dt*k_2;
-	// k_3 = ds_robot(X2, Xd);
-	// X3  = X + dt*k_3;
-	// k_4 = ds_robot(X3, Xd);
+	k_1 = dX_d;
+	X1  = X + 0.5*dt*k_1;
+	k_2 = dX_d;
+	X2  = X + 0.5*dt*k_2;
+	k_3 = dX_d;
+	X3  = X + dt*k_3;
+	k_4 = dX_d;
 
 	return dt/6.f * (k_1 + 2.f*k_2 + 2.f*k_3 + k_4);
 }
@@ -153,11 +153,11 @@ void toss_task_param_estimator::get_min_release_speed(Eigen::Vector2f pos_d, flo
    	float theta_i = std::atan(pos_d(1)/pos_d(0) + std::sqrt((pos_d(1)/pos_d(0))*(pos_d(1)/pos_d(0)) + 1.f));
 
    	if(theta_i > M_PI/2.f){
-   		    theta_i = (90.f-5.f)/180.f * M_PI;
+   		theta_i = (90.f-5.f)/180.f * M_PI;
    	}
-	else if (theta_i < theta_d){
-		    theta_i = theta_d + 5.f/180.f * M_PI;
-	}
+		else if (theta_i < theta_d){
+			theta_i = theta_d + 5.f/180.f * M_PI;
+		}
 	
     float delta_r = pos_d(0);
     float delta_z = pos_d(1);
@@ -303,4 +303,30 @@ void toss_task_param_estimator::projectileMotion2d(float T, float g, float mu, E
 
 	Xland2d = rz.head(2);
 	flytime = flytime;
+}
+
+
+void toss_task_param_estimator::estimate_landing_state(float T, float g, float mu, Vector7f Xd_land, Vector7f Xrelease, Eigen::Vector3f Vel_feas, float &flytime, Eigen::Vector3f &Xf_land){
+	//
+	Eigen::Vector2f pos_2d_i = {0.f, 0.f};
+	Eigen::Vector3f X3d_bar  = Xd_land.head(3) - Xrelease.head(3);
+
+	Eigen::Vector3f Xplanar    = cartesian2planar(X3d_bar);
+	Eigen::Vector3f Xspherical = cartesian2spherical(Vel_feas);
+	float theta_r = M_PI/2.f - Xspherical(1);
+
+	Eigen::Vector2f Xland2d;
+	projectileMotion2d(T, g, mu, pos_2d_i, Xplanar.head(2), Xspherical(0), theta_r, flytime, Xland2d);
+
+	Xf_land << Xland2d(0)*std::cos(Xspherical(2))+Xrelease(0),
+						 Xland2d(0)*std::sin(Xspherical(2))+Xrelease(1),
+						 Xland2d(1)+Xrelease(2);
+}
+
+Eigen::Vector2f estimate_target_SimpLpath_avgVel(Eigen::Vector3f Xt, Eigen::Vector3f Xt_d, Eigen::Vector3f aVtarget){
+	//
+	float v_avg  = aVtarget.norm();
+	float LpXd_X = (Xt_d - Xt).norm();
+	Eigen::Vector2f Lp_dx_avg = {LpXd_X, v_avg}; // path length and averge velocity
+	return Lp_dx_avg;
 }
