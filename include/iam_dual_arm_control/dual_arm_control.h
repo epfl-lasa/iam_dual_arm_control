@@ -28,6 +28,7 @@
 #include "visualization_msgs/Marker.h"
 #include "std_msgs/Float64.h"
 #include "std_msgs/Float64MultiArray.h"
+#include "std_msgs/Int32.h"
 #include "std_msgs/String.h"
 #include "sensor_msgs/JointState.h"
 
@@ -116,6 +117,7 @@ class dual_arm_control
 		// Subscribers declarations //
 		//////////////////////////////
 		ros::Subscriber _sub_object_pose;
+		ros::Subscriber _sub_target_pose;
 		ros::Subscriber _sub_base_pose[NB_ROBOTS];				// subscribe to the base pose of the robots
 		ros::Subscriber _sub_ee_pose[NB_ROBOTS];					// subscribe to the end effectors poses
 		ros::Subscriber _sub_ee_velo[NB_ROBOTS];					// subscribe to the end effectors velocity Twist
@@ -137,6 +139,8 @@ class dual_arm_control
 
 		ros::Publisher _pubAppliedWrench[NB_ROBOTS];				// Publish applied EE wrench
 		ros::Publisher _pubApplied_fnornMoment[NB_ROBOTS]; 	// Publish the contact normal and the moment of the applied wrench
+
+		ros::Publisher _pubConveyorBeltMode;              	// Publish conveyor belt mode
 
 		//////////////////////////////
 		// List of the topics
@@ -241,6 +245,10 @@ class dual_arm_control
 		Eigen::Vector3f _wo;
 		Vector6f 				_Vd_o;   													// desired object velocity (toss)
 		Vector6f  			_desired_object_wrench; 
+		// target
+		Eigen::Vector3f _xt;
+		Eigen::Vector4f _qt;
+		Eigen::Vector3f _vt;
 		//-------------------------------------------------------------------------------------------------
 		Eigen::Matrix4f _o_H_ee[NB_ROBOTS];
 		int 					  _objecPoseCount;
@@ -312,7 +320,7 @@ class dual_arm_control
 		//
 		Eigen::Matrix3f _BasisQ[NB_ROBOTS];
 		Eigen::Matrix3f _E_xt_xd[NB_ROBOTS];
-		Vector6f _Vee[NB_ROBOTS];
+		Vector6f 		_Vee[NB_ROBOTS];
 		Matrix6f 		_tcp_W_EE[NB_ROBOTS];			// Velocity Twist transformation between the robot EE and the tool center point (tcp)
 		Eigen::Vector3f _dirImp[NB_ROBOTS];
 		Eigen::Vector3f _VdImpact[NB_ROBOTS]; 
@@ -332,17 +340,22 @@ class dual_arm_control
 
 		Eigen::Vector3f _delta_rel_pos;
 		bool _increment_release_pos = false;
+		bool _increment_lift_pos      = false;
+		bool _ctrl_mode_conveyor_belt = false;
 		spherical_position release_pos;
+
+		int _mode_conveyor_belt;
 
 		////////////////////////////////////////////////////////////////////////
 		// Objects for Unconstrained and contrained motion and force generation
 		////////////////////////////////////////////////////////////////////////
 		dualArmFreeMotionController 	FreeMotionCtrl;			// Motion generation
 		dualArmCooperativeController 	CooperativeCtrl;		// Force generation
-		throwingDS 										dsThrowing;					//
+		throwingDS 						dsThrowing;				//
 
 		// Callbacks
 		void objectPoseCallback(const geometry_msgs::Pose::ConstPtr& msg);
+		void targetPoseCallback(const geometry_msgs::Pose::ConstPtr& msg);
 		void updateBasePoseCallback(const geometry_msgs::Pose::ConstPtr& msg , int k);
 		void updateEEPoseCallback(const geometry_msgs::Pose::ConstPtr& msg , int k);
 		void updateRobotWrench(const geometry_msgs::WrenchStamped::ConstPtr& msg, int k);
@@ -363,6 +376,7 @@ class dual_arm_control
 		std::unique_ptr<SGF::SavitzkyGolayFilter> _sgf_ddq_filtered_l;
 		std::unique_ptr<SGF::SavitzkyGolayFilter> _sgf_ddq_filtered_r;
 		// SGF::SavitzkyGolayFilter _x_filtered;    			// Filter used for the object's dimension vector
+		std::unique_ptr<SGF::SavitzkyGolayFilter> _xt_filtered; // target
 
 		tossingTaskVariables _tossVar;
 
@@ -396,6 +410,7 @@ class dual_arm_control
 		void update_states_machines();
 		Eigen::Vector3f get_object_desired_direction(int task_type, Eigen::Vector3f object_pos);
 		void update_release_position();
+		void publish_conveyor_belt_cmds();
 
 };
 

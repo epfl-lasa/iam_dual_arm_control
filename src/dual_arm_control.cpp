@@ -118,6 +118,7 @@ dual_arm_control::dual_arm_control(	ros::NodeHandle &n, double frequency, 	//std
 	_xo_filtered 			  = std::make_unique<SGF::SavitzkyGolayFilter>(3,3,20,_dt);
 	_sgf_ddq_filtered_l = std::make_unique<SGF::SavitzkyGolayFilter>(7,3,6,_dt); // dim, order. window lenght
 	_sgf_ddq_filtered_r = std::make_unique<SGF::SavitzkyGolayFilter>(7,3,6,_dt); // dim, order. window lenght
+	_xt_filtered 			  = std::make_unique<SGF::SavitzkyGolayFilter>(3,3,20,_dt);
 	//
 	_vo.setZero();
 	_wo.setZero();
@@ -132,11 +133,6 @@ dual_arm_control::dual_arm_control(	ros::NodeHandle &n, double frequency, 	//std
 	_desired_object_wrench.setZero();
 
 	// object desired grasping points
-	// _xgp_o[0] << 0.0f, -_objectDim(1)/2.0f,  0.03f;  // left    -0.10f;
-	// _xgp_o[1] << 0.0f,  _objectDim(1)/2.0f,  0.03f; 	// right 	 -0.10f;
-	// _xgp_o[0] << 0.0f, -_objectDim(1)/2.0f,  0.0f;  // left    -0.10f;
-	// _xgp_o[1] << 0.0f,  _objectDim(1)/2.0f,  0.0f; 	// right 	 -0.10f;
-
 	Eigen::Matrix3f o_R_gpl;	o_R_gpl.setZero();		
 	Eigen::Matrix3f o_R_gpr;	o_R_gpr.setZero();	
 	o_R_gpl(0,0) =  1.0f;	o_R_gpl(2,1) = -1.0f; 	o_R_gpl(1,2) = 1.0f;
@@ -146,6 +142,11 @@ dual_arm_control::dual_arm_control(	ros::NodeHandle &n, double frequency, 	//std
 	_qgp_o[0] = Utils<float>::rotationMatrixToQuaternion(o_R_gpl); //
 	_qgp_o[1] = Utils<float>::rotationMatrixToQuaternion(o_R_gpr); //
 	_Vd_o.setZero();
+
+	// target
+	_xt.setZero(); 
+	_qt << 1.0f, 0.0f, 0.0f, 0.0f;
+	_vt.setZero();
 
 	// normal to contact surfaces
 	_n[LEFT]  = o_R_gpl.col(2);
@@ -214,6 +215,7 @@ dual_arm_control::dual_arm_control(	ros::NodeHandle &n, double frequency, 	//std
 	_isPickupSet  = false;
 	_dualTaskSelector = 1;
 	_old_dual_method  = true;
+	_mode_conveyor_belt = 0;
 }
 //
 dual_arm_control::~dual_arm_control(){}
@@ -224,6 +226,8 @@ bool dual_arm_control::init()
 	//-------------
 	// Subscribers
 	//------------
+	std::string topic_pose_target = "/simo_track/target_pose";
+
 	_sub_object_pose 			 				= nh_.subscribe(_topic_pose_object,1, &dual_arm_control::objectPoseCallback, this, ros::TransportHints().reliable().tcpNoDelay());
 	_sub_base_pose[LEFT] 	 	 			= nh_.subscribe<geometry_msgs::Pose>(_topic_pose_robot_base[LEFT], 1, boost::bind(&dual_arm_control::updateBasePoseCallback,this,_1,LEFT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 	_sub_ee_pose[LEFT] 			 			= nh_.subscribe<geometry_msgs::Pose>(_topic_pose_robot_ee[LEFT], 1, boost::bind(&dual_arm_control::updateEEPoseCallback,this,_1,LEFT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
@@ -239,6 +243,7 @@ bool dual_arm_control::init()
 	// _subForceTorqueSensor[RIGHT]	= nh_.subscribe(_topic_subForceTorqueSensor[RIGHT],1, &dual_arm_control::updateRobotWrenchRight, this, ros::TransportHints().reliable().tcpNoDelay());
 	_sub_joint_states[RIGHT]	 		= nh_.subscribe<sensor_msgs::JointState>("/iiwa_blue/joint_states", 1, boost::bind(&dual_arm_control::updateRobotStatesRight,this,_1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 	
+	_sub_target_pose 			 				= nh_.subscribe(topic_pose_target,1, &dual_arm_control::targetPoseCallback, this, ros::TransportHints().reliable().tcpNoDelay());
 	//-------------
 	// Publishers:
 	//-------------
@@ -275,6 +280,8 @@ bool dual_arm_control::init()
 	//
 	_pubApplied_fnornMoment[LEFT] = nh_.advertise<geometry_msgs::Wrench>("/passive_control/iiwa1/ext_nforce_moments", 1);
 	_pubApplied_fnornMoment[RIGHT]= nh_.advertise<geometry_msgs::Wrench>("/passive_control/iiwa_blue/ext_nforce_moments", 1);
+
+	_pubConveyorBeltMode 					= nh_.advertise<std_msgs::Int32>("/conveyor_belt/desired_mode", 1);
 
 	// initialize the tossing DS
 	//---------------------------
@@ -349,6 +356,10 @@ bool dual_arm_control::init()
 	gotParam = gotParam && nh_.getParam("dual_arm_task/modulated_reaching", modulated_reaching);  
 	gotParam = gotParam && nh_.getParam("dual_arm_task/isNorm_impact_vel", isNorm_impact_vel);
 	gotParam = gotParam && nh_.getParam("dual_arm_task/isQP_wrench_generation", isQP_wrench_generation);
+
+	gotParam = gotParam && nh_.getParam("dual_arm_task/lifting/increment_lift_pos", _increment_lift_pos);
+	gotParam = gotParam && nh_.getParam("conveyor_belt/control_mode", _ctrl_mode_conveyor_belt);
+
 	
 
 
@@ -556,15 +567,21 @@ void dual_arm_control::update_states_machines(){
 				// case 'w': _delta_pos(2) += 0.01f; break;
 				// position
 				case 'a':
-				      if(_increment_release_pos) _delta_rel_pos(0)  -= 0.025f;  //_delta_rel_pos(0)  -= 0.05f;  //[m]
+							if(_ctrl_mode_conveyor_belt){ _mode_conveyor_belt = 2;
+																						publish_conveyor_belt_cmds();}
+				      else if(_increment_release_pos) _delta_rel_pos(0)  -= 0.025f;  //_delta_rel_pos(0)  -= 0.05f;  //[m]
 				      else                       _delta_pos(0)      -= 0.01f; 
 				  break;
-				case 's': 
-				      if(_increment_release_pos) _delta_rel_pos(0)  += 0.025f; //_delta_rel_pos(0)  += 0.05f; //[m]
+				case 's':
+							if(_ctrl_mode_conveyor_belt){ _mode_conveyor_belt = 0; 
+																						publish_conveyor_belt_cmds();}
+				      else if(_increment_release_pos) _delta_rel_pos(0)  += 0.025f; //_delta_rel_pos(0)  += 0.05f; //[m]
 				      else                       _delta_pos(0)      += 0.01f; 
 				  break;
 				case 'd': 
-				      if(_increment_release_pos) _delta_rel_pos(1)  -= 5.0f; //[deg]   _delta_rel_pos(1)  -= 0.025f; //
+							if(_ctrl_mode_conveyor_belt){ _mode_conveyor_belt = 1;
+																						publish_conveyor_belt_cmds();}
+				      else if(_increment_release_pos) _delta_rel_pos(1)  -= 5.0f; //[deg]   _delta_rel_pos(1)  -= 0.025f; //
 				      else                       _delta_pos(1)      -= 0.01f; 
 				  break;
 				case 'f': 
@@ -686,9 +703,9 @@ void dual_arm_control::updatePoses()
 		this->Keyboard_reference_object_control();
 	}
 	//
-	// if(_increment_release_pos){
+	if(_increment_release_pos){
 		this->update_release_position();
-	// }
+	}
 	
 
 	// homogeneous transformations associated with the reaching task
@@ -853,16 +870,21 @@ void dual_arm_control::computeCommands()
 							_w_H_Dgp[RIGHT].block(0,0,3,3)  = w_H_DesObj.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[RIGHT],  _qgp_o[RIGHT]).block(0,0,3,3);
 							_w_H_Do = Utils<float>::pose2HomoMx(_xDo_placing, _qDo);  //
 							// if((_w_H_o.block<2,1>(0,3)-_xDo_placing.head(2)).norm()<=0.025 && fabs(_w_H_o(2,3)-_xDo_placing(2)) <= 0.015){
-							if((_w_H_o.block<3,1>(0,3)-_tossVar.release_position).norm()<=0.07){  // results with 0.6
+							// if((_w_H_o.block<3,1>(0,3)-_xDo_placing).norm()<=0.06){  // results with 0.6
+							if((_w_H_o.block<3,1>(0,3)-_tossVar.release_position).norm()<=0.06){  // results with 0.06
 								_releaseAndretract = true;
 							}
 					}
 					if(_isThrowing || (_dualTaskSelector == TOSSING)){
-						if(dsThrowing.a_normal_> 0.90f){
+						// if(dsThrowing.a_normal_> 0.90f){
+						if(dsThrowing.a_tangent_> 0.90f){
 							_w_H_Dgp[LEFT]  = _w_H_o * _o_H_ee[LEFT];
 							_w_H_Dgp[RIGHT] = _w_H_o * _o_H_ee[RIGHT];
 						}
 						_w_H_Do = Utils<float>::pose2HomoMx(_tossVar.release_position, _qDo);  //
+						if((_release_flag) || ((_w_H_o.block<3,1>(0,3)-_tossVar.release_position).norm()<=0.035)){ 
+								_releaseAndretract = true;
+						}
 					}
 					FreeMotionCtrl.dual_arm_motion(_w_H_ee,  _Vee, _w_H_Dgp,  _w_H_o, _w_H_Do, _Vd_o, _BasisQ, _VdImpact, false, _dualTaskSelector, _Vd_ee, _qd, _release_flag); // 0=reach, 1=pick, 2=toss, 3=pick_and_toss, 4=pick_and_place
 				}
@@ -873,13 +895,13 @@ void dual_arm_control::computeCommands()
 				if(fabs(abs_force_correction)  > 0.2f){
 					abs_force_correction = abs_force_correction/fabs(abs_force_correction) * 0.2f;
 				}
-				_Vd_ee[LEFT].head(3)  =  _Vd_ee[LEFT].head(3)  - 0.02*abs_force_correction * _n[LEFT];
-				_Vd_ee[RIGHT].head(3) =  _Vd_ee[RIGHT].head(3) - 0.02*abs_force_correction * _n[RIGHT];
+				_Vd_ee[LEFT].head(3)  =  _Vd_ee[LEFT].head(3)  - 0.00*abs_force_correction * _n[LEFT];
+				_Vd_ee[RIGHT].head(3) =  _Vd_ee[RIGHT].head(3) - 0.00*abs_force_correction * _n[RIGHT];
 
 			}
 			else  // Free-motion: reaching
 			{
-				if( _w_H_ee[LEFT](0,3) >= 0.70f ||  _w_H_ee[RIGHT](0,3) >= 0.70f ){
+				if( _w_H_ee[LEFT](0,3) >= 0.72f ||  _w_H_ee[RIGHT](0,3) >= 0.72f ){   // 0.70
 					FreeMotionCtrl.reachable_p = 0.0f;
 				}
 				else{
@@ -997,13 +1019,15 @@ void dual_arm_control::objectPoseCallback(const geometry_msgs::Pose::ConstPtr& m
 {
 	
 	// _xo << msg->position.x, 	msg->position.y, 	msg->position.z;
-	_qo << msg->orientation.w, 	msg->orientation.x, msg->orientation.y, msg->orientation.z;
-	_w_H_o = Utils<float>::pose2HomoMx(_xo, _qo);
-
 	Eigen::Vector3f xom, t_xo_xom; // _objectDim
 	t_xo_xom << 0.0f, 0.0f, -_objectDim(2)/2.0f;
+
 	xom << msg->position.x, 	msg->position.y, 	msg->position.z;
-	_xo = xom + _w_H_o.block<3,3>(0,0)*t_xo_xom;
+	_qo << msg->orientation.w, 	msg->orientation.x, msg->orientation.y, msg->orientation.z;
+	// _w_H_o = Utils<float>::pose2HomoMx(_xo, _qo);
+	Eigen::Matrix3f w_R_o = Utils<float>::quaternionToRotationMatrix(_qo);
+
+	_xo = xom + w_R_o*t_xo_xom;
 
 	// filtered object position
 	SGF::Vec temp(3);
@@ -1012,6 +1036,23 @@ void dual_arm_control::objectPoseCallback(const geometry_msgs::Pose::ConstPtr& m
     _xo = temp;
     _xo_filtered->GetOutput(1,temp);
     _vo = temp;	
+
+    _w_H_o = Utils<float>::pose2HomoMx(_xo, _qo);
+}
+
+void dual_arm_control::targetPoseCallback(const geometry_msgs::Pose::ConstPtr& msg)
+{
+	
+	_xt << msg->position.x, 	msg->position.y, 	msg->position.z;
+	_qt << msg->orientation.w, 	msg->orientation.x, msg->orientation.y, msg->orientation.z;
+
+	// filtered object position
+	SGF::Vec temp(3);
+    _xt_filtered->AddData(_xt);
+    _xt_filtered->GetOutput(0,temp);
+    _xt = temp;
+    _xt_filtered->GetOutput(1,temp);
+    _vt = temp;	
 }
 
 void dual_arm_control::updateBasePoseCallback(const geometry_msgs::Pose::ConstPtr& msg, int k)
@@ -1372,8 +1413,8 @@ void dual_arm_control::update_release_position(){
 	Eigen::Vector3f pos_xo; 
 	release_pos.to_cartesian(pos_xo);
 	_tossVar.release_position = pos_xo + _xDo_lifting; //_xo;
-	if(_tossVar.release_position(0) > 0.65){
-			_tossVar.release_position(0) = 0.65;
+	if(_tossVar.release_position(0) > 0.70){  // 0.65
+			_tossVar.release_position(0) = 0.70;
 	}
 }
 
@@ -1510,3 +1551,10 @@ void dual_arm_control::saveData()
 	// }
 
 }	
+
+void dual_arm_control::publish_conveyor_belt_cmds(){
+	// desired conveyor belt contro mode
+	std_msgs::Int32 _modeMessage;
+	_modeMessage.data = _mode_conveyor_belt;
+	_pubConveyorBeltMode.publish(_modeMessage);
+}
