@@ -876,8 +876,11 @@ void dual_arm_control::computeCommands()
 							}
 					}
 					if(_isThrowing || (_dualTaskSelector == TOSSING)){
+						Eigen::Matrix4f w_H_DesObj = Utils<float>::pose2HomoMx(_tossVar.release_position, _tossVar.release_orientation);
+							_w_H_Dgp[LEFT].block(0,0,3,3)   = w_H_DesObj.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[LEFT],  _qgp_o[LEFT]).block(0,0,3,3);
+							_w_H_Dgp[RIGHT].block(0,0,3,3)  = w_H_DesObj.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[RIGHT],  _qgp_o[RIGHT]).block(0,0,3,3);
 						// if(dsThrowing.a_normal_> 0.90f){
-						if(dsThrowing.a_tangent_> 0.90f){
+						if(dsThrowing.a_tangent_> 0.93f){
 							_w_H_Dgp[LEFT]  = _w_H_o * _o_H_ee[LEFT];
 							_w_H_Dgp[RIGHT] = _w_H_o * _o_H_ee[RIGHT];
 						}
@@ -908,7 +911,7 @@ void dual_arm_control::computeCommands()
 					FreeMotionCtrl.reachable_p = 1.0f;
 				}
 
-				if(true ||_old_dual_method){
+				if(_old_dual_method){
 					FreeMotionCtrl.computeCoordinatedMotion2(_w_H_ee, _w_H_gp, _w_H_o, _Vd_ee, _qd, false);
 					//
 					Eigen::Vector3f error_p_abs     = _w_H_o.block(0,3,3,1) - 0.5f*( _w_H_ee[LEFT].block(0,3,3,1) +  _w_H_ee[RIGHT].block(0,3,3,1));
@@ -1020,7 +1023,8 @@ void dual_arm_control::objectPoseCallback(const geometry_msgs::Pose::ConstPtr& m
 	
 	// _xo << msg->position.x, 	msg->position.y, 	msg->position.z;
 	Eigen::Vector3f xom, t_xo_xom; // _objectDim
-	t_xo_xom << 0.0f, 0.0f, -_objectDim(2)/2.0f;
+	// t_xo_xom << 0.0f, 0.0f, -_objectDim(2)/2.0f;
+	t_xo_xom << 0.0f, 0.0f, 0.0f;
 
 	xom << msg->position.x, 	msg->position.y, 	msg->position.z;
 	_qo << msg->orientation.w, 	msg->orientation.x, msg->orientation.y, msg->orientation.z;
@@ -1251,7 +1255,7 @@ void dual_arm_control::prepareCommands(Vector6f Vd_ee[], Eigen::Vector4f qd[], V
   	// _omegad[i]  = Vd_ee[i].tail(3)  + _V_gpo[i].tail(3);  
   	Vector6f VdEE  = _tcp_W_EE[i].inverse() * (Vd_ee[i]  + _V_gpo[i]);
   	//
-  	_vd[i]     = VdEE.head(3) + _VEE_oa[i].head(3);
+  	_vd[i]     = VdEE.head(3) + 0.0*_VEE_oa[i].head(3);
 		_omegad[i] = VdEE.tail(3);
 
   	Utils<float>::quaternionToAxisAngle(qd[i], axis_d[i], angle_d[i]);

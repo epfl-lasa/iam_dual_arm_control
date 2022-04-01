@@ -335,7 +335,7 @@ Eigen::Vector3f throwingDS::compute_modulated_motion(float activation, Eigen::Ma
 	Lambda.block<1,1>(2,2) = activation*( BasisQ.col(2).transpose() * Amodul_ee_norm *Beta_j(2) )  + (1.0-activation)*Eigen::MatrixXf::Identity(1,1);
 
 	// computing the modulated second order DS (translation)
-	float comb = 0.6f;  // good 0.3
+	float comb = 0.7f;  // good 0.3
 	// return (1.f - comb)*BasisQ * Lambda * BasisQ.transpose() * Areach_ee + comb *Areach_ee; 
 	return (1.f - comb)*BasisQ * Lambda * BasisQ.transpose() * Amodul_ee_norm + comb *Areach_ee; 
 }

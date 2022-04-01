@@ -673,6 +673,9 @@ void dualArmFreeMotionController::generatePlacingMotion(Eigen::Matrix4f w_H_ee[]
 }
 
 
+
+
+
 void dualArmFreeMotionController::computeCoordinatedMotion2(Eigen::Matrix4f w_H_ee[],  Eigen::Matrix4f w_H_gp[], Eigen::Matrix4f w_H_o, Vector6f (&Vd_ee)[NB_ROBOTS], Eigen::Vector4f (&qd)[NB_ROBOTS], bool isOrient3d)
 {
   //
@@ -775,6 +778,21 @@ void dualArmFreeMotionController::computeCoordinatedMotion2(Eigen::Matrix4f w_H_
   float a_bi = 0.5f;
   float b_bi = 1.0f;
   Utils<float>::getBimanualTwistDistribution(a_bi, b_bi, _V_abs, _V_rel, Vd_ee[LEFT], Vd_ee[RIGHT]);
+
+  Eigen::Matrix4f d_H_c_l = w_H_dgp_l.inverse() * w_H_ee[LEFT];
+  Eigen::Matrix4f d_H_c_r = w_H_dgp_r.inverse() * w_H_ee[RIGHT];
+
+  // orientation error
+  Eigen::Vector3f error_ori_l = Utils<float>::getPoseErrorCur2Des(d_H_c_l).tail(3);
+  Eigen::Vector3f error_ori_r = Utils<float>::getPoseErrorCur2Des(d_H_c_r).tail(3);
+
+  // 3D Orientation Jacobian 
+  Eigen::Matrix3f jacMuTheta_l = Utils<float>::getMuThetaJacobian(d_H_c_l.block<3,3>(0,0)) * w_H_ee[LEFT].block<3,3>(0,0).transpose(); // wrt. the world
+  Eigen::Matrix3f jacMuTheta_r = Utils<float>::getMuThetaJacobian(d_H_c_r.block<3,3>(0,0)) * w_H_ee[RIGHT].block<3,3>(0,0).transpose(); // wrt. the world
+
+  Vd_ee[LEFT].tail(3)  = -3.0f* jacMuTheta_l.inverse() * gain_o_rel * error_ori_l;
+  Vd_ee[RIGHT].tail(3) = -3.0f* jacMuTheta_r.inverse() * gain_o_rel * error_ori_r;
+
 
   Vd_ee[LEFT]  = Utils<float>::SaturationTwist(_v_max, _w_max, Vd_ee[LEFT]);
   Vd_ee[RIGHT] = Utils<float>::SaturationTwist(_v_max, _w_max, Vd_ee[RIGHT]);
@@ -962,7 +980,7 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
     
     if(_modulated_reaching){
       if(true){
-        alp = 0.08f;
+        alp = 0.05f;
       }
       cp_ap2     = 0.0f;
       // _refVreach[LEFT]  = (1.0f-alp)*_refVreach[LEFT]  + alp*((1.0f-cp_ap)*_desVreach + cp_ap* VdImp[LEFT].norm());
@@ -974,20 +992,18 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
     }
     else if(_isNorm_impact_vel){
       cp_ap2     = 0.0f;
-      _refVreach[LEFT]  = VdImp[LEFT].norm();
-      _refVreach[RIGHT] = VdImp[RIGHT].norm();
+      _refVreach[LEFT]  = (1.0f-cp_ap)*DS_ee_nominal.head(3).norm() + cp_ap*VdImp[LEFT].norm();
+      _refVreach[RIGHT] = (1.0f-cp_ap)*DS_ee_nominal.tail(3).norm() + cp_ap*VdImp[RIGHT].norm();
       speed_ee[LEFT]    = _refVreach[LEFT];
       speed_ee[RIGHT]   = _refVreach[RIGHT];
     }
     else{
       cp_ap2 = 0.0f*Utils<float>::computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.02f, 1.2f, true);
-      speed_ee[LEFT]   = DS_ee_nominal.head(3).norm();
-      speed_ee[RIGHT]  = DS_ee_nominal.tail(3).norm();
-      // _refVreach[LEFT] = DS_ee_nominal.head(3).norm();
-      // _refVreach[RIGHT]= DS_ee_nominal.tail(3).norm();
        alp = 0.10f;
       _refVreach[LEFT]  = (1.0f-alp)*_refVreach[LEFT]  + alp*(DS_ee_nominal.head(3).norm());
       _refVreach[RIGHT] = (1.0f-alp)*_refVreach[RIGHT] + alp*(DS_ee_nominal.tail(3).norm());
+      speed_ee[LEFT]    = _refVreach[LEFT];
+      speed_ee[RIGHT]   = _refVreach[RIGHT];
     }
     //
     Matrix6f A = Eigen::MatrixXf::Identity(6,6);
