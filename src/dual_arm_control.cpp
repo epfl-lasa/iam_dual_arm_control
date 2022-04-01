@@ -115,10 +115,10 @@ dual_arm_control::dual_arm_control(	ros::NodeHandle &n, double frequency, 	//std
 	}
 	// 
 	// Filtered variable (SG)
-	_xo_filtered 			  = std::make_unique<SGF::SavitzkyGolayFilter>(3,3,20,_dt);
+	_xo_filtered 			  = std::make_unique<SGF::SavitzkyGolayFilter>(3,3,40,_dt);
 	_sgf_ddq_filtered_l = std::make_unique<SGF::SavitzkyGolayFilter>(7,3,6,_dt); // dim, order. window lenght
 	_sgf_ddq_filtered_r = std::make_unique<SGF::SavitzkyGolayFilter>(7,3,6,_dt); // dim, order. window lenght
-	_xt_filtered 			  = std::make_unique<SGF::SavitzkyGolayFilter>(3,3,20,_dt);
+	_xt_filtered 			  = std::make_unique<SGF::SavitzkyGolayFilter>(3,3,40,_dt);
 	//
 	_vo.setZero();
 	_wo.setZero();
@@ -144,9 +144,13 @@ dual_arm_control::dual_arm_control(	ros::NodeHandle &n, double frequency, 	//std
 	_Vd_o.setZero();
 
 	// target
-	_xt.setZero(); 
-	_qt << 1.0f, 0.0f, 0.0f, 0.0f;
+	_xt.setZero();
+	_qt.setZero();
 	_vt.setZero();
+	_wt.setZero();
+	_qt  << 1.0f, 0.0f, 0.0f, 0.0f;
+	_x_pickup.setZero();
+	_x_intercept.setZero();
 
 	// normal to contact surfaces
 	_n[LEFT]  = o_R_gpl.col(2);
@@ -423,6 +427,7 @@ bool dual_arm_control::init()
 	//
 	// Object tossing DS
 	//------------------
+	_xd_landing = Eigen::Vector3f(1.0f, 0.0f, 0.0f);
 
 	// _tossVar.release_position = _xDo_placing + Eigen::Vector3f(0.0, 0.0, _height_via_point);
 
@@ -746,7 +751,7 @@ void dual_arm_control::updatePoses()
 			// Eigen::Vector3f new_toss_velocity = _desVtoss * (_tossVar.release_position -_xo).normalized();
 			_tossVar.release_linear_velocity = _desVtoss * (_tossVar.release_position -_xo).normalized();
 			if(_increment_release_pos){
-					_tossVar.release_linear_velocity = _desVtoss * (_tossVar.release_position -_xDo_lifting).normalized();
+					// _tossVar.release_linear_velocity = _desVtoss * (_tossVar.release_position -_xDo_lifting).normalized();
 			}
 			dsThrowing.set_toss_linear_velocity(_tossVar.release_linear_velocity);
 			// dsThrowing.set_toss_linear_velocity(new_toss_velocity);
@@ -754,6 +759,7 @@ void dual_arm_control::updatePoses()
 		}
 		else{
 			dsThrowing.set_pickup_object_pose(_xo, _qo);
+			_x_pickup = _xo;
 		}
 	}
 
@@ -779,6 +785,7 @@ void dual_arm_control::updatePoses()
 	// std::cout << "[dual_arm_control]:  ddddddddddddddddd  _eoD: \t" << _eoD << std::endl;
 	// std::cout << "[dual_arm_control]:  ddddddddddddddddd  _eoC: \t" << _eoC << std::endl;
 	// std::cout << "[dual_arm_control]:  ddddddd      _dualTaskSelector: \t" << _dualTaskSelector << std::endl;
+	std::cout << "[dual_arm_control]:  targettttttttttttt  _vt: \t" << _vt.transpose() << std::endl;
 }
 
 //
@@ -786,6 +793,8 @@ void dual_arm_control::computeCommands()
 {
 	// Update contact state
   updateContactState();
+	//
+	float y_2_go = _xd_landing(1) - _vt(1) * (_xd_landing(0) - _x_pickup(0))/(0.25f*_desVtoss); //
 	//
 	if(_goHome)
 	{
@@ -827,11 +836,6 @@ void dual_arm_control::computeCommands()
 
 				if(_old_dual_method){
 					FreeMotionCtrl.computeConstrainedMotion(_w_H_ee, _w_H_Dgp, _w_H_o, _Vd_ee, _qd, false);
-
-					//
-					std::cout << "[dual_arm_control]: IN CONTACT OLD METHOD  _w_H_Dgp LEFT : \n"  << _w_H_Dgp[0] << std::endl;
-					std::cout << "[dual_arm_control]: IN CONTACT OLD METHOD  _w_H_Dgp RIGHT : \n"  << _w_H_Dgp[1] << std::endl;
-					std::cout << "[dual_arm_control]: IN CONTACT OLD METHOD  _isThrowing : \n"  << _isThrowing << std::endl;
 					//
 					if(_isPlacing){
 							Eigen::Matrix4f w_H_DesObj = Utils<float>::pose2HomoMx(_xDo_placing, _qDo_placing);
@@ -871,7 +875,7 @@ void dual_arm_control::computeCommands()
 							_w_H_Do = Utils<float>::pose2HomoMx(_xDo_placing, _qDo);  //
 							// if((_w_H_o.block<2,1>(0,3)-_xDo_placing.head(2)).norm()<=0.025 && fabs(_w_H_o(2,3)-_xDo_placing(2)) <= 0.015){
 							// if((_w_H_o.block<3,1>(0,3)-_xDo_placing).norm()<=0.06){  // results with 0.6
-							if((_w_H_o.block<3,1>(0,3)-_tossVar.release_position).norm()<=0.06){  // results with 0.06
+							if((_w_H_o.block<3,1>(0,3)-_tossVar.release_position).norm()<=0.07){  // results with 0.06
 								_releaseAndretract = true;
 							}
 					}
@@ -880,9 +884,9 @@ void dual_arm_control::computeCommands()
 							_w_H_Dgp[LEFT].block(0,0,3,3)   = w_H_DesObj.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[LEFT],  _qgp_o[LEFT]).block(0,0,3,3);
 							_w_H_Dgp[RIGHT].block(0,0,3,3)  = w_H_DesObj.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[RIGHT],  _qgp_o[RIGHT]).block(0,0,3,3);
 						// if(dsThrowing.a_normal_> 0.90f){
-						if(dsThrowing.a_tangent_> 0.93f){
-							_w_H_Dgp[LEFT]  = _w_H_o * _o_H_ee[LEFT];
-							_w_H_Dgp[RIGHT] = _w_H_o * _o_H_ee[RIGHT];
+						if(dsThrowing.a_tangent_> 0.95f){
+							// _w_H_Dgp[LEFT]  = _w_H_o * _o_H_ee[LEFT];
+							// _w_H_Dgp[RIGHT] = _w_H_o * _o_H_ee[RIGHT];
 						}
 						_w_H_Do = Utils<float>::pose2HomoMx(_tossVar.release_position, _qDo);  //
 						if((_release_flag) || ((_w_H_o.block<3,1>(0,3)-_tossVar.release_position).norm()<=0.035)){ 
@@ -911,7 +915,7 @@ void dual_arm_control::computeCommands()
 					FreeMotionCtrl.reachable_p = 1.0f;
 				}
 
-				if(_old_dual_method){
+				if(true || _old_dual_method){
 					FreeMotionCtrl.computeCoordinatedMotion2(_w_H_ee, _w_H_gp, _w_H_o, _Vd_ee, _qd, false);
 					//
 					Eigen::Vector3f error_p_abs     = _w_H_o.block(0,3,3,1) - 0.5f*( _w_H_ee[LEFT].block(0,3,3,1) +  _w_H_ee[RIGHT].block(0,3,3,1));
@@ -957,6 +961,7 @@ void dual_arm_control::computeCommands()
 
 	// std::cout << "[dual_arm_control]: _w_H_o: \n" << _w_H_o << std::endl; 
 	// std::cout << "[dual_arm_control]: _w_H_Do: \n" <<  _w_H_Do << std::endl;
+	std::cout << "[dual_arm_control]: STATE 2 GO : \t"  << y_2_go << std::endl;
 	std::cout << "[dual_arm_control]:  ------------- _sensedContact: \t" << _sensedContact << std::endl;
 	std::cout << "[dual_arm_control]: _Vd_ee[LEFT]:  \t" << _Vd_ee[LEFT].transpose() << std::endl;
 	std::cout << "[dual_arm_control]: _Vd_ee[RIGHT]: \t" << _Vd_ee[RIGHT].transpose() << std::endl;
@@ -1023,8 +1028,8 @@ void dual_arm_control::objectPoseCallback(const geometry_msgs::Pose::ConstPtr& m
 	
 	// _xo << msg->position.x, 	msg->position.y, 	msg->position.z;
 	Eigen::Vector3f xom, t_xo_xom; // _objectDim
-	// t_xo_xom << 0.0f, 0.0f, -_objectDim(2)/2.0f;
-	t_xo_xom << 0.0f, 0.0f, 0.0f;
+	t_xo_xom << 0.0f, 0.0f, -_objectDim(2)/2.0f;
+	// t_xo_xom << 0.0f, 0.0f, 0.0f;
 
 	xom << msg->position.x, 	msg->position.y, 	msg->position.z;
 	_qo << msg->orientation.w, 	msg->orientation.x, msg->orientation.y, msg->orientation.z;
@@ -1255,7 +1260,7 @@ void dual_arm_control::prepareCommands(Vector6f Vd_ee[], Eigen::Vector4f qd[], V
   	// _omegad[i]  = Vd_ee[i].tail(3)  + _V_gpo[i].tail(3);  
   	Vector6f VdEE  = _tcp_W_EE[i].inverse() * (Vd_ee[i]  + _V_gpo[i]);
   	//
-  	_vd[i]     = VdEE.head(3) + 0.0*_VEE_oa[i].head(3);
+  	_vd[i]     = VdEE.head(3) + _VEE_oa[i].head(3);
 		_omegad[i] = VdEE.tail(3);
 
   	Utils<float>::quaternionToAxisAngle(qd[i], axis_d[i], angle_d[i]);
@@ -1522,7 +1527,8 @@ void dual_arm_control::saveData()
 		datalog._OutRecord_pose   	<< xgrL.transpose().format(CSVFormat) 			<< " , " << qgrL.transpose().format(CSVFormat) 			<< " , ";																					// left  grasping point
 		datalog._OutRecord_pose   	<< xgrR.transpose().format(CSVFormat) 			<< " , " << qgrR.transpose().format(CSVFormat) 			<< " , ";																					// right grasping point
 		datalog._OutRecord_pose   	<< _tossVar.release_position.transpose().format(CSVFormat) 	<< " , " << _tossVar.release_orientation.transpose().format(CSVFormat)   << " , ";			// release pose
-		datalog._OutRecord_pose   	<< _tossVar.rest_position.transpose().format(CSVFormat) 			<< " , " << _tossVar.rest_orientation.transpose().format(CSVFormat) 			<< std::endl;	// rest pose 
+		datalog._OutRecord_pose   	<< _tossVar.rest_position.transpose().format(CSVFormat) 			<< " , " << _tossVar.rest_orientation.transpose().format(CSVFormat) << " , ";				// rest pose 
+		datalog._OutRecord_pose   	<< _xt.transpose().format(CSVFormat) << " , " << _qt.transpose().format(CSVFormat)   <<  std::endl;	// target pose
 		
 		datalog._OutRecord_velo			<< (float)(_cycle_count * _dt) << ", ";
 		datalog._OutRecord_velo			<< _Vd_ee[LEFT].transpose().format(CSVFormat) << " , " << _Vd_ee[RIGHT].transpose().format(CSVFormat) << " , ";
@@ -1531,7 +1537,8 @@ void dual_arm_control::saveData()
 		datalog._OutRecord_velo			<< _omegad[LEFT].transpose().format(CSVFormat)<< " , " << _omegad[RIGHT].transpose().format(CSVFormat)<< " , ";
 		datalog._OutRecord_velo			<< _vo.transpose().format(CSVFormat) 					<< " , " << _wo.transpose().format(CSVFormat) 					<< " , ";
 		datalog._OutRecord_velo			<< _Vd_o.transpose().format(CSVFormat) << " , ";
-		datalog._OutRecord_velo			<< _tossVar.release_linear_velocity.transpose().format(CSVFormat) << " , " <<  _tossVar.release_angular_velocity .transpose().format(CSVFormat) << " , "<< std::endl;
+		datalog._OutRecord_velo			<< _tossVar.release_linear_velocity.transpose().format(CSVFormat) << " , " <<  _tossVar.release_angular_velocity .transpose().format(CSVFormat) << " , ";
+		datalog._OutRecord_velo			<< _vt.transpose().format(CSVFormat) << std::endl;
 	
 			
 		datalog._OutRecord_efforts	<< (float)(_cycle_count * _dt) << ", ";

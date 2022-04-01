@@ -1125,7 +1125,7 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
         //
         Vector6f X_bi = Eigen::VectorXf::Zero(6);
         X_bi.head(3)  = 0.5f*(X[LEFT] + X[RIGHT]);
-        X_bi.tail(3)  = 0.99f*(X[RIGHT] - X[LEFT]);
+        X_bi.tail(3)  = 0.95f*(X[RIGHT] - X[LEFT]);
         Xstar_dual    =  _Tbi.inverse() * X_bi;
         //
         //velocity based motion of the object

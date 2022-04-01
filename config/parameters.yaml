@@ -9,8 +9,8 @@ passiveDS:
 # object
 object:
   mass : 2.5
-  dimension:       [0.20, 0.19,  0.20] #[0.20, 0.30, 0.20] #[0.16, 0.29, 0.14] #
-  graspOffset:     [-0.0, 0.00, -0.0] #[-0.04, 0.00,-0.035] #[0.00, 0.00, 0.00] #
+  dimension:       [0.26, 0.26,  0.26] #[0.20, 0.30, 0.20] #[0.16, 0.29, 0.14] #
+  graspOffset:     [-0.03, 0.00, -0.0] #[-0.04, 0.00,-0.035] #[0.00, 0.00, 0.00] #
 
   cubicBox :       [0.26, 0.26, 0.26]
   coronaBottePack: [0.13, 0.19, 0.14] 
@@ -23,15 +23,15 @@ object:
 # End-effector tool
 tool:
   offset2end_effector:
-    left:  0.115   # 0.175
-    right: 0.115    # 0.20
+    left:  0.175 # 0.115   # 
+    right: 0.20 #0.115   # 
 
 #
 desVimp:   0.4
 desVreach: 1.0
 # tossing task parameters
 tossing:
-  desVtoss:           0.7
+  desVtoss:           0.75
   releasePos:         [0.70, 0.00, 0.40] #[0.70, 0.00, 0.60] [0.70, 0.00, 0.40]
   releaseOrient:      [1.00, 0.00, 0.00, 0.00]
   releaseLinVel_dir:  [1.00, 0.00, 1.00]
@@ -55,7 +55,7 @@ ds_relative_gains: [2.0, 2.0, 2.0, 1.0, 1.0, 1.0]
 
 # impact direction (angle in degree)
 impact_direction:
-  friction_angle: 5 #36
+  friction_angle: 20 #36
   max_friction_angle: 40
   impact_dir_preset: false
 
@@ -64,7 +64,7 @@ dual_arm_task:
   dualTaskSelector: 1
   old_dual_method: false
   modulated_reaching: true
-  isNorm_impact_vel: true
+  isNorm_impact_vel: false
   isQP_wrench_generation: false
   lifting: 
     position: [0.45, 0.00, 0.40] #[0.45, 0.00, 0.70]

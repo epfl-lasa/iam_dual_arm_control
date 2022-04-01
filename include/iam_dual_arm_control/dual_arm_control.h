@@ -245,10 +245,18 @@ class dual_arm_control
 		Eigen::Vector3f _wo;
 		Vector6f 				_Vd_o;   													// desired object velocity (toss)
 		Vector6f  			_desired_object_wrench; 
-		// target
+
+		// -------------------------------
+		// target (tossing)
 		Eigen::Vector3f _xt;
 		Eigen::Vector4f _qt;
 		Eigen::Vector3f _vt;
+		Eigen::Vector3f _wt;
+
+		Eigen::Vector3f _xd_landing;
+		Eigen::Vector3f _x_pickup;
+		Eigen::Vector3f _x_intercept;   // intercept point of the moving object
+
 		//-------------------------------------------------------------------------------------------------
 		Eigen::Matrix4f _o_H_ee[NB_ROBOTS];
 		int 					  _objecPoseCount;
