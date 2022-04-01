@@ -294,7 +294,7 @@ Vector6f throwingDS::generate_throwing_motion(Eigen::Matrix4f w_H_ce,  Vector6f 
 		// Eigen::Vector3f Amodul_ee_tang = Kp_[TOSS]*(X - Xstar); 				// this->computeModulatedAcceleration(Km, Dm, X, Xdot, Xstar);
 		// Eigen::Vector3f Aretrac_ee     = Kp_[RETRACT]*(X - Xretr); 			// DS for retracting after the tossing position
 		Eigen::Vector3f Areach_ee      = Kp_[REACH]*(X -  Xtoss);//(sw_toss *Xb + (1.0f-sw_toss)*Xt_) ); 	// Xdes);// DS for approaching the tossing position 
-		Eigen::Vector3f Amodul_ee_norm = 1.5f*Kp_[TOSS]*(X - Xb); 						// Modulated DS that aligned  the EE with the desired velocity
+		Eigen::Vector3f Amodul_ee_norm = 1.5f*Kp_[TOSS]*(X - Xb); 			//(X -  Xtoss);// Modulated DS that aligned  the EE with the desired velocity
 		Eigen::Vector3f Amodul_ee_tang = Kp_[TOSS]*(X - Xstar); 				// this->computeModulatedAcceleration(Km, Dm, X, Xdot, Xstar);
 		Eigen::Vector3f Aretrac_ee     = Kp_[RETRACT]*(X - Xretr); 			// DS for retracting after the tossing position
 

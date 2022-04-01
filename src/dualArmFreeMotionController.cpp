@@ -988,15 +988,17 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
     }
     else if(_isNorm_impact_vel){
       cp_ap2     = 0.0f;
-      _refVreach[LEFT]  = VdImp[LEFT].norm();
-      _refVreach[RIGHT] = VdImp[RIGHT].norm();
+      _refVreach[LEFT]  = (1.0f-cp_ap)*DS_ee_nominal.head(3).norm() + cp_ap*VdImp[LEFT].norm();
+      _refVreach[RIGHT] = (1.0f-cp_ap)*DS_ee_nominal.tail(3).norm() + cp_ap*VdImp[RIGHT].norm();
       speed_ee[LEFT]    = _refVreach[LEFT];
       speed_ee[RIGHT]   = _refVreach[RIGHT];
     }
     else{
       cp_ap2 = 0.0f*Utils<float>::computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.02f, 1.2f, true);
-      speed_ee[LEFT]  = DS_ee_nominal.head(3).norm();
-      speed_ee[RIGHT] = DS_ee_nominal.tail(3).norm();
+      _refVreach[LEFT]    = DS_ee_nominal.head(3).norm();
+      _refVreach[RIGHT]   = DS_ee_nominal.tail(3).norm();
+      speed_ee[LEFT]    = _refVreach[LEFT];
+      speed_ee[RIGHT]   = _refVreach[RIGHT];
     }
     //
     // DS_ee_nominal.head(3)  = DS_ee_nominal.head(3)/(DS_ee_nominal.head(3).norm()+1e-10) *  speed_ee[LEFT]  + cp_ap2* VdImp[LEFT];

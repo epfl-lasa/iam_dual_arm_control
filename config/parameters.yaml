@@ -1,10 +1,10 @@
 # DS Damping gains
 passiveDS:
   dampingTopic:
-    # left : "/iiwa1/CustomControllers/controllers/PassiveDS/params" # "/control/lambda_Pos" #
-    # right: "/iiwa_blue/CustomControllers/controllers/PassiveDS/params" #"/control/lambda_Pos" #
-    left : "/control/lambda_Pos" #
-    right: "/control/lambda_Pos" #
+    left : "/iiwa1/CustomControllers/controllers/PassiveDS/params" # "/control/lambda_Pos" #
+    right: "/iiwa_blue/CustomControllers/controllers/PassiveDS/params" #"/control/lambda_Pos" #
+    # left : "/control/lambda_Pos" #
+    # right: "/control/lambda_Pos" #
 
 # object
 object:
@@ -56,7 +56,7 @@ dual_arm_task:
   dualTaskSelector: 1
   old_dual_method: false
   modulated_reaching: true
-  isNorm_impact_vel: false
+  isNorm_impact_vel: true
   isQP_wrench_generation: true
   lifting: 
     position: [0.40, 0.00, 0.60] #[0.45, 0.00, 0.70] z0.6
