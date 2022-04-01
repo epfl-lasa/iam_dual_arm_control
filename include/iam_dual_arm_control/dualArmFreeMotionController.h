@@ -53,10 +53,17 @@ class dualArmFreeMotionController
     Eigen::Vector4f qdPrev[NB_ROBOTS];
     Matrix6f _Tbi;
 
+    Vector6f 				 _Twist_vo;
+		Eigen::Matrix4f  _w_H_vo;
+		Eigen::Matrix4f  _w_H_vgp[NB_ROBOTS];
+		Eigen::Vector3f  _xvgp_o[NB_ROBOTS];
+		Eigen::Matrix4f  _qvgp_o[NB_ROBOTS];
+
 	public :
 		//
 		float _dt;
-    	float reachable_p;
+		float reachable_p;
+		float _go2object;
 		//
 		float a_proximity_;
 		float a_normal_;
@@ -84,13 +91,16 @@ class dualArmFreeMotionController
 		bool _modulated_reaching = true;
 		bool _isNorm_impact_vel  = false;
 		float _height_via_point = 0.25f;
-
+		int _smoothcount;
 		//
 		float _sw_EE_obsAv;
 		float _min_dist_EE;
 		float _safe_radius;
 		Eigen::Vector3f Omega_object_d_;
 		Eigen::Vector3f _integral_Vee_d[NB_ROBOTS];
+
+		Eigen::Vector3f _objectDim;
+		float _alpha_obs[NB_ROBOTS];
 		
 		//
 		dualArmFreeMotionController();
@@ -122,6 +132,53 @@ class dualArmFreeMotionController
 		void compute_EE_avoidance_velocity(Eigen::Matrix4f w_H_ee[], Vector6f (&VEE_oa)[NB_ROBOTS]);
 
 		void constrained_ang_vel_correction(Eigen::Matrix4f w_H_ee[], Eigen::Matrix4f w_H_gp[], Eigen::Matrix4f w_H_o, Eigen::Matrix4f w_H_Do, Vector6f (&VEE)[NB_ROBOTS], bool wIntegral);
+
+		void computeCoordinatedMotion3(Eigen::Matrix4f w_H_ee[],  Eigen::Matrix4f w_H_gp[], Eigen::Matrix4f w_H_o, Vector6f Vo, Eigen::Vector3f _x_intercept, 
+                                                            Vector6f (&Vd_ee)[NB_ROBOTS], Eigen::Vector4f (&qd)[NB_ROBOTS], bool isOrient3d);
+		void set_virtual_object_frame(Eigen::Matrix4f w_H_vo);
+
+		void updateDesiredGraspingPoints(bool no_dual_mds_method, 
+                                      bool isPlacing,
+                                      bool isThrowing,
+                                      bool isClose2Release,
+                                      Eigen::Vector3f xgp_o[],
+                                      Eigen::Vector4f qgp_o[],
+                                      Eigen::Matrix4f o_H_ee[],
+                                      Eigen::Matrix4f w_H_o,
+                                      Eigen::Vector3f xDo_placing,
+                                      Eigen::Vector4f qDo_placing,
+                                      Eigen::Vector3f release_position,
+                                      Eigen::Vector4f release_orientation,
+                                      Eigen::Matrix4f &w_H_DesObj,
+                                      Eigen::Matrix4f (&w_H_gp)[NB_ROBOTS],
+                                      Eigen::Matrix4f (&w_H_Dgp)[NB_ROBOTS]);
+
+
+		void getDesiredMotion(bool no_dual_mds_method,
+                          bool isContact, 
+                          bool isPlacing,
+                          bool isThrowing,
+                          bool isClose2Release,
+                          int dualTaskSelector,
+                          Eigen::Matrix4f w_H_ee[], 
+                          Eigen::Vector3f xgp_o[],
+                          Eigen::Vector4f qgp_o[],
+                          Eigen::Matrix4f o_H_ee[],
+                          Eigen::Matrix4f w_H_o, 
+                          Eigen::Matrix4f w_H_Do,
+                          Eigen::Vector3f xDo_placing,
+                          Eigen::Vector4f qDo_placing,
+                          Eigen::Vector3f release_position,
+                          Eigen::Vector4f release_orientation,
+                          float height_via_point,
+                          Vector6f Vee[],
+                          Vector6f Vd_o,
+                          Eigen::Matrix3f BasisQ[],
+                          Eigen::Vector3f VdImpact[],
+                          Eigen::Vector3f n[],
+                          Vector6f (&Vd_ee)[NB_ROBOTS], 
+                          Eigen::Vector4f (&qd)[NB_ROBOTS], 
+                          bool &release_flag);
 
 };
 

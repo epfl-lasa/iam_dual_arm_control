@@ -9,7 +9,7 @@ passiveDS:
 # object
 object:
   mass : 2.5
-  dimension:       [0.26, 0.26,  0.26] #[0.20, 0.30, 0.20] #[0.16, 0.29, 0.14] #
+  dimension:       [0.20, 0.19, 0.20] #[0.26, 0.26,  0.26] #[0.20, 0.30, 0.20] #[0.16, 0.29, 0.14] # 
   graspOffset:     [-0.03, 0.00, -0.0] #[-0.04, 0.00,-0.035] #[0.00, 0.00, 0.00] #
 
   cubicBox :       [0.26, 0.26, 0.26]
@@ -23,8 +23,8 @@ object:
 # End-effector tool
 tool:
   offset2end_effector:
-    left:  0.175 # 0.115   # 
-    right: 0.20 #0.115   # 
+    left:   0.115   # 0.175 #
+    right:  0.115   # 0.20 #
 
 #
 desVimp:   0.4
