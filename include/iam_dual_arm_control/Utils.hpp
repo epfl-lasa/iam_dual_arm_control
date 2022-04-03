@@ -805,7 +805,7 @@ class Utils
 	    R0.col(2) = kd;
 	  }
 
-	  static void UpdatePose_From_VelocityTwist(T dt, Eigen::Matrix<T,6,1> in_veloTwist, Eigen::Matrix<T,4,4> &Hmg_Trsf)
+	static void UpdatePose_From_VelocityTwist(T dt, Eigen::Matrix<T,6,1> in_veloTwist, Eigen::Matrix<T,4,4> &Hmg_Trsf)
 	{
 	    //
 	    Eigen::Matrix<T,3,1> pos = Hmg_Trsf.block(0,3,3,1);
@@ -837,7 +837,7 @@ class Utils
 	    //
 	    Hmg_Trsf.setZero();
 	    //
-	    Hmg_Trsf.block(0,0,3,3) = rot; //q_new.toRotationMatrix();
+	    Hmg_Trsf.block(0,0,3,3) = q_new.toRotationMatrix(); //rot; //
 	    Hmg_Trsf.block(0,3,3,1) = pos;
 	    Hmg_Trsf(3,3) = 1.0;
 	}
