@@ -13,6 +13,8 @@
 #include "eigen3/Eigen/Geometry"
 #include "eigen3/Eigen/Dense"
 
+#include "throwingDS.h"
+
 #define NB_ROBOTS 2                  // Number of robots
 
 typedef Eigen::Matrix<float, 7, 1> Vector7f;
@@ -145,6 +147,7 @@ class dualArmFreeMotionController
                                       Eigen::Vector4f qgp_o[],
                                       Eigen::Matrix4f o_H_ee[],
                                       Eigen::Matrix4f w_H_o,
+                                      Eigen::Matrix4f &w_H_Do,
                                       Eigen::Vector3f xDo_placing,
                                       Eigen::Vector4f qDo_placing,
                                       Eigen::Vector3f release_position,
@@ -165,7 +168,7 @@ class dualArmFreeMotionController
                           Eigen::Vector4f qgp_o[],
                           Eigen::Matrix4f o_H_ee[],
                           Eigen::Matrix4f w_H_o, 
-                          Eigen::Matrix4f w_H_Do,
+                          Eigen::Matrix4f &w_H_Do,
                           Eigen::Vector3f xDo_placing,
                           Eigen::Vector4f qDo_placing,
                           Eigen::Vector3f release_position,
@@ -175,11 +178,33 @@ class dualArmFreeMotionController
                           Vector6f Vd_o,
                           Eigen::Matrix3f BasisQ[],
                           Eigen::Vector3f VdImpact[],
-                          Eigen::Vector3f n[],
+                          Eigen::Matrix4f (&w_H_Dgp)[NB_ROBOTS],
                           Vector6f (&Vd_ee)[NB_ROBOTS], 
                           Eigen::Vector4f (&qd)[NB_ROBOTS], 
                           bool &release_flag);
 
+
+		Eigen::Vector2f estimateRobot_PathLength_AverageSpeed(throwingDS &dsThrowing,
+																													bool no_dual_mds_method, 
+																													bool isPlacing, 
+																													bool isThrowing, 
+																													int dualTaskSelector, 
+																													float dt,
+																													float desVimp,
+																													float tolerance_dist2contact,
+																													float height_via_point,
+																													Eigen::Vector3f xDo_placing,
+																													Eigen::Vector4f qDo_placing,
+																													Eigen::Vector3f release_position,  
+																		                      Eigen::Vector4f release_orientation,
+																		                      Eigen::Vector3f xgp_o[],
+																													Eigen::Vector4f qgp_o[],
+																													Eigen::Vector3f VdImpact[],
+																													Eigen::Matrix3f BasisQ[], 
+																													Eigen::Matrix4f w_H_Do,
+																													Eigen::Matrix4f w_H_o,
+																													Eigen::Matrix4f w_H_Dgp[],
+																													Eigen::Matrix4f w_H_ee[]);
 };
 
 #endif // dualArmFreeMotionController_H

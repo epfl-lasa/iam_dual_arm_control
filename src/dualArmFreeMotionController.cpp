@@ -1492,6 +1492,7 @@ void dualArmFreeMotionController::updateDesiredGraspingPoints(bool no_dual_mds_m
                                                               Eigen::Vector4f qgp_o[],
                                                               Eigen::Matrix4f o_H_ee[],
                                                               Eigen::Matrix4f w_H_o,
+                                                              Eigen::Matrix4f &w_H_Do,
                                                               Eigen::Vector3f xDo_placing,
                                                               Eigen::Vector4f qDo_placing,
                                                               Eigen::Vector3f release_position,
@@ -1506,28 +1507,24 @@ void dualArmFreeMotionController::updateDesiredGraspingPoints(bool no_dual_mds_m
     w_H_gp[k]  = w_H_o * Utils<float>::pose2HomoMx(xgp_o[k],  qgp_o[k]);
   }
   //
-  if(no_dual_mds_method)
-  {
-    if(isPlacing){
-        w_H_DesObj = Utils<float>::pose2HomoMx(xDo_placing, qDo_placing);
-        w_H_Dgp[LEFT].block(0,0,3,3)  = w_H_DesObj.block(0,0,3,3) * Utils<float>::pose2HomoMx(xgp_o[LEFT],  qgp_o[LEFT]).block(0,0,3,3);
-        w_H_Dgp[RIGHT].block(0,0,3,3) = w_H_DesObj.block(0,0,3,3) * Utils<float>::pose2HomoMx(xgp_o[RIGHT],  qgp_o[RIGHT]).block(0,0,3,3);
-    }
-    if(isThrowing){
-      w_H_DesObj = Utils<float>::pose2HomoMx(release_position, release_orientation);
-      w_H_Dgp[LEFT]  = w_H_DesObj * o_H_ee[LEFT];
-      w_H_Dgp[RIGHT] = w_H_DesObj * o_H_ee[RIGHT];
-    }
+  w_H_DesObj  = w_H_Do; //
+  //
+  if(isPlacing){
+    w_H_DesObj  = Utils<float>::pose2HomoMx(xDo_placing, qDo_placing); // w_H_Do = w_H_DesObj
   }
-  else
-  {
-    w_H_DesObj    = w_H_o;
-    w_H_Dgp[LEFT].block(0,0,3,3)  = w_H_o.block(0,0,3,3) * Utils<float>::pose2HomoMx(xgp_o[LEFT],  qgp_o[LEFT]).block(0,0,3,3);
-    w_H_Dgp[RIGHT].block(0,0,3,3) = w_H_o.block(0,0,3,3) * Utils<float>::pose2HomoMx(xgp_o[RIGHT],  qgp_o[RIGHT]).block(0,0,3,3);
-    if(isClose2Release){
-      w_H_Dgp[LEFT]  = w_H_o * o_H_ee[LEFT];
-      w_H_Dgp[RIGHT] = w_H_o * o_H_ee[RIGHT];
-    }
+
+  if(isThrowing){
+    w_H_DesObj  = Utils<float>::pose2HomoMx(release_position, release_orientation);
+  }
+
+  w_H_Dgp[LEFT].block(0,0,3,3)  = w_H_DesObj.block(0,0,3,3) * Utils<float>::pose2HomoMx(xgp_o[LEFT],  qgp_o[LEFT]).block(0,0,3,3);
+  w_H_Dgp[RIGHT].block(0,0,3,3) = w_H_DesObj.block(0,0,3,3) * Utils<float>::pose2HomoMx(xgp_o[RIGHT],  qgp_o[RIGHT]).block(0,0,3,3);
+  //
+  if(isThrowing && isClose2Release){
+    w_H_Dgp[LEFT]  = w_H_DesObj * o_H_ee[LEFT];
+    w_H_Dgp[RIGHT] = w_H_DesObj * o_H_ee[RIGHT];
+    // w_H_Dgp[LEFT]  = w_H_o * o_H_ee[LEFT];
+    // w_H_Dgp[RIGHT] = w_H_o * o_H_ee[RIGHT];
   }
 
 }
@@ -1544,7 +1541,7 @@ void dualArmFreeMotionController::getDesiredMotion( bool no_dual_mds_method,
                                                     Eigen::Vector4f qgp_o[],
                                                     Eigen::Matrix4f o_H_ee[],
                                                     Eigen::Matrix4f w_H_o, 
-                                                    Eigen::Matrix4f w_H_Do,
+                                                    Eigen::Matrix4f &w_H_Do,
                                                     Eigen::Vector3f xDo_placing,
                                                     Eigen::Vector4f qDo_placing,
                                                     Eigen::Vector3f release_position,
@@ -1554,7 +1551,7 @@ void dualArmFreeMotionController::getDesiredMotion( bool no_dual_mds_method,
                                                     Vector6f Vd_o,
                                                     Eigen::Matrix3f BasisQ[],
                                                     Eigen::Vector3f VdImpact[],
-                                                    Eigen::Vector3f n[],
+                                                    Eigen::Matrix4f (&w_H_Dgp)[NB_ROBOTS],
                                                     Vector6f (&Vd_ee)[NB_ROBOTS], 
                                                     Eigen::Vector4f (&qd)[NB_ROBOTS], 
                                                     bool &release_flag)
@@ -1562,30 +1559,33 @@ void dualArmFreeMotionController::getDesiredMotion( bool no_dual_mds_method,
   //
   Eigen::Matrix4f w_H_DesObj;
   Eigen::Matrix4f w_H_gp[NB_ROBOTS];
-  Eigen::Matrix4f w_H_Dgp[NB_ROBOTS];
+  // Eigen::Matrix4f w_H_Dgp[NB_ROBOTS];
   //
+  Eigen::Matrix4f w_H_Dobject = w_H_Do;
+  //
+  this->updateDesiredGraspingPoints(no_dual_mds_method, 
+                                    isPlacing,
+                                    isThrowing,
+                                    isClose2Release,
+                                    xgp_o,
+                                    qgp_o,
+                                    o_H_ee,
+                                    w_H_o,
+                                    w_H_Dobject,
+                                    xDo_placing,
+                                    qDo_placing,
+                                    release_position,
+                                    release_orientation,
+                                    w_H_DesObj,
+                                    w_H_gp,
+                                    w_H_Dgp);
+
   if(isContact)  // constrained motion : lifting, placing and tossing
   {
-
-    this->updateDesiredGraspingPoints(no_dual_mds_method, 
-                                      isPlacing,
-                                      isThrowing,
-                                      isClose2Release,
-                                      xgp_o,
-                                      qgp_o,
-                                      o_H_ee,
-                                      w_H_o,
-                                      xDo_placing,
-                                      qDo_placing,
-                                      release_position,
-                                      release_orientation,
-                                      w_H_DesObj,
-                                      w_H_gp,
-                                      w_H_Dgp);
-
     if(no_dual_mds_method)
     {
       this->computeConstrainedMotion(w_H_ee, w_H_Dgp, w_H_o, Vd_ee, qd, false);
+
       if(isPlacing){
           this->generatePlacingMotion(w_H_ee, w_H_Dgp,  w_H_o, w_H_DesObj, height_via_point, Vd_ee, qd, false);
       }
@@ -1596,12 +1596,15 @@ void dualArmFreeMotionController::getDesiredMotion( bool no_dual_mds_method,
     else  // mds
     {
       // dualTaskSelector : 0=reach, 1=pick, 2=toss, 3=pick_and_toss, 4=pick_and_place
-      this->dual_arm_motion(w_H_ee,  Vee, w_H_Dgp,  w_H_o, w_H_Do, Vd_o, BasisQ, VdImpact, false, dualTaskSelector, Vd_ee, qd, release_flag); 
+      if(isPlacing || isThrowing){
+        w_H_Dobject = w_H_DesObj;
+      } 
+      this->dual_arm_motion(w_H_ee,  Vee, w_H_Dgp,  w_H_o, w_H_Dobject, Vd_o, BasisQ, VdImpact, false, dualTaskSelector, Vd_ee, qd, release_flag); 
     }
   }
   else // Free-motion: reaching
   {
-    if(no_dual_mds_method)
+    if(true || no_dual_mds_method)
     {
       this->computeCoordinatedMotion2(w_H_ee, w_H_gp, w_H_o, Vd_ee, qd, false);
       //
@@ -1610,12 +1613,195 @@ void dualArmFreeMotionController::getDesiredMotion( bool no_dual_mds_method,
       Eigen::Vector3f o_error_pos_abs_paral = Eigen::Vector3f(o_error_pos_abs(0), 0.0f, o_error_pos_abs(2));
       float cp_ap = Utils<float>::computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.17f, 1.0f, true);  // 50.0f, 0.05f, 2.8f
       // create impact in the normal direction
-      Vd_ee[LEFT].head(3)  = Vd_ee[LEFT].head(3)  + n[LEFT]  * cp_ap * 0.20f; //
-      Vd_ee[RIGHT].head(3) = Vd_ee[RIGHT].head(3) + n[RIGHT] * cp_ap * 0.20f; //
+      Vd_ee[LEFT].head(3)  = Vd_ee[LEFT].head(3)  + w_H_gp[LEFT].block(0,0,3,3).col(2)  * cp_ap * 0.20f; //     n[k] = _w_H_gp[k].block(0,0,3,3).col(2);
+      Vd_ee[RIGHT].head(3) = Vd_ee[RIGHT].head(3) + w_H_gp[RIGHT].block(0,0,3,3).col(2) * cp_ap * 0.20f; //
     }
     else  // mds
     {
-      this->dual_arm_motion(w_H_ee,  Vee, w_H_gp,  w_H_o, w_H_Do, Vd_o, BasisQ, VdImpact, false, 0, Vd_ee, qd, release_flag);    // 0: reach
+      this->dual_arm_motion(w_H_ee,  Vee, w_H_gp,  w_H_o, w_H_Dobject, Vd_o, BasisQ, VdImpact, false, 0, Vd_ee, qd, release_flag);    // 0: reach
     }
   }
+}
+
+
+Eigen::Vector2f dualArmFreeMotionController::estimateRobot_PathLength_AverageSpeed(throwingDS &dsThrowing,
+                                                                                    bool no_dual_mds_method, 
+                                                                                    bool isPlacing, 
+                                                                                    bool isThrowing, 
+                                                                                    int dualTaskSelector, 
+                                                                                    float dt,
+                                                                                    float desVimp,
+                                                                                    float tolerance_dist2contact,
+                                                                                    float height_via_point,
+                                                                                    Eigen::Vector3f xDo_placing,
+                                                                                    Eigen::Vector4f qDo_placing,
+                                                                                    Eigen::Vector3f release_position,  
+                                                                                    Eigen::Vector4f release_orientation,
+                                                                                    Eigen::Vector3f xgp_o[],
+                                                                                    Eigen::Vector4f qgp_o[],
+                                                                                    Eigen::Vector3f VdImpact[],
+                                                                                    Eigen::Matrix3f BasisQ[], 
+                                                                                    Eigen::Matrix4f w_H_Do,
+                                                                                    Eigen::Matrix4f w_H_o,
+                                                                                    Eigen::Matrix4f w_H_Dgp[],
+                                                                                    Eigen::Matrix4f w_H_ee[])
+{
+  
+  bool isReleasePositionReached = false;
+  bool release_flag = false;
+  bool isContact    = false;
+  bool isClose2Release  = false;
+  bool isPlacingCommand = false;
+  bool isTossingCommand = false;
+  float tol_dist2contact = tolerance_dist2contact;
+  //
+  int max_horizon = 40;
+  int pred_count  = 0;
+
+  Vector6f Vd_ee[NB_ROBOTS];
+  Eigen::Vector4f qd[NB_ROBOTS];
+
+  dsThrowing._refVtoss = desVimp;
+  dsThrowing.reset_release_flag();
+  Eigen::Vector3f xo = w_H_o.block(0,3,3,1);
+  Eigen::Vector4f qo = Utils<float>::rotationMatrixToQuaternion(w_H_o.block(0,0,3,3));
+  Vector6f Vee[NB_ROBOTS];
+            Vee[LEFT].setZero();
+            Vee[RIGHT].setZero();
+  Eigen::Vector3f vo = Eigen::VectorXf::Zero(3);
+  Vector6f Vd_o = Eigen::VectorXf::Zero(6);
+  //
+  Eigen::Matrix4f w_H_obj = w_H_o;
+
+  Eigen::Matrix4f w_H_EE[NB_ROBOTS], o_H_ee[NB_ROBOTS], w_H_Dgpts[NB_ROBOTS], w_H_gpts[NB_ROBOTS];
+  for(int k=0; k<NB_ROBOTS; k++){
+    Vd_ee[k].setZero();
+    w_H_EE[k]   = w_H_ee[k];
+    o_H_ee[k]   = w_H_obj.inverse() * w_H_ee[k];
+    w_H_gpts[k] = w_H_obj * Utils<float>::pose2HomoMx(xgp_o[k],  qgp_o[k]);
+    w_H_Dgpts[k]= w_H_Dgp[k];
+  }
+
+  //
+  std::vector<Eigen::Vector3f> X_next;
+  std::vector<Eigen::Vector3f> dX_next;
+  Eigen::Vector3f xEE,  xEE_0, dxEE; 
+  xEE_0  = 0.5f*(w_H_EE[LEFT].block(0,3,3,1)+w_H_EE[RIGHT].block(0,3,3,1));
+  
+  //
+  while((!isReleasePositionReached) && (pred_count<max_horizon))
+  {
+    
+    // -------------------------------------------------------------------------------------
+    if(isContact){
+      Vd_o  = dsThrowing.apply(xo, qo, vo, Eigen::Vector3f(0.0f, 0.0f, 0.0f), 1);  // Function to call in a loop
+      isReleasePositionReached = dsThrowing.get_release_flag();
+    }
+    else
+    {
+      dsThrowing._refVtoss = desVimp;
+      Vd_o.setZero();  // for data logging
+    }
+    // -------------------------------------------------------------------------------------
+    this->getDesiredMotion(no_dual_mds_method,          // preset
+                            isContact,                    // to be updated
+                            isPlacing,                    // preset
+                            isThrowing,                   // preset
+                            isClose2Release,              // to be updated
+                            dualTaskSelector,             // preset
+                            w_H_EE,                       // initialized and updated
+                            xgp_o,                        // fixed
+                            qgp_o,                        // fixed
+                            o_H_ee,                       // updated
+                            w_H_obj,                      // initialized and updated
+                            w_H_Do,                       // preset
+                            xDo_placing,                  // fixed
+                            qDo_placing,                  // fixed
+                            release_position,             // preset
+                            release_orientation,          // preset
+                            height_via_point,             // preset
+                            Vee,                          // updated
+                            Vd_o,                         // updated
+                            BasisQ,                       // preset
+                            VdImpact,                     // preset
+                            w_H_Dgpts,                    // initialized and updated
+                            Vd_ee,                        // output updated
+                            qd,                           // output updated
+                            release_flag);                // output
+    // --------------------------------------------------------------------------------------
+    // update pose from velocity
+    // --------------------------
+    Utils<float>::UpdatePose_From_VelocityTwist(dt, Vd_ee[LEFT], w_H_EE[LEFT]);
+    Utils<float>::UpdatePose_From_VelocityTwist(dt, Vd_ee[RIGHT], w_H_EE[RIGHT]);
+    Utils<float>::UpdatePose_From_VelocityTwist(dt, Vd_o, w_H_obj);
+
+    
+    for(int k=0; k<NB_ROBOTS; k++){
+      o_H_ee[k]     = w_H_obj.inverse() * w_H_EE[k];
+      w_H_gpts[k]   = w_H_obj * Utils<float>::pose2HomoMx(xgp_o[k],  qgp_o[k]);
+      w_H_Dgpts[k]  = w_H_Do * o_H_ee[k];
+    }
+
+    xo = w_H_obj.block(0,3,3,1);
+    qo = Utils<float>::rotationMatrixToQuaternion(w_H_obj.block(0,0,3,3));
+    vo = Vd_o.head(3);
+
+    // update contact status
+      // Positioning error in hand frames
+      Eigen::Vector3f lh_er = w_H_gpts[LEFT].block<3,3>(0,0).transpose()*(w_H_gpts[LEFT].block<3,1>(0,3)-w_H_EE[LEFT].block<3,1>(0,3));   // 
+      Eigen::Vector3f rh_er = w_H_gpts[RIGHT].block<3,3>(0,0).transpose()*(w_H_gpts[RIGHT].block<3,1>(0,3)-w_H_EE[RIGHT].block<3,1>(0,3));  // 
+    
+      // Distances normal to contacts: lh_er(2), rh_er(2)
+      if((fabs(lh_er(2)) <= tol_dist2contact) && (fabs(rh_er(2)) <= tol_dist2contact)){ 
+        isContact = true;
+      }
+      else{
+        isContact = false;
+      }
+
+    // update Convergence status
+    isClose2Release  = (dsThrowing.a_tangent_> 0.95f);
+    //
+    isPlacingCommand = (release_flag) || ((w_H_obj.block<3,1>(0,3)-xDo_placing).norm()<=0.05); // 0.07
+    isTossingCommand = (release_flag) || ((w_H_obj.block<3,1>(0,3)-release_position).norm()<=0.05);
+
+    if((isPlacing && isPlacingCommand) || (isThrowing && isTossingCommand)){
+      isReleasePositionReached = true;
+      dsThrowing.reset_release_flag();
+    }
+    else if((w_H_obj.block<3,1>(0,3)-w_H_Do.block<3,1>(0,3)).norm()<=0.05){
+      isReleasePositionReached = true;
+      dsThrowing.reset_release_flag();
+    }
+    //
+    // extract the translation state
+    xEE  = 0.5f*(w_H_EE[LEFT].block(0,3,3,1)+w_H_EE[RIGHT].block(0,3,3,1));
+    dxEE = 0.5f*(Vd_ee[LEFT].head(3) + Vd_ee[RIGHT].head(3));
+    X_next.push_back(xEE-xEE_0);
+    dX_next.push_back(dxEE);
+    //
+    xEE_0 = xEE;
+
+
+
+    pred_count++;
+
+  } // while
+
+  //
+  int N = X_next.size();
+  float v_avg  = 0.0f;
+  float LpXd_X = 0.0f;
+  std::cout << " PREDICTION HORIZON is : \t " << N << std::endl;
+  for(int i=0; i<N; i++){
+    v_avg  += dX_next[i].norm()/N;
+    LpXd_X += X_next[i].norm();
+    std::cout << " DELTA X_next [" << i << "] : " << X_next[i].norm();
+  }
+  //
+  std::cout << " " << std::endl;
+  //
+  Eigen::Vector2f Lp_dx_avg = {LpXd_X, v_avg};
+  return Lp_dx_avg;
+
 }
