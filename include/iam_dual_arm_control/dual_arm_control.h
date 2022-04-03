@@ -40,6 +40,7 @@
 #include "dualArmFreeMotionController.h"
 #include "dualArmCooperativeController.h"
 #include "throwingDS.h"
+#include "toss_task_param_estimator.h"
 #include "data_logging.hpp"
 
 #define NB_ROBOTS 2                  // Number of robots
@@ -353,13 +354,16 @@ class dual_arm_control
 		spherical_position release_pos;
 
 		int _mode_conveyor_belt;
+		Eigen::Vector2f _dual_PathLen_AvgSpeed;
 
 		////////////////////////////////////////////////////////////////////////
 		// Objects for Unconstrained and contrained motion and force generation
 		////////////////////////////////////////////////////////////////////////
 		dualArmFreeMotionController 	FreeMotionCtrl;			// Motion generation
 		dualArmCooperativeController 	CooperativeCtrl;		// Force generation
-		throwingDS 						dsThrowing;				//
+		throwingDS 						dsThrowing;				      //
+		throwingDS 						dsThrowingEstim;				//
+		toss_task_param_estimator 		tossParamEstimator; 			// tossing task param estimator
 
 		// Callbacks
 		void objectPoseCallback(const geometry_msgs::Pose::ConstPtr& msg);
