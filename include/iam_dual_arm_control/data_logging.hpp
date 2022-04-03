@@ -9,6 +9,7 @@
 #include <Eigen/Dense>
 #include <chrono>
 #include <ctime>
+#include "ros/ros.h"
 
 using namespace std;
 //
@@ -119,5 +120,100 @@ class data_logging
 			_OutRecord_jts_states.close();
 			return true;
 		}
+
+		// function to log data from file
+		bool LoadDataFromFile(std::string file_name, Eigen::VectorXf &data_all_val)
+		{
+		    //
+		    ifstream inFile;
+		    inFile.open(file_name);
+		    if (!inFile) {
+		        cout << "Unable to open file \n";
+		        exit(1);                            // terminate with error
+		    }
+		    //
+		    std::vector<float> data_val;
+		    float x; 
+		    //
+		    while(inFile >> x) {
+		        data_val.push_back(x);
+		    }
+		    //
+		    int size_data_val = data_val.size();
+		    //
+		    data_all_val.resize(size_data_val);
+		    for(int i=0; i<size_data_val; i++) 
+		        data_all_val(i) = data_val[i];
+
+		    return true;
+		}
+
+		bool Load_gmm_param(std::string file_name[], int dataDim, int nbStates, Eigen::VectorXf &Priors_, Eigen::MatrixXf &Means_, Eigen::MatrixXf &Covars_)
+		{
+
+			// 
+			std::string Priors_file_name  = file_name[0]; // + "_prio.txt";  
+			std::string Means_file_name   = file_name[1]; // + "_mu.txt";  
+			std::string Covar_file_name   = file_name[2]; // + "_sigma.txt";  
+			//
+			Eigen::VectorXf priors_all_val;
+			Eigen::VectorXf means_all_val;
+			Eigen::VectorXf covars_all_val;
+			//
+			this->LoadDataFromFile(Priors_file_name, priors_all_val);
+			this->LoadDataFromFile(Means_file_name,  means_all_val);
+			this->LoadDataFromFile(Covar_file_name,  covars_all_val);
+			//
+			// Priors
+			Priors_ = priors_all_val;
+			// Means
+			Eigen::Map< Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> > Means_Mx(means_all_val.data(),dataDim, nbStates);
+			Means_ = Means_Mx;
+			
+			//
+			int row_cov = dataDim * nbStates;
+			// Covariance
+			Eigen::Map< Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> > Covar_Mx(covars_all_val.data(),row_cov,dataDim);
+			Covars_ = Covar_Mx;
+
+
+			return true;
+		}
+
+
+		bool Load_gmm_param2(std::string file_name[], Eigen::VectorXf &Priors_, Eigen::MatrixXf &Means_, Eigen::MatrixXf &Covars_)
+		{
+			// 
+			std::string Priors_file_name  = file_name[0]; // + "_prio.txt";  
+			std::string Means_file_name   = file_name[1]; // + "_mu.txt";  
+			std::string Covar_file_name   = file_name[2]; // + "_sigma.txt";  
+			//
+			Eigen::VectorXf priors_all_val;
+			Eigen::VectorXf means_all_val;
+			Eigen::VectorXf covars_all_val;
+			//
+			this->LoadDataFromFile(Priors_file_name, priors_all_val);
+			this->LoadDataFromFile(Means_file_name,  means_all_val);
+			this->LoadDataFromFile(Covar_file_name,  covars_all_val);
+			//
+			// Priors
+			Priors_  = priors_all_val;
+			//
+			int nbStates = priors_all_val.rows();
+			int dataDim  = int(means_all_val.rows()/nbStates);
+			// Means
+			Eigen::Map< Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> > Means_Mx(means_all_val.data(),dataDim, nbStates);
+			Means_ = Means_Mx;
+
+			//
+			int row_cov = dataDim * nbStates;
+			// Covariance
+			Eigen::Map< Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> > Covar_Mx(covars_all_val.data(),row_cov,dataDim);
+			Covars_ = Covar_Mx;
+
+
+			return true;
+		}
+
 }; 
 #endif // _DATA_LOGGING_H_
