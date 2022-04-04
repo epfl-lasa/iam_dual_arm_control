@@ -785,6 +785,7 @@ void dual_arm_control::computeCommands()
 		// if((_initPoseCount > 50) && (fabs(_xo(1)-y_2_go) < 0.02f)) // 0.80   // catching
 		{
 			_goHome = false;
+			_startlogging  = true;
 		}
 
 		std::cout << "[dual_arm_control]: DIST TO TOSS : \t"  << y_2_go << std::endl;
