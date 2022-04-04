@@ -839,11 +839,28 @@ void dual_arm_control::computeCommands()
 	Eigen::Vector2f Lp_Va_pred_bot = _dual_PathLen_AvgSpeed;
 	Eigen::Vector2f Lp_Va_pred_tgt = tossParamEstimator.estimateTarget_SimpPathLength_AverageSpeed(_xt, _x_intercept, _vt);
 	float flytime_obj = 0.200f;
-	Eigen::Vector3f Xtarget2go = tossParamEstimator.estimate_target_state_to_go(_xt, _vt, _x_intercept, Lp_Va_pred_bot, Lp_Va_pred_tgt, flytime_obj);
+	Eigen::Vector3f Xtarget2go 		 = tossParamEstimator.estimate_target_state_to_go(_xt, _vt, _x_intercept, Lp_Va_pred_bot, Lp_Va_pred_tgt, flytime_obj);
+
+	Eigen::Vector3f xt_bar 		= _xt - _x_intercept;
+	Eigen::Vector3f xt2go_bar = Xtarget2go - _x_intercept;
+
+	if((xt_bar.dot(xt2go_bar) > 0) && (xt_bar.norm() - xt2go_bar.norm())){
+		// start motion
+	}
+	// computation of speed adaptation term: beta
+	float beta = 1.0f;
+	// float beta_max = min(2.0f, _v_max/(0.5*(_Vd_ee[LEFT].head(3) + _Vd_ee[RIGHT].head(3)).norm()) );
+	float beta_max = min( 2.0f, min((_v_max/_Vd_ee[LEFT].head(3).norm()), (_v_max/_Vd_ee[RIGHT].head(3).norm())) );
+
+	if((xt_bar.dot(xt2go_bar) > 0) && (xt_bar.norm() - xt2go_bar.norm())){
+		beta = (Lp_Va_pred_tgt(1)/(Lp_Va_pred_bot(1) +1e-6)) * (Lp_Va_pred_bot(0)/(Lp_Va_pred_tgt(0) +1e-6));
+		if(beta >=beta_max){
+			beta = beta_max;
+		}
+	}	
+	
 
 
-
-	//
 	if(_goHome)
 	{
 		FreeMotionCtrl.computeAsyncMotion(_w_H_ee, _w_H_eeStandby, _w_H_o, _Vd_ee, _qd, true);		
@@ -857,6 +874,14 @@ void dual_arm_control::computeCommands()
 			_BasisQ[i] 				= Utils<float>::create3dOrthonormalMatrixFromVector(_dirImp[i]);					//  Orthogonal Basis of Modulated Dual-arm DS
 		}
 		this->reset_variables();
+
+		if((_initPoseCount > 50) && (xt_bar.dot(xt2go_bar) > 0) && (xt_bar.norm() - xt2go_bar.norm())) // 0.80   // tossing
+		{
+			// _goHome = false;
+		}
+
+		std::cout << "[dual_arm_control]: DIST TO TOSS : \t"  << Xtarget2go << std::endl;
+
 	}
 	else 
 	{

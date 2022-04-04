@@ -264,7 +264,7 @@ Eigen::Vector3f toss_task_param_estimator::estimate_target_state_to_go(Eigen::Ve
 	else{
 		Lptgt2Xintercept = 0.0f;
 	}
-	Eigen::Vector3f Xtarget2go = -dX_target.normalized() * Lptgt2Xintercept - Xintercept;  		// relative to Xintercept
+	Eigen::Vector3f Xtarget2go = Xintercept -dX_target.normalized() * Lptgt2Xintercept;  		// relative to Xintercept
 
 	// if sign ()
 	return Xtarget2go; 
