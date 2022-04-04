@@ -779,7 +779,7 @@ void dualArmFreeMotionController::computeCoordinatedMotion2(Eigen::Matrix4f w_H_
   _error_rel.head(3) = lr_H_rr.block<3,1>(0,3) - d_p_rel;  // 
 
   // computing the velocity
-  _V_rel.head(3) = -3.0f* gain_p_rel * _error_rel.head(3);  // -3.0
+  _V_rel.head(3) = -5.0f* gain_p_rel * _error_rel.head(3);  // -3.0
   _V_rel.tail(3) = -3.0f* jacMuTheta_rel.inverse() * gain_o_rel * _error_rel.tail(3);  // -3.0
 
   // ========================================
@@ -1309,7 +1309,7 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
         //
         Vector6f X_bi = Eigen::VectorXf::Zero(6);
         X_bi.head(3)  = 0.5f*(X[LEFT] + X[RIGHT]);
-        X_bi.tail(3)  = 0.95f*(X[RIGHT] - X[LEFT]);
+        X_bi.tail(3)  = 0.98f*(X[RIGHT] - X[LEFT]);
         Xstar_dual    =  _Tbi.inverse() * X_bi;
         //
         //velocity based motion of the object
@@ -1527,6 +1527,15 @@ void dualArmFreeMotionController::updateDesiredGraspingPoints(bool no_dual_mds_m
     // w_H_Dgp[RIGHT] = w_H_o * o_H_ee[RIGHT];
   }
 
+  if(no_dual_mds_method){
+    w_H_Dgp[LEFT].block(0,0,3,3)  = w_H_o.block(0,0,3,3) * Utils<float>::pose2HomoMx(xgp_o[LEFT],  qgp_o[LEFT]).block(0,0,3,3);
+    w_H_Dgp[RIGHT].block(0,0,3,3) = w_H_o.block(0,0,3,3) * Utils<float>::pose2HomoMx(xgp_o[RIGHT],  qgp_o[RIGHT]).block(0,0,3,3);
+    if(isClose2Release){
+      w_H_Dgp[LEFT]  = w_H_o * o_H_ee[LEFT];
+      w_H_Dgp[RIGHT] = w_H_o * o_H_ee[RIGHT];
+    }
+  }
+
 }
 
 
@@ -1604,7 +1613,7 @@ void dualArmFreeMotionController::getDesiredMotion( bool no_dual_mds_method,
   }
   else // Free-motion: reaching
   {
-    if(true || no_dual_mds_method)
+    if(no_dual_mds_method)
     {
       this->computeCoordinatedMotion2(w_H_ee, w_H_gp, w_H_o, Vd_ee, qd, false);
       //

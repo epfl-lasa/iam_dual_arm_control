@@ -1304,7 +1304,7 @@ void dual_arm_control::prepareCommands(Vector6f Vd_ee[], Eigen::Vector4f qd[], V
   	// _omegad[i]  = Vd_ee[i].tail(3)  + _V_gpo[i].tail(3);  
   	Vector6f VdEE  = _tcp_W_EE[i].inverse() * (Vd_ee[i]  + _V_gpo[i]);
   	//
-  	_vd[i]     = VdEE.head(3) + _VEE_oa[i].head(3);
+  	_vd[i]     = VdEE.head(3) + 0.0*_VEE_oa[i].head(3);
 		_omegad[i] = VdEE.tail(3);
 
   	Utils<float>::quaternionToAxisAngle(qd[i], axis_d[i], angle_d[i]);
