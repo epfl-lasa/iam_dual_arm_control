@@ -159,9 +159,9 @@ Vector6f throwingDS::apply(Eigen::Vector3f curPos, Eigen::Vector4f curOrient, Ei
 	//
 	Vector6f Vd_obj = this->generate_throwing_motion(w_H_ce,  Vee, w_H_de_, w_H_re_, BasisQp_, v_toss_, release_flag);
 	Vd_obj  = Utils<float>::SaturationTwist(_v_max, _w_max, Vd_obj);
-	float  alp = 0.05f;
-  // _refVtoss = (1.0f-alp)*_refVtoss + alp*v_toss_.norm(); //Vd_obj.head(3).norm(); //(v_toss_.norm());
-  _refVtoss 		  = v_toss_.norm();
+	float  alp = 0.10f;
+  _refVtoss = (1.0f-alp)*_refVtoss + alp*v_toss_.norm(); //Vd_obj.head(3).norm(); //(v_toss_.norm());
+  // _refVtoss 		  = v_toss_.norm();
   // _refVtoss 		= Vd_obj.head(3).norm();
 	Vd_obj.head(3)  = Vd_obj.head(3)/(Vd_obj.head(3).norm()+1e-10)  *  _refVtoss;
 	return Vd_obj;
@@ -234,10 +234,10 @@ Vector6f throwingDS::generate_throwing_motion(Eigen::Matrix4f w_H_ce,  Vector6f 
 	a_retract_ = 0.0f;
 
 
-	std::cout << "[throwingDS]:  -------------XXXXXXXXXXXXXXXXXXXXX ------ Xpick : \t" <<  Xpick.transpose() << std::endl;
-	std::cout << "[throwingDS]:  -------------XXXXXXXXXXXXXXXXXXXXX ------ Xb  : \t" <<  Xb.transpose() << std::endl;
-	std::cout << "[throwingDS]:  -------------XXXXXXXXXXXXXXXXXXXXX ------ Xti   : \t" <<  Xti.transpose() << std::endl;
-	std::cout << "[throwingDS]:  -------------XXXXXXXXXXXXXXXXXXXXX ------ Xt_   : \t" <<  Xt_.transpose() << std::endl;
+	// std::cout << "[throwingDS]:  -------------XXXXXXXXXXXXXXXXXXXXX ------ Xpick : \t" <<  Xpick.transpose() << std::endl;
+	// std::cout << "[throwingDS]:  -------------XXXXXXXXXXXXXXXXXXXXX ------ Xb  : \t" <<  Xb.transpose() << std::endl;
+	// std::cout << "[throwingDS]:  -------------XXXXXXXXXXXXXXXXXXXXX ------ Xti   : \t" <<  Xti.transpose() << std::endl;
+	// std::cout << "[throwingDS]:  -------------XXXXXXXXXXXXXXXXXXXXX ------ Xt_   : \t" <<  Xt_.transpose() << std::endl;
 	
 
 	// float a_normal_t   	= 0.5*(std::tanh(0.8f*this->sw_norm_  * (1.2f*this->range_norm_ - dist2line)) + 1.0 );  // good
@@ -245,10 +245,10 @@ Vector6f throwingDS::generate_throwing_motion(Eigen::Matrix4f w_H_ce,  Vector6f 
 	float tol_rad = (X-Xt_).norm(); //(X-Xt_).transpose() * (X-Xt_);
 	float a_normal_t   	= 0.5f*(std::tanh(1.2f*this->sw_norm_  * (this->range_norm_ - tol_rad)) + 1.0f );
 	// a_normal_t = 0.0f;
-	std::cout << "[throwingDS]:  -------------XXXXXXXXXXXXXXXXXXXXX ------ a_proximity_   : \t" <<  a_proximity_ << std::endl;
-	std::cout << "[throwingDS]:  -------------XXXXXXXXXXXXXXXXXXXXX ------ a_normal_   : \t" <<  a_normal_ << std::endl;
-	std::cout << "[throwingDS]:  -------------XXXXXXXXXXXXXXXXXXXXX ------ a_normal_t   : \t" <<  a_normal_t << std::endl;
-	std::cout << "[throwingDS]:  -------------XXXXXXXXXXXXXXXXXXXXX ------ Vdtoss   : \t" <<  Vdtoss.transpose() << std::endl;
+	// std::cout << "[throwingDS]:  -------------XXXXXXXXXXXXXXXXXXXXX ------ a_proximity_   : \t" <<  a_proximity_ << std::endl;
+	// std::cout << "[throwingDS]:  -------------XXXXXXXXXXXXXXXXXXXXX ------ a_normal_   : \t" <<  a_normal_ << std::endl;
+	// std::cout << "[throwingDS]:  -------------XXXXXXXXXXXXXXXXXXXXX ------ a_normal_t   : \t" <<  a_normal_t << std::endl;
+	// std::cout << "[throwingDS]:  -------------XXXXXXXXXXXXXXXXXXXXX ------ Vdtoss   : \t" <<  Vdtoss.transpose() << std::endl;
 	if(a_normal_t >=0.90f){
       a_toss_ = 1.0f;
     }
@@ -258,7 +258,7 @@ Vector6f throwingDS::generate_throwing_motion(Eigen::Matrix4f w_H_ce,  Vector6f 
     sw_toss = 1.0f;
   }
 
-  std::cout << "[throwingDS]:  -------------XXXXXXXXXXXXXXXXXXXXX ------ sw_toss   : \t" <<  sw_toss << std::endl;
+  // std::cout << "[throwingDS]:  -------------XXXXXXXXXXXXXXXXXXXXX ------ sw_toss   : \t" <<  sw_toss << std::endl;
 
 
 	// state-dependent gain matrix
@@ -336,7 +336,7 @@ Eigen::Vector3f throwingDS::compute_modulated_motion(float activation, Eigen::Ma
 
 	// computing the modulated second order DS (translation)
 	// float comb = 0.8f;  // good 0.3
-	float comb = 0.3f;  // good 0.3
+	float comb = 0.8f;  // good 0.3
 	// return (1.f - comb)*BasisQ * Lambda * BasisQ.transpose() * Areach_ee + comb *Areach_ee; 
 	return (1.f - comb)*BasisQ * Lambda * BasisQ.transpose() * Amodul_ee_norm + comb *Areach_ee; 
 }

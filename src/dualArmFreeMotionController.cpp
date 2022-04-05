@@ -821,7 +821,7 @@ Vector6f dualArmFreeMotionController::generatePlacingMotion2(Eigen::Matrix4f w_H
 
   w_H_o_z       = w_H_o;
   w_H_Do_z      = w_H_Do;
-  w_H_o_z(2,3)  = w_H_Do(2,3) + via_height;
+  w_H_o_z(2,3)  = w_H_Do(2,3) + 0.0*via_height;
   w_H_Do_z(2,3) = w_H_Do(2,3) + via_height;
 
   Eigen::Vector3f error_z  = Eigen::Vector3f(0.f, 0.f, w_H_o(2,3) - w_H_o_z(2,3));
@@ -931,7 +931,7 @@ void dualArmFreeMotionController::computeCoordinatedMotion3(Eigen::Matrix4f w_H_
   Eigen::Matrix4f o_H_gp[NB_ROBOTS];
   for(int k=0; k<NB_ROBOTS; k++){
     o_H_gp[k]   = w_H_o.inverse() * w_H_gp[k];
-    xvgp_o_d[k] = o_H_gp[k].block<3,1>(0,3)  + (1.f - _go2object) *_alpha_obs[k]  * Eigen::Vector3f(0.0f, 0.0f, _objectDim(2)/2.f + 0.05f);
+    xvgp_o_d[k] = o_H_gp[k].block<3,1>(0,3)  + (1.f - _go2object) *_alpha_obs[k]  * Eigen::Vector3f(0.0f, 0.0f, _objectDim(2)/2.f + 0.09f);
     _w_H_vgp[k].block<3,3>(0,0) = _w_H_vo.block<3,3>(0,0) * o_H_gp[k].block<3,3>(0,0);
     _w_H_vgp[k].block<3,1>(0,3) = _w_H_vo.block<3,3>(0,0) * xvgp_o_d[k] + _w_H_vo.block<3,1>(0,3);
   }
@@ -946,7 +946,7 @@ void dualArmFreeMotionController::computeCoordinatedMotion3(Eigen::Matrix4f w_H_
   // lp_H_rp_pgrasp       = lp_H_rp;
   // lp_H_rp_pgrasp(1, 3) = lp_H_rp(1,3)/fabs(lp_H_rp(1,3)) * (fabs(lp_H_rp(1,3)) + 0.30f);
   lp_H_rp_pgrasp       = lp_H_rvp;
-  lp_H_rp_pgrasp(1, 3) = lp_H_rvp(1,3)/fabs(lp_H_rvp(1,3)) * (fabs(lp_H_rvp(1,3)) + 0.25f);
+  lp_H_rp_pgrasp(1, 3) = lp_H_rvp(1,3)/fabs(lp_H_rvp(1,3)) * (fabs(lp_H_rvp(1,3)) + 0.30f);
 
   // =======================================
   // Absolute velocity of the End-effectors
@@ -1010,7 +1010,7 @@ void dualArmFreeMotionController::computeCoordinatedMotion3(Eigen::Matrix4f w_H_
   _error_rel.head(3) = lr_H_rr.block<3,1>(0,3) - d_p_rel;  // 
 
   // computing the velocity
-  _V_rel.head(3) = -20.0f* gain_p_rel * _error_rel.head(3);
+  _V_rel.head(3) = -5.0f* gain_p_rel * _error_rel.head(3);  // 20
   _V_rel.tail(3) = -3.0f* jacMuTheta_rel.inverse() * gain_o_rel * _error_rel.tail(3);
 
   // ========================================
@@ -1353,7 +1353,7 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
         Vector6f Vo_place = this->generatePlacingMotion2(w_H_o, w_H_Do, _height_via_point, Vo);
         float cp_obj = Utils<float>::computeCouplingFactor(w_H_o.block<3,1>(0,3)-w_H_Do.block<3,1>(0,3), 50.0f, 0.12f, 1.0f, true);
         // float cp_obj = 0.5f*(std::tanh(1.5f*this->sw_norm_  * (1.0f*this->range_norm_ - (w_H_o.block<3,1>(0,3)-w_H_Do.block<3,1>(0,3)).norm()))  + 1.0f );
-        if(true){ // false
+        if(false){ // false
           Vo_place.head(3) = Vo_place.head(3).normalized() * (cp_obj*Vo_place.head(3).norm() +(1.0f -cp_obj)*Vd_o.head(3).norm());
         }
         else{

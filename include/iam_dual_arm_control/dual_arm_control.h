@@ -244,6 +244,7 @@ class dual_arm_control
 		Eigen::Matrix4f _w_H_Dgp[NB_ROBOTS];
 		Eigen::Vector3f _vo;
 		Eigen::Vector3f _wo;
+		Vector6f 		_Vo;
 		Vector6f 				_Vd_o;   													// desired object velocity (toss)
 		Vector6f  			_desired_object_wrench; 
 
@@ -355,6 +356,7 @@ class dual_arm_control
 
 		int _mode_conveyor_belt;
 		Eigen::Vector2f _dual_PathLen_AvgSpeed;
+		bool _hasCaughtOnce = false;
 
 		////////////////////////////////////////////////////////////////////////
 		// Objects for Unconstrained and contrained motion and force generation
