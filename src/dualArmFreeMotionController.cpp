@@ -359,19 +359,21 @@ void dualArmFreeMotionController::computeAsyncMotion(Eigen::Matrix4f w_H_ee[],  
   for(int k=0; k<NB_ROBOTS; k++)
   {
     Vector6f error_ee;  error_ee.setZero();
-    Eigen::Vector3f d_p_ee     = reachable_p *w_H_gp[k].block<3,1>(0,3) + (1.0f-reachable_p)*w_H_ee[k].block<3,1>(0,3);
-      Eigen::Matrix3f d_R_ee   = reachable_p *w_H_gp[k].block<3,3>(0,0) + (1.0f-reachable_p)*w_H_ee[k].block<3,3>(0,0);
-      Eigen::Matrix4f w_H_ee_t = w_H_ee[k];
-      w_H_ee_t.block<3,3>(0,0) = Utils<float>::getCombinedRotationMatrix(1.0f, w_H_ee[k].block<3,3>(0,0), d_R_ee); //desired
-      // relative transformation between desired and current frame
-      Eigen::Matrix4f d_H_c_ee = w_H_ee_t.inverse() * w_H_ee[k];
-      error_ee.head(3)         = w_H_ee[k].block<3,1>(0,3) - d_p_ee;
-      error_ee.tail(3)         = Utils<float>::getPoseErrorCur2Des(d_H_c_ee).tail(3);
-      // 3D Orientation Jacobian 
-      Eigen::Matrix3f jacMuTheta_ee = Utils<float>::getMuThetaJacobian(d_H_c_ee.block<3,3>(0,0)) * w_H_ee[k].block<3,3>(0,0).transpose();
-      // ---------------------------------
-      // computing of desired ee velocity
-      // ---------------------------------
+    // Eigen::Vector3f d_p_ee   = reachable_p *w_H_gp[k].block<3,1>(0,3) + (1.0f-reachable_p)*w_H_ee[k].block<3,1>(0,3);
+    // Eigen::Matrix3f d_R_ee   = reachable_p *w_H_gp[k].block<3,3>(0,0) + (1.0f-reachable_p)*w_H_ee[k].block<3,3>(0,0);
+    Eigen::Vector3f d_p_ee   = reachable_p *w_H_gp[k].block<3,1>(0,3) + (1.0f-reachable_p)*this->_w_H_eeStandby[k].block<3,1>(0,3);
+    Eigen::Matrix3f d_R_ee   = reachable_p *w_H_gp[k].block<3,3>(0,0) + (1.0f-reachable_p)*this->_w_H_eeStandby[k].block<3,3>(0,0); 
+    Eigen::Matrix4f w_H_ee_t = w_H_ee[k];
+    w_H_ee_t.block<3,3>(0,0) = Utils<float>::getCombinedRotationMatrix(1.0f, w_H_ee[k].block<3,3>(0,0), d_R_ee); //desired
+    // relative transformation between desired and current frame
+    Eigen::Matrix4f d_H_c_ee = w_H_ee_t.inverse() * w_H_ee[k];
+    error_ee.head(3)         = w_H_ee[k].block<3,1>(0,3) - d_p_ee;
+    error_ee.tail(3)         = Utils<float>::getPoseErrorCur2Des(d_H_c_ee).tail(3);
+    // 3D Orientation Jacobian 
+    Eigen::Matrix3f jacMuTheta_ee = Utils<float>::getMuThetaJacobian(d_H_c_ee.block<3,3>(0,0)) * w_H_ee[k].block<3,3>(0,0).transpose();
+    // ---------------------------------
+    // computing of desired ee velocity
+    // ---------------------------------
     Vd_ee[k].head(3) = -gain_p_abs * error_ee.head(3);
     Vd_ee[k].tail(3) = -jacMuTheta_ee.inverse() * gain_o_abs * error_ee.tail(3);
     Vd_ee[k]         = Utils<float>::SaturationTwist(_v_max, _w_max, Vd_ee[k]);
@@ -1144,12 +1146,14 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
     Vector6f Vd_ee_nom[NB_ROBOTS];
     Eigen::Vector4f qd_nom[NB_ROBOTS];
     //
-    if(_modulated_reaching || _isNorm_impact_vel){
-      this->computeCoordinatedMotion2(w_H_ee,  w_H_gp_t, w_H_o, Vd_ee_nom, qd_nom, isOrient3d);
-    }
-    else{
-      this->computeCoordinatedMotion2(w_H_ee,  w_H_gp, w_H_o, Vd_ee_nom, qd_nom, isOrient3d);
-    }
+    // if(_modulated_reaching || _isNorm_impact_vel){
+    //   this->computeCoordinatedMotion2(w_H_ee,  w_H_gp_t, w_H_o, Vd_ee_nom, qd_nom, isOrient3d);
+    // }
+    // else{
+    //   this->computeCoordinatedMotion2(w_H_ee,  w_H_gp, w_H_o, Vd_ee_nom, qd_nom, isOrient3d);
+    // }
+    //
+    this->computeCoordinatedMotion2(w_H_ee,  w_H_gp_t, w_H_o, Vd_ee_nom, qd_nom, isOrient3d);
     //
     Vector6f DS_ee_nominal = Eigen::VectorXf::Zero(6);
     DS_ee_nominal.head(3)  = Vd_ee_nom[LEFT].head(3);
@@ -1244,11 +1248,12 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
         Amodul_ee_tang = A_prime*(X_dual - Xstar_dual);  // ;
 
         _refVtoss_EE   = 0.0;
-        if(!(_modulated_reaching || _isNorm_impact_vel)){
-          activation = 0.0f;
-        }
-        _integral_Vee_d[LEFT].setZero();
-        _integral_Vee_d[RIGHT].setZero();
+        // if(!(_modulated_reaching || _isNorm_impact_vel)){
+        //   activation = 0.0f;
+        // }
+        // _integral_Vee_d[LEFT].setZero();
+        // _integral_Vee_d[RIGHT].setZero();
+        // activation = 0.0f;
       }
       break;
       case 1:{ // point to point motion of the object 
@@ -1271,7 +1276,7 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
         activation = 1.0f;
 
         //
-        this->constrained_ang_vel_correction(w_H_ee, w_H_gp, w_H_o, w_H_Do, Vd_ee_nom, true);
+        // this->constrained_ang_vel_correction(w_H_ee, w_H_gp, w_H_o, w_H_Do, Vd_ee_nom, true);
       }
       break;
 
@@ -1309,7 +1314,7 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
         //
         Vector6f X_bi = Eigen::VectorXf::Zero(6);
         X_bi.head(3)  = 0.5f*(X[LEFT] + X[RIGHT]);
-        X_bi.tail(3)  = 0.98f*(X[RIGHT] - X[LEFT]);
+        X_bi.tail(3)  = 0.95f*(X[RIGHT] - X[LEFT]);
         Xstar_dual    =  _Tbi.inverse() * X_bi;
         //
         //velocity based motion of the object
@@ -1527,7 +1532,7 @@ void dualArmFreeMotionController::updateDesiredGraspingPoints(bool no_dual_mds_m
     // w_H_Dgp[RIGHT] = w_H_o * o_H_ee[RIGHT];
   }
 
-  if(no_dual_mds_method){
+  if(!no_dual_mds_method){
     w_H_Dgp[LEFT].block(0,0,3,3)  = w_H_o.block(0,0,3,3) * Utils<float>::pose2HomoMx(xgp_o[LEFT],  qgp_o[LEFT]).block(0,0,3,3);
     w_H_Dgp[RIGHT].block(0,0,3,3) = w_H_o.block(0,0,3,3) * Utils<float>::pose2HomoMx(xgp_o[RIGHT],  qgp_o[RIGHT]).block(0,0,3,3);
     if(isClose2Release){
@@ -1613,7 +1618,7 @@ void dualArmFreeMotionController::getDesiredMotion( bool no_dual_mds_method,
   }
   else // Free-motion: reaching
   {
-    if(no_dual_mds_method)
+    if(false || no_dual_mds_method)
     {
       this->computeCoordinatedMotion2(w_H_ee, w_H_gp, w_H_o, Vd_ee, qd, false);
       //
@@ -1663,8 +1668,9 @@ Eigen::Vector2f dualArmFreeMotionController::estimateRobot_PathLength_AverageSpe
   bool isPlacingCommand = false;
   bool isTossingCommand = false;
   float tol_dist2contact = tolerance_dist2contact;
+  float isPickupSetEstim = false;
   //
-  int max_horizon = 40;
+  int max_horizon = 15;
   int pred_count  = 0;
 
   Vector6f Vd_ee[NB_ROBOTS];
@@ -1702,6 +1708,19 @@ Eigen::Vector2f dualArmFreeMotionController::estimateRobot_PathLength_AverageSpe
   {
     
     // -------------------------------------------------------------------------------------
+    if(!isPickupSetEstim){
+      if(isContact){
+        dsThrowing.set_pickup_object_pose(xo, qo);
+        Eigen::Vector3f new_toss_velocity = dsThrowing.v_toss_.norm() * (release_position -xo).normalized();
+        dsThrowing.set_toss_linear_velocity(new_toss_velocity);
+        isPickupSetEstim = true;
+      }
+      else{
+        dsThrowing.set_pickup_object_pose(xo, qo);
+      }
+
+    }
+
     if(isContact){
       Vd_o  = dsThrowing.apply(xo, qo, vo, Eigen::Vector3f(0.0f, 0.0f, 0.0f), 1);  // Function to call in a loop
       isReleasePositionReached = dsThrowing.get_release_flag();
@@ -1805,7 +1824,7 @@ Eigen::Vector2f dualArmFreeMotionController::estimateRobot_PathLength_AverageSpe
   for(int i=0; i<N; i++){
     v_avg  += dX_next[i].norm()/N;
     LpXd_X += X_next[i].norm();
-    std::cout << " DELTA X_next [" << i << "] : " << X_next[i].norm();
+    // std::cout << " DELTA X_next [" << i << "] : " << X_next[i].norm();
   }
   //
   std::cout << " " << std::endl;

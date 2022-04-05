@@ -33,7 +33,7 @@ dual_arm_control::dual_arm_control(	ros::NodeHandle &n, double frequency, 	//std
 	//
 	_gravity << 0.0f, 0.0f, -9.80665f;
 	// _objectMass = 1.0f;
-	_objectDim << 0.20f, 0.19f, 0.20f;
+	_objectDim << 0.20f, 0.20f, 0.20f;
 	// _objectDim << 0.13f, 0.14f, 0.15f;
 	// _objectDim << 0.26f, 0.26f, 0.26f;
 	// _objectDim << 0.19f, 0.19f, 0.19f;
@@ -115,10 +115,10 @@ dual_arm_control::dual_arm_control(	ros::NodeHandle &n, double frequency, 	//std
 	}
 	// 
 	// Filtered variable (SG)
-	_xo_filtered 			  = std::make_unique<SGF::SavitzkyGolayFilter>(3,3,40,_dt);
+	_xo_filtered 			  = std::make_unique<SGF::SavitzkyGolayFilter>(3,3,6,_dt);
 	_sgf_ddq_filtered_l = std::make_unique<SGF::SavitzkyGolayFilter>(7,3,6,_dt); // dim, order. window lenght
 	_sgf_ddq_filtered_r = std::make_unique<SGF::SavitzkyGolayFilter>(7,3,6,_dt); // dim, order. window lenght
-	_xt_filtered 			  = std::make_unique<SGF::SavitzkyGolayFilter>(3,3,40,_dt);
+	_xt_filtered 			  = std::make_unique<SGF::SavitzkyGolayFilter>(3,3,10,_dt);
 	//
 	_vo.setZero();
 	_wo.setZero();
@@ -419,6 +419,7 @@ bool dual_arm_control::init()
 	// initialize the Free motion generator DS
 	//------------------------------------------
 	FreeMotionCtrl.init(_w_H_eeStandby, this->_gain_abs, this->_gain_rel);
+	FreeMotionCtrl._objectDim = _objectDim;
 	FreeMotionCtrl._dt = _dt;
 
 	// initialize the cooperative controller
@@ -456,12 +457,6 @@ bool dual_arm_control::init()
 	dsThrowing.init(dsThrowing.ds_param_, _tossVar.release_position, _tossVar.release_orientation, 
 									_tossVar.release_linear_velocity, _tossVar.release_angular_velocity,
 									_tossVar.rest_position, _tossVar.rest_orientation);
-	//
-	dsThrowing.set_pickup_object_pose(_xo, _qo);
-	// Eigen::Vector3f new_toss_velocity = _desVtoss * (_tossVar.release_position -_xo).normalized();
-	_tossVar.release_linear_velocity = _desVtoss * (_tossVar.release_position -_xo).normalized();
-	dsThrowing.set_toss_linear_velocity(_tossVar.release_linear_velocity);
-	dsThrowing._refVtoss = _desVimp;
 
 	// IF AUTOMATICALLY DETERMINED (USING RELEASE POSE GENERATOR)
 	// dsThrowing.init(dsThrowing.ds_param_, 
@@ -470,7 +465,14 @@ bool dual_arm_control::init()
 	// 				_tossVar.rest_position, _tossVar.rest_orientation);
 	// _desVtoss = tossParamEstimator.get_release_linear_velocity().norm();
 
-	release_pos.from_cartesian(_tossVar.release_position -_xDo_lifting);
+		//
+	dsThrowing.set_pickup_object_pose(_xo, _qo);
+	// Eigen::Vector3f new_toss_velocity = _desVtoss * (_tossVar.release_position -_xo).normalized();
+	_tossVar.release_linear_velocity = _desVtoss * (_tossVar.release_position -_xo).normalized();
+	dsThrowing.set_toss_linear_velocity(_tossVar.release_linear_velocity);
+	dsThrowing._refVtoss = _desVimp;
+
+	// release_pos.from_cartesian(_tossVar.release_position -_xDo_lifting);
 
 	// For estimation of predicted robot path
 	dsThrowingEstim = dsThrowing;
@@ -481,6 +483,9 @@ bool dual_arm_control::init()
 	FreeMotionCtrl._modulated_reaching = modulated_reaching;
 	FreeMotionCtrl._isNorm_impact_vel  = isNorm_impact_vel;
 	FreeMotionCtrl._height_via_point = _height_via_point;
+
+	//
+	FreeMotionCtrlEstim = FreeMotionCtrl;
 
 	//--------------------------------------------------------------------------------------------------
 	// Data recording:
@@ -710,6 +715,9 @@ void dual_arm_control::updatePoses()
 		_xDo    = Eigen::Vector3f(_xo(0), _xo(1), _xDo_lifting(2));   // set attractor of lifting task   
 		_qDo    = _qo; // _qDo_lifting
 		_w_H_Do = Utils<float>::pose2HomoMx(_xDo, _qDo);
+		//
+		_x_intercept = Eigen::Vector3f(_xo(0), 0.0, _xo(2));
+		FreeMotionCtrl.set_virtual_object_frame(Utils<float>::pose2HomoMx(_x_intercept, _qo));
 
 		_initPoseCount ++;
 	}
@@ -722,7 +730,7 @@ void dual_arm_control::updatePoses()
 		// _xDo    = _xDo_placing; //Eigen::Vector3f(0.65f, 0.155f, 0.35f);   // set attractor of placing task
 		_w_H_Do = Utils<float>::pose2HomoMx(_xDo_placing, _qDo);
 		// if((_w_H_o.block<3,1>(0,3)-_xDo_placing).norm()<=0.05){
-		if((_w_H_o.block<2,1>(0,3)-_xDo_placing.head(2)).norm()<=0.035 && fabs(_w_H_o(2,3)-_xDo_placing(2)) <= 0.035){  // results with 0.04
+		if((_w_H_o.block<2,1>(0,3)-_xDo_placing.head(2)).norm()<=0.04 && fabs(_w_H_o(2,3)-_xDo_placing(2)) <= 0.04){  // results with 0.04
 			_releaseAndretract = true;
 		}
 	}
@@ -779,24 +787,24 @@ void dual_arm_control::updatePoses()
 	if(!_isPickupSet){
 		if((CooperativeCtrl._ContactConfidence == 1.0)){
 			// update the release pose
-			dsThrowing.set_toss_pose(_tossVar.release_position, _tossVar.release_orientation);
-			dsThrowingEstim.set_toss_pose(_tossVar.release_position, _tossVar.release_orientation);
+			// dsThrowing.set_toss_pose(_tossVar.release_position, _tossVar.release_orientation);
+			// dsThrowingEstim.set_toss_pose(_tossVar.release_position, _tossVar.release_orientation);
 			//
 			dsThrowing.set_pickup_object_pose(_xo, _qo);
-			dsThrowingEstim.set_pickup_object_pose(_xo, _qo);
+			// dsThrowingEstim.set_pickup_object_pose(_xo, _qo);
 			// Eigen::Vector3f new_toss_velocity = _desVtoss * (_tossVar.release_position -_xo).normalized();
 			_tossVar.release_linear_velocity = _desVtoss * (_tossVar.release_position -_xo).normalized();
 			if(_increment_release_pos){
 					// _tossVar.release_linear_velocity = _desVtoss * (_tossVar.release_position -_xDo_lifting).normalized();
 			}
 			dsThrowing.set_toss_linear_velocity(_tossVar.release_linear_velocity);
-			dsThrowingEstim.set_toss_linear_velocity(_tossVar.release_linear_velocity);
+			// dsThrowingEstim.set_toss_linear_velocity(_tossVar.release_linear_velocity);
 			// dsThrowing.set_toss_linear_velocity(new_toss_velocity);
 			_isPickupSet = true;
 		}
 		else{
 			dsThrowing.set_pickup_object_pose(_xo, _qo);
-			dsThrowingEstim.set_pickup_object_pose(_xo, _qo);
+			// dsThrowingEstim.set_pickup_object_pose(_xo, _qo);
 			_x_pickup = _xo;
 		}
 	}
@@ -834,15 +842,18 @@ void dual_arm_control::computeCommands()
   updateContactState();
 	//
 	float y_2_go = _xd_landing(1) - _vt(1) * (_xd_landing(0) - _x_pickup(0))/(0.25f*_desVtoss); //
+	// float y_2_go = _x_intercept(1) - _vo(1) * (_x_intercept(0) - 0.5f*(_xrbStandby[LEFT](0) + _xrbStandby[RIGHT](0)) )/(0.28f*0.80f);
 
-	_x_intercept << _xt(0), _xd_landing(1), _xt(2);
+	// _x_intercept << _xt(0), _xd_landing(1), _xt(2);
+	_xd_landing  << _xt(0), _xd_landing(1), _xt(2);
+
 	Eigen::Vector2f Lp_Va_pred_bot = _dual_PathLen_AvgSpeed;
-	Eigen::Vector2f Lp_Va_pred_tgt = tossParamEstimator.estimateTarget_SimpPathLength_AverageSpeed(_xt, _x_intercept, _vt);
+	Eigen::Vector2f Lp_Va_pred_tgt = tossParamEstimator.estimateTarget_SimpPathLength_AverageSpeed(_xt, _xd_landing, _vt);
 	float flytime_obj = 0.200f;
-	Eigen::Vector3f Xtarget2go 		 = tossParamEstimator.estimate_target_state_to_go(_xt, _vt, _x_intercept, Lp_Va_pred_bot, Lp_Va_pred_tgt, flytime_obj);
+	Eigen::Vector3f Xtarget2go 		 = tossParamEstimator.estimate_target_state_to_go(_xt, _vt, _xd_landing, Lp_Va_pred_bot, Lp_Va_pred_tgt, flytime_obj);
 
-	Eigen::Vector3f xt_bar 		= _xt - _x_intercept;
-	Eigen::Vector3f xt2go_bar = Xtarget2go - _x_intercept;
+	Eigen::Vector3f xt_bar 		= _xt - _xd_landing;
+	Eigen::Vector3f xt2go_bar = Xtarget2go - _xd_landing;
 
 	if((xt_bar.dot(xt2go_bar) > 0) && (xt_bar.norm() - xt2go_bar.norm())){
 		// start motion
@@ -874,6 +885,16 @@ void dual_arm_control::computeCommands()
 			_BasisQ[i] 				= Utils<float>::create3dOrthonormalMatrixFromVector(_dirImp[i]);					//  Orthogonal Basis of Modulated Dual-arm DS
 		}
 		this->reset_variables();
+
+		// // float y_2_go = _xd_landing(1) - _vt(1) * (_xd_landing(0) - _x_pickup(0))/(0.5f*_desVtoss);
+		// // if(fabs(_xt(1)-1.55f) < 0.02f) //(fabs(_xt(1)-y_2_go) < 0.05f){
+		// // if(fabs(_xo(0)-1.0f) < 0.02f)//(fabs(_xt(0)-1.55f) < 0.02f) //(fabs(_xt(1)-y_2_go) < 0.05f){
+		// if((_initPoseCount > 50) && (fabs(_xt(1)-y_2_go) < 0.02f)) // 0.80   // tossing
+		// // if((_initPoseCount > 50) && (fabs(_xo(1)-y_2_go) < 0.02f)) // 0.80   // catching
+		// {
+		// 	_goHome = false;
+		// 	_startlogging  = true;
+		// }
 
 		if((_initPoseCount > 50) && (xt_bar.dot(xt2go_bar) > 0) && (xt_bar.norm() - xt2go_bar.norm())) // 0.80   // tossing
 		{
@@ -957,11 +978,11 @@ void dual_arm_control::computeCommands()
 		// compute the object's grasp points velocity
 		getGraspPointsVelocity();
 	  //
-	  // _desired_object_wrench.head(3) = -40.0f * (_w_H_o.block(0,3,3,1) - _w_H_Do.block(0,3,3,1)) - _objectMass * _gravity;
-		_desired_object_wrench.head(3) = 0.5f*(_d1[LEFT]+_d1[RIGHT])* 0.0f* (0.5f*(_Vd_ee[LEFT].head(3) + _Vd_ee[RIGHT].head(3)))// - 0.5f*(_Vee[LEFT].head(3) + _Vee[RIGHT].head(3))) 
-									   - 0.f*std::sqrt(0.5f*(_d1[LEFT]+_d1[RIGHT]) * 1.0f*_gain_abs(0)) * 0.5f*(_Vee[LEFT].head(3) + _Vee[RIGHT].head(3))
-									   - _objectMass * _gravity;
-		_desired_object_wrench.tail(3) = 0.0f*FreeMotionCtrl.Omega_object_d_; //(0.5f*(_Vd_ee[LEFT].tail(3) + _Vd_ee[RIGHT].tail(3)) - 0.0f*0.5f*(_Vee[LEFT].tail(3) + _Vee[RIGHT].tail(3)));
+	  _desired_object_wrench.head(3) = -40.0f * (_w_H_o.block(0,3,3,1) - _w_H_Do.block(0,3,3,1)) - _objectMass * _gravity;
+		// _desired_object_wrench.head(3) = 0.5f*(_d1[LEFT]+_d1[RIGHT])* 0.0f* (0.5f*(_Vd_ee[LEFT].head(3) + _Vd_ee[RIGHT].head(3)))// - 0.5f*(_Vee[LEFT].head(3) + _Vee[RIGHT].head(3))) 
+		// 							   - 0.f*std::sqrt(0.5f*(_d1[LEFT]+_d1[RIGHT]) * 1.0f*_gain_abs(0)) * 0.5f*(_Vee[LEFT].head(3) + _Vee[RIGHT].head(3))
+		// 							   - _objectMass * _gravity;
+		// _desired_object_wrench.tail(3) = 0.0f*FreeMotionCtrl.Omega_object_d_; //(0.5f*(_Vd_ee[LEFT].tail(3) + _Vd_ee[RIGHT].tail(3)) - 0.0f*0.5f*(_Vee[LEFT].tail(3) + _Vee[RIGHT].tail(3)));
 
 	  bool isForceDetected = (_normalForceAverage[LEFT] > 2.0f && _normalForceAverage[RIGHT] > 2.0f);
 	  CooperativeCtrl.getAppliedWrenches(_goHome, _contactState, _w_H_o, _w_H_ee, _w_H_gp, _desired_object_wrench, _objectMass, _qp_wrench_generation, isForceDetected);
@@ -978,13 +999,13 @@ void dual_arm_control::computeCommands()
 
 	
 
-	if(fmod(_cycle_count, 20)==0){
-		_dual_PathLen_AvgSpeed = FreeMotionCtrl.estimateRobot_PathLength_AverageSpeed(dsThrowingEstim,
+	if((fmod(_cycle_count, 20)==0)){
+		_dual_PathLen_AvgSpeed = FreeMotionCtrlEstim.estimateRobot_PathLength_AverageSpeed(dsThrowingEstim,
 														                                                        _old_dual_method, //no_dual_mds_method, 
 														                                                        (_isPlacing || (_dualTaskSelector == PICK_AND_PLACE)), 	//isPlacing, 
 														                                                        (_isThrowing || (_dualTaskSelector == TOSSING)), 				//isThrowing, 
 														                                                        _dualTaskSelector, 
-														                                                        0.100f, // dt,
+														                                                        0.200f, // dt,
 														                                                        _desVimp,
 														                                                        0.035f, //tolerance_dist2contact,
 														                                                        _height_via_point,

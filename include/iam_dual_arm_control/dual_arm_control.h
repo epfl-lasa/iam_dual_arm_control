@@ -361,9 +361,11 @@ class dual_arm_control
 		////////////////////////////////////////////////////////////////////////
 		dualArmFreeMotionController 	FreeMotionCtrl;			// Motion generation
 		dualArmCooperativeController 	CooperativeCtrl;		// Force generation
-		throwingDS 						dsThrowing;				      //
-		throwingDS 						dsThrowingEstim;				//
+		throwingDS 										dsThrowing;				      //
+
 		toss_task_param_estimator 		tossParamEstimator; 			// tossing task param estimator
+		dualArmFreeMotionController 	FreeMotionCtrlEstim;
+		throwingDS 										dsThrowingEstim;				//
 
 		// Callbacks
 		void objectPoseCallback(const geometry_msgs::Pose::ConstPtr& msg);

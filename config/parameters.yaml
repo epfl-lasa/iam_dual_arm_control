@@ -10,7 +10,7 @@ passiveDS:
 object:
   mass : 1.0
   dimension:       [0.20, 0.20, 0.20] #[0.26, 0.26,  0.26] #[0.20, 0.30, 0.20] #[0.16, 0.29, 0.14] # 
-  graspOffset:     [-0.0, 0.00, -0.0] #[-0.04, 0.00,-0.035] #[0.00, 0.00, 0.00] #
+  graspOffset:     [-0.0, 0.00, -0.02] #[-0.04, 0.00,-0.035] #[0.00, 0.00, 0.00] #
 
   cubicBox :       [0.26, 0.26, 0.26]
   coronaBottePack: [0.13, 0.19, 0.14] 
@@ -38,7 +38,7 @@ tossing:
   releaseAngVel:      [0.00, 0.00, 0.00]
   restPos:            [0.50, 0.15, 0.30]
   restOrient:         [1.00, 0.00, 0.00, 0.00] 
-  increment_release_pos: true
+  increment_release_pos: false
 
 # robot home pose
 standby_pose:
@@ -61,7 +61,7 @@ impact_direction:
 
 # dual arm task
 dual_arm_task:
-  dualTaskSelector: 1
+  dualTaskSelector: 3
   old_dual_method: false
   modulated_reaching: true
   isNorm_impact_vel: false
