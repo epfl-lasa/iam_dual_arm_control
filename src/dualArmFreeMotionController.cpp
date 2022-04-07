@@ -1146,14 +1146,14 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
     Vector6f Vd_ee_nom[NB_ROBOTS];
     Eigen::Vector4f qd_nom[NB_ROBOTS];
     //
-    // if(_modulated_reaching || _isNorm_impact_vel){
-    //   this->computeCoordinatedMotion2(w_H_ee,  w_H_gp_t, w_H_o, Vd_ee_nom, qd_nom, isOrient3d);
-    // }
-    // else{
-    //   this->computeCoordinatedMotion2(w_H_ee,  w_H_gp, w_H_o, Vd_ee_nom, qd_nom, isOrient3d);
-    // }
-    //
-    this->computeCoordinatedMotion2(w_H_ee,  w_H_gp_t, w_H_o, Vd_ee_nom, qd_nom, isOrient3d);
+    if(_modulated_reaching || _isNorm_impact_vel){
+      this->computeCoordinatedMotion2(w_H_ee,  w_H_gp_t, w_H_o, Vd_ee_nom, qd_nom, isOrient3d);
+    }
+    else{
+      this->computeCoordinatedMotion2(w_H_ee,  w_H_gp, w_H_o, Vd_ee_nom, qd_nom, isOrient3d);
+    }
+    
+    // this->computeCoordinatedMotion2(w_H_ee,  w_H_gp_t, w_H_o, Vd_ee_nom, qd_nom, isOrient3d);
     //
     Vector6f DS_ee_nominal = Eigen::VectorXf::Zero(6);
     DS_ee_nominal.head(3)  = Vd_ee_nom[LEFT].head(3);
@@ -1292,7 +1292,7 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
         //velocity based motion of the object
         Vector6f Xdot_bi = Eigen::VectorXf::Zero(6);
         Eigen::Vector3f X_rel = X[RIGHT] - X[LEFT];
-        Eigen::Vector3f w_o   = Vd_o.tail(3);
+        Eigen::Vector3f w_o   = 0.0f*Vd_o.tail(3);
 
         Xdot_bi.head(3)  = Vd_o.head(3);
         Xdot_bi.tail(3)  = w_o.cross(X_rel);
