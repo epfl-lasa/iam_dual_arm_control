@@ -258,6 +258,7 @@ class dual_arm_control
 		Eigen::Vector3f _xd_landing;
 		Eigen::Vector3f _x_pickup;
 		Eigen::Vector3f _x_intercept;   // intercept point of the moving object
+		Eigen::Vector3f _xt_state2go;
 
 		//-------------------------------------------------------------------------------------------------
 		Eigen::Matrix4f _o_H_ee[NB_ROBOTS];

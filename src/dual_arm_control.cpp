@@ -152,6 +152,7 @@ dual_arm_control::dual_arm_control(	ros::NodeHandle &n, double frequency, 	//std
 	_qt  << 1.0f, 0.0f, 0.0f, 0.0f;
 	_x_pickup.setZero();
 	_x_intercept.setZero();
+	_xt_state2go.setZero();
 
 	// normal to contact surfaces
 	_n[LEFT]  = o_R_gpl.col(2);
@@ -788,7 +789,7 @@ void dual_arm_control::updatePoses()
 	}
 	// 
 	if(!_isPickupSet){
-		if((CooperativeCtrl._ContactConfidence == 1.0)){
+		if(_sensedContact && (CooperativeCtrl._ContactConfidence == 1.0)){
 			// update the release pose
 			// dsThrowing.set_toss_pose(_tossVar.release_position, _tossVar.release_orientation);
 			// dsThrowingEstim.set_toss_pose(_tossVar.release_position, _tossVar.release_orientation);
@@ -796,7 +797,8 @@ void dual_arm_control::updatePoses()
 			dsThrowing.set_pickup_object_pose(_xo, _qo);
 			// dsThrowingEstim.set_pickup_object_pose(_xo, _qo);
 			// Eigen::Vector3f new_toss_velocity = _desVtoss * (_tossVar.release_position -_xo).normalized();
-			_tossVar.release_linear_velocity = _desVtoss * (_tossVar.release_position -_xo).normalized();
+
+			// _tossVar.release_linear_velocity = _desVtoss * (_tossVar.release_position -_xo).normalized();
 			if(_increment_release_pos){
 					// _tossVar.release_linear_velocity = _desVtoss * (_tossVar.release_position -_xDo_lifting).normalized();
 			}
@@ -859,10 +861,10 @@ void dual_arm_control::updatePoses()
 // 	Eigen::Vector2f Lp_Va_pred_bot = _dual_PathLen_AvgSpeed;
 // 	Eigen::Vector2f Lp_Va_pred_tgt = tossParamEstimator.estimateTarget_SimpPathLength_AverageSpeed(_xt, _xd_landing, _vt);
 // 	float flytime_obj = 0.200f;
-// 	Eigen::Vector3f Xtarget2go 		 = tossParamEstimator.estimate_target_state_to_go(_xt, _vt, _xd_landing, Lp_Va_pred_bot, Lp_Va_pred_tgt, flytime_obj);
+// 	Eigen::Vector3f _xt_state2go 		 = tossParamEstimator.estimate_target_state_to_go(_xt, _vt, _xd_landing, Lp_Va_pred_bot, Lp_Va_pred_tgt, flytime_obj);
 
 // 	Eigen::Vector3f xt_bar 		= _xt - _xd_landing;
-// 	Eigen::Vector3f xt2go_bar = Xtarget2go - _xd_landing;
+// 	Eigen::Vector3f xt2go_bar = _xt_state2go - _xd_landing;
 
 // 	if((xt_bar.dot(xt2go_bar) > 0) && (xt_bar.norm() - xt2go_bar.norm())){
 // 		// start motion
@@ -910,7 +912,7 @@ void dual_arm_control::updatePoses()
 // 			// _goHome = false;
 // 		}
 
-// 		std::cout << "[dual_arm_control]: DIST TO TOSS : \t"  << Xtarget2go << std::endl;
+// 		std::cout << "[dual_arm_control]: DIST TO TOSS : \t"  << _xt_state2go << std::endl;
 
 // 	}
 // 	else 
@@ -1036,7 +1038,7 @@ void dual_arm_control::updatePoses()
 // 	// std::cout << "[dual_arm_control]: _w_H_o: \n" << _w_H_o << std::endl; 
 // 	// std::cout << "[dual_arm_control]: _w_H_Do: \n" <<  _w_H_Do << std::endl;
 // 	std::cout << "[dual_arm_control]: STATE 2 GO : \t"  << y_2_go << std::endl; 
-// 	std::cout << "[dual_arm_control]: 3D STATE 2 GO : \t"  << Xtarget2go.transpose() << std::endl;
+// 	std::cout << "[dual_arm_control]: 3D STATE 2 GO : \t"  << _xt_state2go.transpose() << std::endl;
 // 	std::cout << "[dual_arm_control]:  ------------- _sensedContact: \t" << _sensedContact << std::endl;
 // 	std::cout << "[dual_arm_control]: _Vd_ee[LEFT]:  \t" << _Vd_ee[LEFT].transpose() << std::endl;
 // 	std::cout << "[dual_arm_control]: _Vd_ee[RIGHT]: \t" << _Vd_ee[RIGHT].transpose() << std::endl;
@@ -1066,8 +1068,8 @@ void dual_arm_control::computeCommands()
 	// Update contact state
   updateContactState();
 	//
-	// float y_2_go = _xd_landing(1) - _vt(1) * (_xd_landing(0) - _x_pickup(0))/(0.28f*_desVtoss); //
-	float y_2_go = _x_intercept(1) - _vo(1) * (_x_intercept(0) - 0.5f*(_xrbStandby[LEFT](0) + _xrbStandby[RIGHT](0)) )/(0.35f*0.80f);
+	float y_2_go = _xd_landing(1) - _vt(1) * (_xd_landing(0) - _x_pickup(0))/(0.28f*_desVtoss); //
+	// float y_2_go = _x_intercept(1) - _vo(1) * (_x_intercept(0) - 0.5f*(_xrbStandby[LEFT](0) + _xrbStandby[RIGHT](0)) )/(0.35f*0.80f);
 
 	// _x_intercept << _xt(0), _xd_landing(1), _xt(2);
 	_xd_landing  << _xt(0), _xd_landing(1), _xt(2);
@@ -1081,10 +1083,10 @@ void dual_arm_control::computeCommands()
 	Eigen::Vector2f Lp_Va_pred_bot = _dual_PathLen_AvgSpeed;
 	Eigen::Vector2f Lp_Va_pred_tgt = tossParamEstimator.estimateTarget_SimpPathLength_AverageSpeed(_xt, _xd_landing, _vt);
 	float flytime_obj = 0.200f;
-	Eigen::Vector3f Xtarget2go 		 = tossParamEstimator.estimate_target_state_to_go(_xt, _vt, _xd_landing, Lp_Va_pred_bot, Lp_Va_pred_tgt, flytime_obj);
+	_xt_state2go = tossParamEstimator.estimate_target_state_to_go(_xt, _vt, _xd_landing, Lp_Va_pred_bot, Lp_Va_pred_tgt, flytime_obj);
 
 	Eigen::Vector3f xt_bar 		= _xt - _xd_landing;
-	Eigen::Vector3f xt2go_bar = Xtarget2go - _xd_landing;
+	Eigen::Vector3f xt2go_bar = _xt_state2go - _xd_landing;
 
 	if((xt_bar.dot(xt2go_bar) > 0) && (xt_bar.norm() - xt2go_bar.norm())){
 		// start motion
@@ -1121,12 +1123,12 @@ void dual_arm_control::computeCommands()
 		this->reset_variables();
 
 		// if((_initPoseCount > 50) && (fabs(_xt(1)-y_2_go) < 0.02f)) // 0.80 						// tossing
-		// if((_initPoseCount > 50) && ((xt_bar - xt2go_bar).norm() < 0.02f)) // 0.80     // tossing
-		if((_initPoseCount > 50) && (fabs(_xo(1)-y_2_go) < 0.02f) && (!_hasCaughtOnce)) // 0.80   					// catching
+		if((_initPoseCount > 50) && ((xt_bar - xt2go_bar).norm() < 0.02f)) // 0.80     // tossing
+		// if((_initPoseCount > 50) && (fabs(_xo(1)-y_2_go) < 0.02f) && (!_hasCaughtOnce)) // 0.80   					// catching
 		{
-			_goHome = false;
-			_startlogging  = true;
-			_hasCaughtOnce = true;
+			// _goHome = false;
+			// _startlogging  = true;
+			// _hasCaughtOnce = true;
 		}
 	}
 	else 
@@ -1196,7 +1198,7 @@ void dual_arm_control::computeCommands()
 								_releaseAndretract = true;
 							}
 					}
-					if(_isThrowing || (_dualTaskSelector == TOSSING)){
+					if(_isThrowing || (_dualTaskSelector == TOSSING) || (_dualTaskSelector == PICK_AND_TOSS)){
 						Eigen::Matrix4f w_H_DesObj = Utils<float>::pose2HomoMx(_tossVar.release_position, _tossVar.release_orientation);
 							_w_H_Dgp[LEFT].block(0,0,3,3)   = w_H_DesObj.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[LEFT],  _qgp_o[LEFT]).block(0,0,3,3);
 							_w_H_Dgp[RIGHT].block(0,0,3,3)  = w_H_DesObj.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[RIGHT],  _qgp_o[RIGHT]).block(0,0,3,3);
@@ -1233,8 +1235,8 @@ void dual_arm_control::computeCommands()
 				}
 
 				if(true || _old_dual_method){
-					// FreeMotionCtrl.computeCoordinatedMotion2(_w_H_ee, _w_H_gp, _w_H_o, _Vd_ee, _qd, false);
-					FreeMotionCtrl.computeCoordinatedMotion3(_w_H_ee, _w_H_gp, _w_H_o, _Vo, _x_intercept, _Vd_ee, _qd, false);
+					FreeMotionCtrl.computeCoordinatedMotion2(_w_H_ee, _w_H_gp, _w_H_o, _Vd_ee, _qd, false);
+					// FreeMotionCtrl.computeCoordinatedMotion3(_w_H_ee, _w_H_gp, _w_H_o, _Vo, _x_intercept, _Vd_ee, _qd, false);
 					//
 					Eigen::Vector3f error_p_abs     = _w_H_o.block(0,3,3,1) - 0.5f*( _w_H_ee[LEFT].block(0,3,3,1) +  _w_H_ee[RIGHT].block(0,3,3,1));
 					Eigen::Vector3f o_error_pos_abs = _w_H_o.block<3,3>(0,0).transpose() * error_p_abs;
@@ -1298,6 +1300,7 @@ void dual_arm_control::computeCommands()
 	std::cout << " EEEE----------- EEEPPP   _desVtoss IIIIIIII ----------- ONNNNNNNN \t " << _desVtoss << std::endl; 
 	std::cout << " EEEE----------- EEEPPP   _desVimp  IIIIIIII ----------- ONNNNNNNN \t " <<  _desVimp <<  std::endl; 
 	std::cout << " EEEE---- RELEASE POSITION  IIIIIIII ----------- ONNNNNNNN \t " <<  _tossVar.release_position.transpose() <<  std::endl;
+	std::cout << " EEEE---- RELEASE DIRECTION  IIIIIIII ----------- ONNNNNNNN \t " <<  _tossVar.release_linear_velocity.normalized().transpose() <<  std::endl;
 	// std::cout << " EEEE---- RELEASE POSITION  SPHERICAL  -- r: \t " <<  release_pos.r ;
 	// std::cout << " theta: \t " <<  180.f/M_PI * release_pos.theta;
 	// std::cout << " phi: \t " <<  180.f/M_PI * release_pos.phi <<  std::endl;
@@ -1852,9 +1855,11 @@ void dual_arm_control::saveData()
 		datalog._OutRecord_pose   	<< _w_H_Do(0,3) << " , " << _w_H_Do(1,3) 		<< " , " << _w_H_Do(2,3) << " , ";																																		// desired object
 		datalog._OutRecord_pose   	<< xgrL.transpose().format(CSVFormat) 			<< " , " << qgrL.transpose().format(CSVFormat) 			<< " , ";																					// left  grasping point
 		datalog._OutRecord_pose   	<< xgrR.transpose().format(CSVFormat) 			<< " , " << qgrR.transpose().format(CSVFormat) 			<< " , ";																					// right grasping point
-		datalog._OutRecord_pose   	<< _tossVar.release_position.transpose().format(CSVFormat) 	<< " , " << _tossVar.release_orientation.transpose().format(CSVFormat)   << " , ";			// release pose
-		datalog._OutRecord_pose   	<< _tossVar.rest_position.transpose().format(CSVFormat) 			<< " , " << _tossVar.rest_orientation.transpose().format(CSVFormat) << " , ";				// rest pose 
-		datalog._OutRecord_pose   	<< _xt.transpose().format(CSVFormat) << " , " << _qt.transpose().format(CSVFormat)   <<  std::endl;	// target pose
+		datalog._OutRecord_pose   	<< _tossVar.release_position.transpose().format(CSVFormat) 	<< " , " << _tossVar.release_orientation.transpose().format(CSVFormat) << " , ";			// release pose
+		datalog._OutRecord_pose   	<< _tossVar.rest_position.transpose().format(CSVFormat) 			<< " , " << _tossVar.rest_orientation.transpose().format(CSVFormat)  << " , ";			// rest pose 
+		datalog._OutRecord_pose   	<< _xt.transpose().format(CSVFormat) 				<< " , " << _qt.transpose().format(CSVFormat)   << " , ";																							// target pose
+		datalog._OutRecord_pose   	<< _xd_landing.transpose().format(CSVFormat) 				<< " , " << _x_intercept.transpose().format(CSVFormat)   << " , ";														// landing and intercept position
+		datalog._OutRecord_pose   	<< _xt_state2go.transpose().format(CSVFormat) <<  std::endl;																																											// target state to go   
 		
 		datalog._OutRecord_velo			<< (float)(_cycle_count * _dt) << ", ";
 		datalog._OutRecord_velo			<< _Vd_ee[LEFT].transpose().format(CSVFormat) << " , " << _Vd_ee[RIGHT].transpose().format(CSVFormat) << " , ";
