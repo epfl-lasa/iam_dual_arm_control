@@ -142,6 +142,7 @@ class dual_arm_control
 		ros::Publisher _pubApplied_fnornMoment[NB_ROBOTS]; 	// Publish the contact normal and the moment of the applied wrench
 
 		ros::Publisher _pubConveyorBeltMode;              	// Publish conveyor belt mode
+		ros::Publisher _pubConveyorBeltSpeed;              	// Publish conveyor belt Speed
 
 		//////////////////////////////
 		// List of the topics
@@ -356,10 +357,12 @@ class dual_arm_control
 		spherical_position release_pos;
 
 		int _mode_conveyor_belt;
+		int _desSpeed_conveyor_belt;
 		Eigen::Vector2f _dual_PathLen_AvgSpeed;
 		bool _hasCaughtOnce = false;
 		bool _isIntercepting = false;
 		float _beta_vel_mod;
+		bool _isDisturbTarget = false;
 
 		////////////////////////////////////////////////////////////////////////
 		// Objects for Unconstrained and contrained motion and force generation
