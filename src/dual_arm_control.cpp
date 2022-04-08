@@ -224,6 +224,8 @@ dual_arm_control::dual_arm_control(	ros::NodeHandle &n, double frequency, 	//std
 	_mode_conveyor_belt = 0;
 	_dual_PathLen_AvgSpeed.setZero();
 	_hasCaughtOnce = false;
+	_isIntercepting = false;
+	_beta_vel_mod = 1.0f;
 }
 //
 dual_arm_control::~dual_arm_control(){}
@@ -588,7 +590,7 @@ void dual_arm_control::update_states_machines(){
 					_goHome = !_goHome;
 					if(_goHome){
 						_goToAttractors = true;
-						// _startlogging = false;
+						_startlogging = false;
 						// datalog.datalog_reset(ros::package::getPath(std::string("dual_arm_control")) +"/Data");
 					}
 					if(!_goHome){_startlogging  = true;}
@@ -613,7 +615,9 @@ void dual_arm_control::update_states_machines(){
 				// position
 				case 'a':
 							if(_ctrl_mode_conveyor_belt){ _mode_conveyor_belt = 2;
-																						publish_conveyor_belt_cmds();}
+																						publish_conveyor_belt_cmds();
+																						_startlogging  = true;
+							}
 				      else if(_increment_release_pos) _delta_rel_pos(0)  -= 0.025f;  //_delta_rel_pos(0)  -= 0.05f;  //[m]
 				      else                       _delta_pos(0)      -= 0.01f; 
 				  break;
@@ -1088,19 +1092,25 @@ void dual_arm_control::computeCommands()
 	Eigen::Vector3f xt_bar 		= _xt - _xd_landing;
 	Eigen::Vector3f xt2go_bar = _xt_state2go - _xd_landing;
 
-	if((xt_bar.dot(xt2go_bar) > 0) && (xt_bar.norm() - xt2go_bar.norm())){
+	if((-xt_bar.dot(_vt) > 0) && (xt_bar.norm() - xt2go_bar.norm())){
 		// start motion
 	}
-	// computation of speed adaptation term: beta
-	float beta = 1.0f;
+	// computation of speed adaptation term: beta_vel_mod
 	// float beta_max = min(2.0f, _v_max/(0.5*(_Vd_ee[LEFT].head(3) + _Vd_ee[RIGHT].head(3)).norm()) );
-	float beta_max = min( 2.0f, min((_v_max/_Vd_ee[LEFT].head(3).norm()), (_v_max/_Vd_ee[RIGHT].head(3).norm())) );
+	float beta_vel_mod_max = min( 2.0f, min((_v_max/_Vd_ee[LEFT].head(3).norm()), (_v_max/_Vd_ee[RIGHT].head(3).norm())) );
 
-	if((xt_bar.dot(xt2go_bar) > 0) && (xt_bar.norm() - xt2go_bar.norm())){
-		beta = (Lp_Va_pred_tgt(1)/(Lp_Va_pred_bot(1) +1e-6)) * (Lp_Va_pred_bot(0)/(Lp_Va_pred_tgt(0) +1e-6));
-		if(beta >=beta_max){
-			beta = beta_max;
+
+	if((-xt_bar.dot(_vt) > 0) && ((_initPoseCount > 50) && ((xt_bar - xt2go_bar).norm() < 0.02f))){
+		_isIntercepting = true;
+	}
+	if(_isIntercepting && !_releaseAndretract && (dsThrowing.a_proximity_<=0.99f)){
+		_beta_vel_mod = (Lp_Va_pred_tgt(1)/(Lp_Va_pred_bot(1) +1e-6)) * (Lp_Va_pred_bot(0)/(Lp_Va_pred_tgt(0) +1e-6));
+		if(_beta_vel_mod >=beta_vel_mod_max){
+			_beta_vel_mod = beta_vel_mod_max;
 		}
+	}
+	else{
+		_beta_vel_mod = 1.0f;
 	}	
 
 
@@ -1123,12 +1133,12 @@ void dual_arm_control::computeCommands()
 		this->reset_variables();
 
 		// if((_initPoseCount > 50) && (fabs(_xt(1)-y_2_go) < 0.02f)) // 0.80 						// tossing
-		if((_initPoseCount > 50) && ((xt_bar - xt2go_bar).norm() < 0.02f)) // 0.80     // tossing
+		if((-xt_bar.dot(_vt) > 0) && (_initPoseCount > 50) && ((xt_bar - xt2go_bar).norm() < 0.02f)) // 0.80     // tossing
 		// if((_initPoseCount > 50) && (fabs(_xo(1)-y_2_go) < 0.02f) && (!_hasCaughtOnce)) // 0.80   					// catching
 		{
-			// _goHome = false;
+			_goHome = false;
 			// _startlogging  = true;
-			// _hasCaughtOnce = true;
+			_hasCaughtOnce = true;
 		}
 	}
 	else 
@@ -1146,6 +1156,7 @@ void dual_arm_control::computeCommands()
 				_isPickupSet 	= false;
 				_nu_Wr0 = _nu_Wr1 	= 0.0f;
 				dsThrowing.reset_release_flag();
+				_isIntercepting = false;
 			}
 			else if(true && _sensedContact && CooperativeCtrl._ContactConfidence == 1.0f)  // TODO : Replace by contact
 			{
@@ -1349,11 +1360,10 @@ void dual_arm_control::publish_commands()
 // -------------------------------------
 void dual_arm_control::objectPoseCallback(const geometry_msgs::Pose::ConstPtr& msg)
 {
-	
 	// _xo << msg->position.x, 	msg->position.y, 	msg->position.z;
 	Eigen::Vector3f xom, t_xo_xom; // _objectDim
-	t_xo_xom << 0.0f, 0.0f, -_objectDim(2)/2.0f;
-	// t_xo_xom << 0.0f, 0.0f, 0.0f;
+	// t_xo_xom << 0.0f, 0.0f, -_objectDim(2)/2.0f;
+	t_xo_xom << 0.0f, 0.0f, 0.0f;
 
 	xom << msg->position.x, 	msg->position.y, 	msg->position.z;
 	_qo << msg->orientation.w, 	msg->orientation.x, msg->orientation.y, msg->orientation.z;
@@ -1371,7 +1381,6 @@ void dual_arm_control::objectPoseCallback(const geometry_msgs::Pose::ConstPtr& m
     _vo = temp;	
 
     _w_H_o = Utils<float>::pose2HomoMx(_xo, _qo);
-
     //
 	_Vo.head(3) = _vo;
 	_Vo.tail(3) = _wo;
@@ -1589,7 +1598,7 @@ void dual_arm_control::prepareCommands(Vector6f Vd_ee[], Eigen::Vector4f qd[], V
   	// _omegad[i]  = Vd_ee[i].tail(3)  + _V_gpo[i].tail(3);  
   	Vector6f VdEE  = _tcp_W_EE[i].inverse() * (Vd_ee[i]  + _V_gpo[i]);
   	//
-  	_vd[i]     = VdEE.head(3) + 0.0*_VEE_oa[i].head(3);
+  	_vd[i]     = VdEE.head(3) + 1.0*_VEE_oa[i].head(3);
 		_omegad[i] = VdEE.tail(3);
 
   	Utils<float>::quaternionToAxisAngle(qd[i], axis_d[i], angle_d[i]);
@@ -1717,6 +1726,7 @@ void dual_arm_control::reset_variables(){
 	FreeMotionCtrl._refVreach[RIGHT] = 0.0f;
 	dsThrowing._refVtoss = _desVimp;
 	dsThrowing.reset_release_flag();
+	_isIntercepting = false;
 	//
 	// _xDo    = Eigen::Vector3f(0.35f, 0.00f, 0.50f);   // set attractor of placing task
 	_w_H_Do = Utils<float>::pose2HomoMx(_xDo_lifting, _qDo);
@@ -1883,7 +1893,7 @@ void dual_arm_control::saveData()
 		datalog._OutRecord_tasks   	<< _goHome 	<< " , " << _goToAttractors << " , " << _releaseAndretract << " , " << _isThrowing << " , " << _isPlacing << " , " << _c << " , "; 			//CooperativeCtrl._ContactConfidence << " , ";
 		datalog._OutRecord_tasks   	<< FreeMotionCtrl.a_proximity_ << " , " << FreeMotionCtrl.a_normal_ << " , " << FreeMotionCtrl.a_tangent_ << " , " << FreeMotionCtrl.a_release_ << " , " << FreeMotionCtrl.a_retract_ << " , ";
 		// datalog._OutRecord_tasks   	<< dsThrowing.a_proximity_ << " , " << dsThrowing.a_normal_  << " , " << dsThrowing.a_tangent_<< " , " << dsThrowing.a_toss_  << std::endl;
-		datalog._OutRecord_tasks   	<< dsThrowing.a_proximity_ << " , " << dsThrowing.a_normal_  << " , " << dsThrowing.a_tangent_<< " , " << dsThrowing.a_toss_  << std::endl;
+		datalog._OutRecord_tasks   	<< dsThrowing.a_proximity_ << " , " << dsThrowing.a_normal_  << " , " << _beta_vel_mod << " , " << dsThrowing.a_toss_  << std::endl;
 		// 
 		datalog._OutRecord_jts_states << (float)(_cycle_count * _dt) << ", ";
 		datalog._OutRecord_jts_states << _joints_positions[LEFT].transpose().format(CSVFormat)  		<< " , " << _joints_positions[RIGHT].transpose().format(CSVFormat)  		<< " , ";

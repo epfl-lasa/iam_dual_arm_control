@@ -358,6 +358,8 @@ class dual_arm_control
 		int _mode_conveyor_belt;
 		Eigen::Vector2f _dual_PathLen_AvgSpeed;
 		bool _hasCaughtOnce = false;
+		bool _isIntercepting = false;
+		float _beta_vel_mod;
 
 		////////////////////////////////////////////////////////////////////////
 		// Objects for Unconstrained and contrained motion and force generation
