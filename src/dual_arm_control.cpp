@@ -495,6 +495,13 @@ bool dual_arm_control::init()
 	//
 	FreeMotionCtrlEstim = FreeMotionCtrl;
 
+	// KF filter for the object and target
+	_xo_KF_filtered.init(_dt, Eigen::Vector2f(0.004, 0.1), 0.004, _xt);
+	_xo_KF_filtered.update(_xo);
+	_xt_KF_filtered.init(_dt, Eigen::Vector2f(0.004, 0.1), 0.004, _xt);
+	_xt_KF_filtered.update(_xt);
+	// _xt_KF_filtered.get_estimate_velocity();
+
 	//--------------------------------------------------------------------------------------------------
 	// Data recording:
 	//--------------------------------------------------------------------------------------------------
@@ -1387,8 +1394,8 @@ void dual_arm_control::objectPoseCallback(const geometry_msgs::Pose::ConstPtr& m
 {
 	// _xo << msg->position.x, 	msg->position.y, 	msg->position.z;
 	Eigen::Vector3f xom, t_xo_xom; // _objectDim
-	t_xo_xom << 0.0f, 0.0f, -_objectDim(2)/2.0f;
-	// t_xo_xom << 0.0f, 0.0f, 0.0f;
+	// t_xo_xom << 0.0f, 0.0f, -_objectDim(2)/2.0f;
+	t_xo_xom << 0.0f, 0.0f, 0.0f;
 
 	xom << msg->position.x, 	msg->position.y, 	msg->position.z;
 	_qo << msg->orientation.w, 	msg->orientation.x, msg->orientation.y, msg->orientation.z;
@@ -1399,14 +1406,17 @@ void dual_arm_control::objectPoseCallback(const geometry_msgs::Pose::ConstPtr& m
 
 	// filtered object position
 	SGF::Vec temp(3);
-    _xo_filtered->AddData(_xo);
-    _xo_filtered->GetOutput(0,temp);
-    _xo = temp;
-    _xo_filtered->GetOutput(1,temp);
-    _vo = temp;	
+	   _xo_filtered->AddData(_xo);
+	   _xo_filtered->GetOutput(0,temp);
+	   _xo = temp;
+	   _xo_filtered->GetOutput(1,temp);
+	   _vo = temp;	
+	// _xo_KF_filtered.update(_xo);
+	// _xo = _xo_KF_filtered.get_estimate_position();
+	// _vo = _xo_KF_filtered.get_estimate_velocity();
 
-    _w_H_o = Utils<float>::pose2HomoMx(_xo, _qo);
-    //
+	_w_H_o = Utils<float>::pose2HomoMx(_xo, _qo);
+	//
 	_Vo.head(3) = _vo;
 	_Vo.tail(3) = _wo;
 }
@@ -1417,14 +1427,20 @@ void dual_arm_control::targetPoseCallback(const geometry_msgs::Pose::ConstPtr& m
 	_xt << msg->position.x, 	msg->position.y, 	msg->position.z;
 	_qt << msg->orientation.w, 	msg->orientation.x, msg->orientation.y, msg->orientation.z;
 
+	// _xt += 0.02*Eigen::VectorXf::Random(_xt.rows());
+
 	// filtered object position
-	SGF::Vec temp(3);
-    _xt_filtered->AddData(_xt);
-    _xt_filtered->GetOutput(0,temp);
-    _xt = temp;
-    _xt_filtered->GetOutput(1,temp);
-    float afilt = 0.05f;
-    _vt = (1.f - afilt) *_vt + afilt * temp;	
+	// SGF::Vec temp(3);
+    // _xt_filtered->AddData(_xt);
+    // _xt_filtered->GetOutput(0,temp);
+    // _xt = temp;
+    // _xt_filtered->GetOutput(1,temp);
+    // float afilt = 0.05f;
+    // _vt = (1.f - afilt) *_vt + afilt * temp;	
+
+	_xt_KF_filtered.update(_xt);
+	_xt = _xt_KF_filtered.get_estimate_position();
+	_vt = _xt_KF_filtered.get_estimate_velocity();
 }
 
 void dual_arm_control::updateBasePoseCallback(const geometry_msgs::Pose::ConstPtr& msg, int k)

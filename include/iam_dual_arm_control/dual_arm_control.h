@@ -375,6 +375,7 @@ class dual_arm_control
 		dualArmFreeMotionController 	FreeMotionCtrlEstim;
 		throwingDS 										dsThrowingEstim;				//
 
+
 		// Callbacks
 		void objectPoseCallback(const geometry_msgs::Pose::ConstPtr& msg);
 		void targetPoseCallback(const geometry_msgs::Pose::ConstPtr& msg);
@@ -399,6 +400,8 @@ class dual_arm_control
 		std::unique_ptr<SGF::SavitzkyGolayFilter> _sgf_ddq_filtered_r;
 		// SGF::SavitzkyGolayFilter _x_filtered;    			// Filter used for the object's dimension vector
 		std::unique_ptr<SGF::SavitzkyGolayFilter> _xt_filtered; // target
+		KF_3DVeloFromPosEstimator 								_xo_KF_filtered; //
+		KF_3DVeloFromPosEstimator 								_xt_KF_filtered; //
 
 		tossingTaskVariables _tossVar;
 

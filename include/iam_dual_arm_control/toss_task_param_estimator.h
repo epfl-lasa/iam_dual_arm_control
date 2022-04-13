@@ -244,6 +244,7 @@ class my_pdf_gmr
 
 };
 
+
 class toss_task_param_estimator
 {
 	private:

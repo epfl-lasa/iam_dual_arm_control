@@ -9,8 +9,8 @@ passiveDS:
 # object
 object:
   mass : 2.5
-  dimension:       [0.26, 0.26,  0.26] #[0.20, 0.20, 0.20] #[0.20, 0.30, 0.20] #[0.16, 0.29, 0.14] # 
-  graspOffset:     [-0.03, 0.00, -0.0] #[0.00, 0.00, 0.00] #[-0.04, 0.00,-0.035] #
+  dimension:       [0.20, 0.20, 0.20] #[0.26, 0.26,  0.26] #[0.20, 0.30, 0.20] #[0.16, 0.29, 0.14] # 
+  graspOffset:     [0.00, 0.00, 0.00] #[-0.03, 0.00, -0.0] #[-0.04, 0.00,-0.035] #
 
   cubicBox :       [0.26, 0.26, 0.26]
   coronaBottePack: [0.13, 0.19, 0.14] 
@@ -23,8 +23,8 @@ object:
 # End-effector tool
 tool:
   offset2end_effector:
-    left:  0.175 # 0.115   # 
-    right: 0.200 # 0.115   # 
+    left:  0.115   #0.175 #  
+    right: 0.115   #0.200 #  
 
 #
 desVimp:   0.4
@@ -61,7 +61,7 @@ impact_direction:
 
 # dual arm task
 dual_arm_task:
-  dualTaskSelector: 4
+  dualTaskSelector: 3
   old_dual_method: false
   modulated_reaching: true
   isNorm_impact_vel: false
