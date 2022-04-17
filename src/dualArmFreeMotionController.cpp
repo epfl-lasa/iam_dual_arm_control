@@ -1158,42 +1158,8 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
     Vector6f DS_ee_nominal = Eigen::VectorXf::Zero(6);
     DS_ee_nominal.head(3)  = Vd_ee_nom[LEFT].head(3);
     DS_ee_nominal.tail(3)  = Vd_ee_nom[RIGHT].head(3);
-    // Unitary velocity field
-    float speed_ee[2];
- 
-    Eigen::Vector3f o_error_pos_abs_paral = this->getAbsoluteTangentError(w_H_o, w_H_ee, w_H_gp);
-    float cp_ap = Utils<float>::computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.02f, 1.2f, true);  // 50.0f, 0.05f, 2.8f /  50.0f, 0.15f, 1.0f
-    float cp_ap2 = 0.0f;
-    float  alp  = 1.0f; //0.05f;
     
-    if(_modulated_reaching){
-      if(true){
-        alp = 0.05f;
-      }
-      cp_ap2     = 0.0f;
-      // _refVreach[LEFT]  = (1.0f-alp)*_refVreach[LEFT]  + alp*((1.0f-cp_ap)*_desVreach + cp_ap* VdImp[LEFT].norm());
-      // _refVreach[RIGHT] = (1.0f-alp)*_refVreach[RIGHT] + alp*((1.0f-cp_ap)*_desVreach + cp_ap* VdImp[RIGHT].norm());
-      _refVreach[LEFT]  = (1.0f-alp)*_refVreach[LEFT]  + alp*((1.0f-cp_ap)*DS_ee_nominal.head(3).norm() + cp_ap*VdImp[LEFT].norm());
-      _refVreach[RIGHT] = (1.0f-alp)*_refVreach[RIGHT] + alp*((1.0f-cp_ap)*DS_ee_nominal.tail(3).norm() + cp_ap*VdImp[RIGHT].norm());
-      speed_ee[LEFT]  = _refVreach[LEFT];
-      speed_ee[RIGHT] = _refVreach[RIGHT];
-    }
-    else if(_isNorm_impact_vel){
-      cp_ap2     = 0.0f;
-      _refVreach[LEFT]  = (1.0f-cp_ap)*DS_ee_nominal.head(3).norm() + cp_ap*VdImp[LEFT].norm();
-      _refVreach[RIGHT] = (1.0f-cp_ap)*DS_ee_nominal.tail(3).norm() + cp_ap*VdImp[RIGHT].norm();
-      speed_ee[LEFT]    = _refVreach[LEFT];
-      speed_ee[RIGHT]   = _refVreach[RIGHT];
-    }
-    else{
-      cp_ap2 = 0.0f*Utils<float>::computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.02f, 1.2f, true);
-       alp = 0.10f;
-      _refVreach[LEFT]  = (1.0f-alp)*_refVreach[LEFT]  + alp*(DS_ee_nominal.head(3).norm());
-      _refVreach[RIGHT] = (1.0f-alp)*_refVreach[RIGHT] + alp*(DS_ee_nominal.tail(3).norm());
-      speed_ee[LEFT]    = _refVreach[LEFT];
-      speed_ee[RIGHT]   = _refVreach[RIGHT];
-    }
-    //
+    // //
     Matrix6f A = Eigen::MatrixXf::Identity(6,6);
     A.block<3,3>(0,0) = -4.0f * this->gain_p_abs;
     A.block<3,3>(3,3) = -4.0f * this->gain_p_rel;
@@ -1248,9 +1214,9 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
         Amodul_ee_tang = A_prime*(X_dual - Xstar_dual);  // ;
 
         _refVtoss_EE   = 0.0;
-        // if(!(_modulated_reaching || _isNorm_impact_vel)){
-        //   activation = 0.0f;
-        // }
+        if(!(_modulated_reaching || _isNorm_impact_vel)){
+          activation = 0.0f;
+        }
         // _integral_Vee_d[LEFT].setZero();
         // _integral_Vee_d[RIGHT].setZero();
         // activation = 0.0f;
@@ -1394,8 +1360,52 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
     Vd_ee[RIGHT].head(3) = DS_ee_modulated.tail(3);
     Vd_ee[RIGHT].tail(3) = Vd_ee_nom[RIGHT].tail(3);
     //
-    
 
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // Unitary velocity field
+    float speed_ee[2];
+ 
+    Eigen::Vector3f o_error_pos_abs_paral = this->getAbsoluteTangentError(w_H_o, w_H_ee, w_H_gp);
+    float cp_ap = Utils<float>::computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.05f, 1.5f, true);  // 50.0f, 0.05f, 2.8f /  50.0f, 0.15f, 1.0f
+    float cp_ap2 = 0.0f;
+    float  alp  = 1.0f; //0.05f;
+    
+    if(_modulated_reaching){
+      if(true){
+        alp = 0.10f;
+      }
+      cp_ap2     = 0.0f;
+      // cp_ap = 0.0f;
+      // _refVreach[LEFT]  = (1.0f-alp)*_refVreach[LEFT]  + alp*((1.0f-cp_ap)*_desVreach + cp_ap* VdImp[LEFT].norm());
+      // _refVreach[RIGHT] = (1.0f-alp)*_refVreach[RIGHT] + alp*((1.0f-cp_ap)*_desVreach + cp_ap* VdImp[RIGHT].norm());
+      _refVreach[LEFT]  = (1.0f-alp)*_refVreach[LEFT]  + alp*((1.0f-cp_ap)*DS_ee_modulated.head(3).norm() + cp_ap*VdImp[LEFT].norm());
+      _refVreach[RIGHT] = (1.0f-alp)*_refVreach[RIGHT] + alp*((1.0f-cp_ap)*DS_ee_modulated.tail(3).norm() + cp_ap*VdImp[RIGHT].norm());
+      speed_ee[LEFT]  = _refVreach[LEFT];
+      speed_ee[RIGHT] = _refVreach[RIGHT];
+
+      std::cout << " XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX HERE IN MOD REACH XXXXXXXXXXXXXXXX " << std::endl;
+    }
+    else if(_isNorm_impact_vel){
+      cp_ap2     = 0.0f;
+      _refVreach[LEFT]  = (1.0f-cp_ap)*DS_ee_modulated.head(3).norm() + cp_ap*VdImp[LEFT].norm();
+      _refVreach[RIGHT] = (1.0f-cp_ap)*DS_ee_modulated.tail(3).norm() + cp_ap*VdImp[RIGHT].norm();
+      speed_ee[LEFT]    = _refVreach[LEFT];
+      speed_ee[RIGHT]   = _refVreach[RIGHT];
+      std::cout << " IIIIIIIIIIIIIIIIIIIIIIIIIIIIII HERE IN NORM IMPACT IIIIIIIIIIIIIII " << std::endl;
+    }
+    else{
+      cp_ap2 = 0.0f*Utils<float>::computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.02f, 1.2f, true);
+       alp = 0.10f;
+      _refVreach[LEFT]  = (1.0f-alp)*_refVreach[LEFT]  + alp*(DS_ee_nominal.head(3).norm());
+      _refVreach[RIGHT] = (1.0f-alp)*_refVreach[RIGHT] + alp*(DS_ee_nominal.tail(3).norm());
+      speed_ee[LEFT]    = _refVreach[LEFT];
+      speed_ee[RIGHT]   = _refVreach[RIGHT];
+
+      std::cout << " NNNNNNNNNNNNNNNNNNNNNNNNNNNNNN HERE IN CLASSICAL NNNNNNNNNNNNNNNNN " << std::endl;
+    }
+    //
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    
     if(taskType == 0){
       speed_ee[LEFT]  = _refVreach[LEFT];
       speed_ee[RIGHT] = _refVreach[RIGHT];
@@ -1832,4 +1842,190 @@ Eigen::Vector2f dualArmFreeMotionController::estimateRobot_PathLength_AverageSpe
   Eigen::Vector2f Lp_dx_avg = {LpXd_X, v_avg};
   return Lp_dx_avg;
 
+}
+
+
+void dualArmFreeMotionController::getCoordinatedTranslation(Eigen::Vector3f x_ee[],  
+                                                            Eigen::Vector3f x_gp[], 
+                                                            Eigen::Vector3f x_std[],
+                                                            Eigen::Matrix3f w_R_o, 
+                                                            Eigen::Vector3f (&vd_ee)[NB_ROBOTS])
+{
+  Eigen::Vector3f x_abs_ee  = 0.5f*(x_ee[RIGHT]  + x_ee[LEFT]);
+  Eigen::Vector3f x_abs_gp  = 0.5f*(x_gp[RIGHT]  + x_gp[LEFT]);
+  Eigen::Vector3f x_abs_stb = 0.5f*(x_std[RIGHT] + x_std[LEFT]);
+  //
+  Eigen::Vector3f x_rel_ee  = (x_ee[RIGHT]  - x_ee[LEFT]);
+  Eigen::Vector3f x_rel_gp  = (x_gp[RIGHT]  - x_gp[LEFT]);
+  Eigen::Vector3f x_rel_stb = (x_std[RIGHT] - x_std[LEFT]);
+  //
+  Eigen::Vector3f x_rel_pgrasp = x_rel_gp;
+  x_rel_pgrasp(1) = x_rel_gp(1)/fabs(x_rel_gp(1)) * (fabs(x_rel_gp(1)) + 0.30f);
+
+  Eigen::Vector3f d_p_abs = reachable_p*x_abs_gp + (1.0f-reachable_p)*x_abs_stb;
+  // =======================================
+  // Absolute velocity of the End-effectors
+  // =======================================
+  Eigen::Vector3f error_abs = x_abs_ee - d_p_abs;
+
+  // computing the velocity
+  // ~~~~~~~~~~~~~~~~~~~~~~~
+  Eigen::Vector3f v_abs = -3.0f* gain_p_abs * error_abs;
+
+  Eigen::Vector3f o_error_pos_abs     = w_R_o.transpose() * error_abs;
+  Eigen::Vector3f o_error_pos_abs_paral = Eigen::Vector3f(o_error_pos_abs(0), 0.0f, o_error_pos_abs(2));
+  float cp_ap   = computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.06f, 1.0f, true);
+  float cpl_rel = computeCouplingFactor(error_abs, 50.0f, 0.08f, 1.0f, true);  //
+
+  Eigen::Vector3f d_p_rel   = cpl_rel *(cp_ap * x_rel_gp + (1.0f-cp_ap) *x_rel_pgrasp) + (1.0f-cpl_rel) * x_rel_stb; // TBC 
+  Eigen::Vector3f error_rel = x_rel_ee - d_p_rel;
+  // =====================================
+  // Relative velocity of the hands
+  // =====================================
+
+  // computing the velocity
+  Eigen::Vector3f v_rel = -5.0f* gain_p_rel * error_rel;
+  // ========================================
+  // Computation of individual EE motion
+  // ========================================
+  // velocity
+  float a_bi = 0.5f;
+  float b_bi = 1.0f;
+
+  vd_ee[LEFT]  = v_abs - (1-a_bi)*v_rel;
+  vd_ee[RIGHT] = v_abs +     a_bi*v_rel;
+}
+
+
+Eigen::Vector2f dualArmFreeMotionController::predictRobotTranslation(Eigen::Matrix4f w_H_ee[],  
+                                                                      Eigen::Matrix4f w_H_gp[], 
+                                                                      Eigen::Matrix4f w_H_eeStandby[], 
+                                                                      Eigen::Matrix4f w_H_o,
+                                                                      Eigen::Vector3f x_release,
+                                                                      float vtoss,
+                                                                      float tolerance_dist2contact,
+                                                                      float dt,
+                                                                      float speedScaling)
+{
+
+  Eigen::Vector3f x_ee[NB_ROBOTS], x_gp[NB_ROBOTS], x_std[NB_ROBOTS], x_obj;
+
+  x_ee[LEFT]  = w_H_ee[LEFT].block(0,3,3,1);
+  x_ee[RIGHT] = w_H_ee[RIGHT].block(0,3,3,1);
+  x_gp[LEFT]  = w_H_gp[LEFT].block(0,3,3,1);
+  x_gp[RIGHT] = w_H_gp[RIGHT].block(0,3,3,1);
+  x_std[LEFT] = w_H_eeStandby[LEFT].block(0,3,3,1);
+  x_std[RIGHT]= w_H_eeStandby[RIGHT].block(0,3,3,1);
+  x_obj       = w_H_o.block<3,1>(0,3);
+  Eigen::Matrix3f w_R_o = w_H_o.block<3,3>(0,0);
+  //
+  Eigen::Vector3f vd_ee[NB_ROBOTS], vd_o;
+
+  bool isTossingCommand = false;
+  bool isContact = false;
+  bool isReleasePositionReached = false;
+  float tol_dist2contact = tolerance_dist2contact;
+  float a_bi = 0.5f;
+  float b_bi = 1.0f;
+
+  int max_horizon = 30;
+  int pred_count  = 0;
+
+  //
+  std::vector<Eigen::Vector3f> X_next_l, X_next_r;
+  std::vector<Eigen::Vector3f> dX_next_l, dX_next_r;
+  Eigen::Vector3f xEE_l,  xEE_0_l, dxEE_l; 
+  Eigen::Vector3f xEE_r,  xEE_0_r, dxEE_r; 
+
+  xEE_0_l  = x_ee[LEFT]; 
+  xEE_0_r  = x_ee[RIGHT]; 
+
+  // robot path length and 
+  Eigen::Vector2f Lp_dx_avg = {1e-4, 1e-4};
+
+
+
+  while((!isReleasePositionReached) && (pred_count<max_horizon))
+  {
+    // update contact status
+    // Positioning error
+    Eigen::Vector3f lh_er = (x_gp[LEFT] -x_ee[LEFT]);   // 
+    Eigen::Vector3f rh_er = (x_gp[RIGHT]-x_ee[RIGHT]);  // 
+    // Distances to contacts
+    if((lh_er.norm() <= tol_dist2contact) && (rh_er.norm() <= tol_dist2contact)){ 
+      isContact = true;
+    }
+    else{
+      isContact = false;
+    }
+
+    // --------------------------------------------------------------------
+    // --------------------------------------------------------------------
+    if(!isContact){
+      this->getCoordinatedTranslation( x_ee, x_gp, x_std, w_R_o, vd_ee);
+      vd_o.setZero();
+    }
+    else{
+      vd_o = vtoss * (x_release - x_obj).normalized();
+
+      Eigen::Vector3f v_abs = vd_o;
+      Eigen::Vector3f v_rel = Eigen::Vector3f(0,0,0);
+
+      vd_ee[LEFT]  = v_abs - (1-a_bi)*v_rel;
+      vd_ee[RIGHT] = v_abs +     a_bi*v_rel;
+    }
+    // --------------------------------------------------------------------
+    // --------------------------------------------------------------------
+    vd_ee[LEFT]  *= speedScaling;
+    vd_ee[RIGHT] *= speedScaling;
+    vd_o *= speedScaling;
+    // ---------------------------
+    // update position from velocity
+    x_ee[LEFT]   = x_ee[LEFT]  + dt * vd_ee[LEFT];
+    x_ee[RIGHT]  = x_ee[RIGHT] + dt * vd_ee[RIGHT];
+    x_gp[LEFT]   = x_gp[LEFT]  + dt * vd_o;
+    x_gp[RIGHT]  = x_gp[RIGHT] + dt * vd_o;
+    x_obj        = x_obj + dt * vd_o;
+
+    // update Convergence status
+    // isPlacingCommand = (release_flag) || ((w_H_obj.block<3,1>(0,3)-xDo_placing).norm()<=0.05); // 0.07
+    isTossingCommand = ((x_obj-x_release).norm()<=0.05);
+
+    if((isTossingCommand)){
+      isReleasePositionReached = true;
+    }
+    //
+    // extract the translation state
+    //--------------------------------
+    // xEE  = 0.5f*(x_ee[LEFT]  + x_ee[RIGHT]);
+    // dxEE = 0.5f*(vd_ee[LEFT] + vd_ee[RIGHT]);
+    //
+    X_next_l.push_back(x_ee[LEFT]-xEE_0_l);
+    X_next_r.push_back(x_ee[RIGHT]-xEE_0_r);
+    dX_next_l.push_back(vd_ee[LEFT]);
+    dX_next_r.push_back(vd_ee[RIGHT]);
+    //
+    xEE_0_l = x_ee[LEFT];
+    xEE_0_r = x_ee[RIGHT];
+
+    pred_count++;
+  } // while
+
+  //
+  int N = X_next_l.size();
+  float v_avg  = 0.0f;
+  float LpXd_X = 0.0f;
+  std::cout << " PREDICTION HORIZON is : \t " << N << std::endl;
+  for(int i=0; i<N; i++){
+    v_avg  += 0.5f*(dX_next_l[i].norm() + dX_next_r[i].norm())/N;
+    LpXd_X += 0.5f*(X_next_l[i].norm()  + X_next_r[i].norm());
+    // std::cout << " dX_next_l [" << i << "] : " << dX_next_l[i].norm();
+  }
+  //
+  std::cout << " " << std::endl;
+  //
+  Lp_dx_avg << LpXd_X, v_avg;
+
+
+  return Lp_dx_avg;
 }

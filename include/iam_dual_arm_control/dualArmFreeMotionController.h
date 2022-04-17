@@ -205,7 +205,23 @@ class dualArmFreeMotionController
 																													Eigen::Matrix4f w_H_o,
 																													Eigen::Matrix4f w_H_Dgp[],
 																													Eigen::Matrix4f w_H_ee[]);
-};
+
+		void getCoordinatedTranslation(	Eigen::Vector3f x_ee[],  
+                                    Eigen::Vector3f x_gp[], 
+                                    Eigen::Vector3f x_std[],
+                                    Eigen::Matrix3f w_R_o, 
+                                    Eigen::Vector3f (&vd_ee)[NB_ROBOTS]);
+
+		Eigen::Vector2f predictRobotTranslation(	Eigen::Matrix4f w_H_ee[],  
+						                                  Eigen::Matrix4f w_H_gp[], 
+						                                  Eigen::Matrix4f w_H_eeStandby[], 
+						                                  Eigen::Matrix4f w_H_o,
+						                                  Eigen::Vector3f x_release,
+						                                  float vtoss,
+						                                  float tolerance_dist2contact,
+						                                  float dt,
+						                                  float speedScaling);
+		};
 
 #endif // dualArmFreeMotionController_H
 
