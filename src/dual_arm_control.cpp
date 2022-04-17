@@ -228,6 +228,9 @@ dual_arm_control::dual_arm_control(	ros::NodeHandle &n, double frequency, 	//std
 	_isIntercepting = false;
 	_isDisturbTarget = false;
 	_beta_vel_mod = 1.0f;
+	_initSpeedScaling = 0.75;
+	_winLengthAvgSpeedEE = 20;
+	// _winCounterAvgSpeedEE = 0;
 }
 //
 dual_arm_control::~dual_arm_control(){}
@@ -745,18 +748,48 @@ void dual_arm_control::updatePoses()
 
 		_initPoseCount ++;
 	}
-	// 
-	if( _sensedContact && CooperativeCtrl._ContactConfidence == 1.0 && _xo(2) >= 0.98f*_xDo(2)) {
-		// _isThrowing = true;
-	}
+	
+	// Estimation of moving average EE speed
+	// -------------------------------------
+	float avgSpeedEE = 0.5f*(_Vee[LEFT].head(3).norm() + _Vee[RIGHT].head(3).norm());
+	//
+  if(_windowSpeedEE.size() < _winLengthAvgSpeedEE){   	
+    _windowSpeedEE.push_back(avgSpeedEE);
+    _movingAvgSpeedEE = 0.0f;
+  }
+  else{
+    _windowSpeedEE.pop_front();
+    _windowSpeedEE.push_back(avgSpeedEE);
+    _movingAvgSpeedEE = 0.0f;
+
+    for(int i = 0; i < _winLengthAvgSpeedEE; i++){
+			_movingAvgSpeedEE+=_windowSpeedEE[i]/_winLengthAvgSpeedEE;
+    }
+  }
+  // Estimation of moving average target velocity
+	// --------------------------------------------
+  if(_windowVelTarget.size() < _winLengthAvgSpeedEE){   	
+    _windowVelTarget.push_back(_vt);
+    _movingAvgVelTarget.setZero();
+  }
+  else{
+    _windowVelTarget.pop_front();
+    _windowVelTarget.push_back(_vt);
+    _movingAvgVelTarget.setZero();
+
+    for(int i = 0; i < _winLengthAvgSpeedEE; i++){
+			_movingAvgVelTarget +=_windowVelTarget[i] * (1.f/_winLengthAvgSpeedEE);
+    }
+  }
+
 	/////////////////////////////////////////////////////////////////////////////////////////////
 	if(_isPlacing){
 		// _xDo    = _xDo_placing; //Eigen::Vector3f(0.65f, 0.155f, 0.35f);   // set attractor of placing task
 		_w_H_Do = Utils<float>::pose2HomoMx(_xDo_placing, _qDo);
 		// if((_w_H_o.block<3,1>(0,3)-_xDo_placing).norm()<=0.05){
-		if((_w_H_o.block<2,1>(0,3)-_xDo_placing.head(2)).norm()<=0.04 && fabs(_w_H_o(2,3)-_xDo_placing(2)) <= 0.04){  // results with 0.04
-			_releaseAndretract = true;
-		}
+		// if((_w_H_o.block<2,1>(0,3)-_xDo_placing.head(2)).norm()<=0.04 && fabs(_w_H_o(2,3)-_xDo_placing(2)) <= 0.04){  // results with 0.04
+		// 	_releaseAndretract = true;
+		// }
 	}
 	// // 
 	// if(_isThrowing){
@@ -1087,6 +1120,12 @@ void dual_arm_control::computeCommands()
 {
 	// Update contact state
   updateContactState();
+
+  //
+  if( (!_releaseAndretract) && (fmod(_cycle_count, 20)==0)){
+		_dual_PathLen_AvgSpeed = FreeMotionCtrlEstim.predictRobotTranslation( _w_H_ee, _w_H_gp,  _w_H_eeStandby, _w_H_o, _tossVar.release_position, _desVtoss, 0.05f, 0.100f, _initSpeedScaling);
+	}
+
 	//
 	float y_2_go = _xd_landing(1) - _vt(1) * (_xd_landing(0) - _x_pickup(0))/(0.28f*_desVtoss); //
 	// float y_2_go = _x_intercept(1) - _vo(1) * (_x_intercept(0) - 0.5f*(_xrbStandby[LEFT](0) + _xrbStandby[RIGHT](0)) )/(0.35f*0.80f);
@@ -1097,20 +1136,17 @@ void dual_arm_control::computeCommands()
 	Eigen::Vector3f XEE_Obj = 0.5f*( _w_H_ee[LEFT].block(0,3,3,1) +  _w_H_ee[RIGHT].block(0,3,3,1)) - _w_H_o.block(0,3,3,1);
 	Eigen::Vector3f XObj_Xrelease = _w_H_o.block(0,3,3,1) - _tossVar.release_position;
 
-	_dual_PathLen_AvgSpeed(0) = XEE_Obj.norm() + XObj_Xrelease.norm();
-	_dual_PathLen_AvgSpeed(1) = 0.90f*_desVtoss; //0.95f
+	// _dual_PathLen_AvgSpeed(0) = XEE_Obj.norm() + XObj_Xrelease.norm();
+	// _dual_PathLen_AvgSpeed(1) = 0.90f*_desVtoss; //0.95f
 
-	Eigen::Vector2f Lp_Va_pred_bot = _dual_PathLen_AvgSpeed;
-	Eigen::Vector2f Lp_Va_pred_tgt = tossParamEstimator.estimateTarget_SimpPathLength_AverageSpeed(_xt, _xd_landing, _vt);
-	float flytime_obj = 0.200f;
+	Eigen::Vector2f Lp_Va_pred_bot = {_dual_PathLen_AvgSpeed(0), 0.70f*_dual_PathLen_AvgSpeed(1)};
+	Eigen::Vector2f Lp_Va_pred_tgt = tossParamEstimator.estimateTarget_SimpPathLength_AverageSpeed(_xt, _xd_landing, _vt); //_movingAvgVelTarget); //
+	float flytime_obj = 0.255f;
 	_xt_state2go = tossParamEstimator.estimate_target_state_to_go(_xt, _vt, _xd_landing, Lp_Va_pred_bot, Lp_Va_pred_tgt, flytime_obj);
 
 	Eigen::Vector3f xt_bar 		= _xt - _xd_landing;
 	Eigen::Vector3f xt2go_bar = _xt_state2go - _xd_landing;
 
-	if((-xt_bar.dot(_vt) > 0) && (xt_bar.norm() - xt2go_bar.norm())){
-		// start motion
-	}
 	// computation of speed adaptation term: beta_vel_mod
 	// float beta_max = min(2.0f, _v_max/(0.5*(_Vd_ee[LEFT].head(3) + _Vd_ee[RIGHT].head(3)).norm()) );
 	float beta_vel_mod_max = min( 2.0f, min((_v_max/_Vd_ee[LEFT].head(3).norm()), (_v_max/_Vd_ee[RIGHT].head(3).norm())) );
@@ -1121,22 +1157,26 @@ void dual_arm_control::computeCommands()
 	}
 
 
-	Eigen::Vector3f absVeloEE = 0.5*(_Vd_ee[LEFT].head(3)+_Vd_ee[RIGHT].head(3));
+	float absVeloEE = _movingAvgSpeedEE; //0.5*(_Vd_ee[LEFT].head(3)+_Vd_ee[RIGHT].head(3));
 
+	float beta_vel_mod_unfilt = 1.0f;
+	// if(_isIntercepting && !_releaseAndretract && (dsThrowing.a_proximity_<=0.99f)){
 	if(_isIntercepting && !_releaseAndretract && (dsThrowing.a_proximity_<=0.99f)){
-		// _beta_vel_mod = (Lp_Va_pred_tgt(1)/(Lp_Va_pred_bot(1) +1e-6)) * (Lp_Va_pred_bot(0)/(Lp_Va_pred_tgt(0) +1e-6));
-		_beta_vel_mod = (Lp_Va_pred_tgt(1)/(absVeloEE.norm() +1e-6)) * (Lp_Va_pred_bot(0)/(Lp_Va_pred_tgt(0) +1e-6));
-		if(_beta_vel_mod >=beta_vel_mod_max){
-			_beta_vel_mod = beta_vel_mod_max;
+		beta_vel_mod_unfilt = (Lp_Va_pred_tgt(1)/(Lp_Va_pred_bot(1) +1e-6)) * (Lp_Va_pred_bot(0)/fabs(Lp_Va_pred_tgt(0) +1e-6 - Lp_Va_pred_tgt(1)*flytime_obj) );
+		// beta_vel_mod_unfilt = ( Lp_Va_pred_tgt(1)/(absVeloEE +1e-6)) * ((Lp_Va_pred_bot(0) + Lp_Va_pred_bot(1)*flytime_obj)/(Lp_Va_pred_tgt(0) +1e-6) );
+		// beta_vel_mod_unfilt = ( Lp_Va_pred_tgt(1)/(absVeloEE +1e-6)) * ((Lp_Va_pred_bot(0) )/fabs(Lp_Va_pred_tgt(0) +1e-6 - Lp_Va_pred_tgt(1)*flytime_obj) );
+		if(beta_vel_mod_unfilt >=beta_vel_mod_max){
+			beta_vel_mod_unfilt = beta_vel_mod_max;
 		}
 	}
 	else{
-		_beta_vel_mod = 1.0f;
+		beta_vel_mod_unfilt = 1.0f;
 	}	
+	float fil_beta = 0.08;
+	_beta_vel_mod = (1.f- fil_beta)*_beta_vel_mod + fil_beta * beta_vel_mod_unfilt;
 
 
-
-	//
+	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	if(_goHome)
 	{
 		FreeMotionCtrl.computeAsyncMotion(_w_H_ee, _w_H_eeStandby, _w_H_o, _Vd_ee, _qd, true);		
@@ -1151,6 +1191,9 @@ void dual_arm_control::computeCommands()
 			_VdImpact[RIGHT]	= _desVimp * _dirImp[RIGHT]; 																							//	impact velocity [RIGHT];
 			_BasisQ[i] 				= Utils<float>::create3dOrthonormalMatrixFromVector(_dirImp[i]);					//  Orthogonal Basis of Modulated Dual-arm DS
 		}
+		std::cout << "[dual_arm_control]: IMPACT MOTION DIRECTION : \t"  << _dirImp[0].transpose() << std::endl;
+		std::cout << "[dual_arm_control]: IMPACT MOTION DIRECTION : \t"  << _dirImp[1].transpose() << std::endl;
+
 		this->reset_variables();
 
 		// if((_initPoseCount > 50) && (fabs(_xt(1)-y_2_go) < 0.02f)) // 0.80 						// tossing
@@ -1183,7 +1226,7 @@ void dual_arm_control::computeCommands()
 			else if(true && _sensedContact && CooperativeCtrl._ContactConfidence == 1.0f)  // TODO : Replace by contact
 			{
 				_Vd_o  = dsThrowing.apply(_xo, _qo, _vo, Eigen::Vector3f(0.0f, 0.0f, 0.0f), 1);  // Function to call in a loop
-				_releaseAndretract = dsThrowing.get_release_flag();
+				// _releaseAndretract = dsThrowing.get_release_flag();
 
 
 				if(_old_dual_method){
@@ -1244,7 +1287,8 @@ void dual_arm_control::computeCommands()
 							// _w_H_Dgp[RIGHT] = w_H_DesObj * _o_H_ee[RIGHT];
 						}
 						_w_H_Do = Utils<float>::pose2HomoMx(_tossVar.release_position, _qDo);  //
-						if((_release_flag) || ((_w_H_o.block<3,1>(0,3)-_tossVar.release_position).norm()<=0.035)){ 
+						// if((_release_flag) || ((_w_H_o.block<3,1>(0,3)-_tossVar.release_position).norm()<=0.035)){ 
+						if( ((_w_H_o.block<3,1>(0,3)-_tossVar.release_position).norm()<=0.035) ){ 
 								_releaseAndretract = true;
 						}
 					}
@@ -1270,7 +1314,7 @@ void dual_arm_control::computeCommands()
 					FreeMotionCtrl.reachable_p = 1.0f;
 				}
 
-				if(true || _old_dual_method){
+				if(false || _old_dual_method){
 					FreeMotionCtrl.computeCoordinatedMotion2(_w_H_ee, _w_H_gp, _w_H_o, _Vd_ee, _qd, false);
 					// FreeMotionCtrl.computeCoordinatedMotion3(_w_H_ee, _w_H_gp, _w_H_o, _Vo, _x_intercept, _Vd_ee, _qd, false);
 					//
@@ -1279,8 +1323,10 @@ void dual_arm_control::computeCommands()
 					Eigen::Vector3f o_error_pos_abs_paral = Eigen::Vector3f(o_error_pos_abs(0), 0.0f, o_error_pos_abs(2));
 					float cp_ap = Utils<float>::computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.17f, 1.0f, true);  // 50.0f, 0.05f, 2.8f
 					// create impact in the normal direction
-					_Vd_ee[LEFT].head(3)  = _Vd_ee[LEFT].head(3)  + _n[LEFT]  * cp_ap * _desVimp; //0.05f; //
-					_Vd_ee[RIGHT].head(3) = _Vd_ee[RIGHT].head(3) + _n[RIGHT] * cp_ap * _desVimp; //0.05f; //
+					// _Vd_ee[LEFT].head(3)  = _Vd_ee[LEFT].head(3)  + _n[LEFT]  * cp_ap * _desVimp; //0.05f; //
+					// _Vd_ee[RIGHT].head(3) = _Vd_ee[RIGHT].head(3) + _n[RIGHT] * cp_ap * _desVimp; //0.05f; //
+					_Vd_ee[LEFT].head(3)  = _Vd_ee[LEFT].head(3)  + _dirImp[LEFT]  * cp_ap * _desVimp; //0.05f; //
+					_Vd_ee[RIGHT].head(3) = _Vd_ee[RIGHT].head(3) + _dirImp[RIGHT] * cp_ap * _desVimp; //0.05f; //
 				}
 				else{
 					FreeMotionCtrl.dual_arm_motion(_w_H_ee,  _Vee, _w_H_gp,  _w_H_o, _w_H_Do, _Vd_o, _BasisQ, _VdImpact, false, 0, _Vd_ee, _qd, _release_flag);    // 0: reach
@@ -1288,10 +1334,17 @@ void dual_arm_control::computeCommands()
 				// if(fabs(_w_H_o(0,3) -_xDo_lifting(0)) <=0.05){
 				// 				_releaseAndretract = true;
 				// }
+				//
+				
   			dsThrowing._refVtoss = _desVimp;
 	 			_Vd_o.setZero();	// for data logging
 			}
 		// }
+
+		//////////////////////////////////////////////////////////////////////////////////////////
+		_Vd_ee[LEFT].head(3)  *= _initSpeedScaling * _beta_vel_mod;
+		_Vd_ee[RIGHT].head(3) *= _initSpeedScaling * _beta_vel_mod;
+
 		// compute the object's grasp points velocity
 		getGraspPointsVelocity();
 	  	//
@@ -1323,8 +1376,10 @@ void dual_arm_control::computeCommands()
 
 	// std::cout << "[dual_arm_control]: _w_H_o: \n" << _w_H_o << std::endl; 
 	// std::cout << "[dual_arm_control]: _w_H_Do: \n" <<  _w_H_Do << std::endl;
+
 	std::cout << "[dual_arm_control]: STATE 2 GO : \t"     << y_2_go << std::endl;
 	std::cout << "[dual_arm_control]: 3D STATE 2 GO : \t"  << xt2go_bar.transpose() << std::endl;  
+
 	// std::cout << "[dual_arm_control]:  ------------- _sensedContact: \t" << _sensedContact << std::endl;
 	// std::cout << "[dual_arm_control]: _Vd_ee[LEFT]:  \t" << _Vd_ee[LEFT].transpose() << std::endl;
 	// std::cout << "[dual_arm_control]: _Vd_ee[RIGHT]: \t" << _Vd_ee[RIGHT].transpose() << std::endl;
@@ -1350,7 +1405,18 @@ void dual_arm_control::computeCommands()
 	std::cout << " CONVEYOR_BELT DISTURBED is  \t " << _isDisturbTarget << std::endl;
 	std::cout << " CONVEYOR_BELT PERTURBATION is  \t " << (int) (200 + 100 * sin((2.f*M_PI/1) * _dt * _cycle_count)) << std::endl;
 	std::cout << " CONVEYOR_BELT PERTURBATION is  \t " << (200 + 100 * sin((2.f*M_PI/1) * _dt * _cycle_count)) << std::endl; 
-	std::cout << " INTERCEPT STATUS is  \t " << _hasCaughtOnce << std::endl;  
+	std::cout << " INTERCEPT STATUS is  \t " << _hasCaughtOnce << std::endl;
+	std::cout << " RELEASE_AND_RETRACT STATUS is  \t " << _releaseAndretract << std::endl; 
+	// std::cout << " _windowVelTarget.size() is  \t " << _windowVelTarget.size() << std::endl; 
+	std::cout << " TARGET _movingAvgVelTarget is  \t " << _movingAvgVelTarget.norm() << std::endl;
+
+
+	// if( (!_releaseAndretract) && (fmod(_cycle_count, 20)==0)){
+	// 	_dual_PathLen_AvgSpeed = FreeMotionCtrlEstim.estimateRobotTranslation( _w_H_ee, _w_H_gp,  _w_H_eeStandby, _w_H_o, _tossVar.release_position, _desVtoss, 0.05f, 0.100f, _initSpeedScaling);
+	// }
+
+	std::cout << " AAAAAAAAAAAAAAAAA PATH_LENGTH AND SPEED AVG AAAAAAAAAAAAAAAAA is  \t " << _dual_PathLen_AvgSpeed.transpose() << std::endl; 
+	std::cout << " AAAAAAAAAAAAAAAAA AVERAGE SPEED END_EFFECTOR AAAAAAAAAAAAAAAAA is  \t " << _movingAvgSpeedEE << std::endl;
 
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

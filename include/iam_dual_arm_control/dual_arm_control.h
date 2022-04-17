@@ -363,7 +363,15 @@ class dual_arm_control
 		bool _isIntercepting = false;
 		float _beta_vel_mod;
 		bool _isDisturbTarget = false;
+		float _initSpeedScaling;
+		std::deque<float> _windowSpeedEE;
+		float _movingAvgSpeedEE;
+		int _winLengthAvgSpeedEE;
+		// int _winCounterAvgSpeedEE;
 
+		// target
+		std::deque<Eigen::Vector3f> _windowVelTarget;
+		Eigen::Vector3f _movingAvgVelTarget;
 		////////////////////////////////////////////////////////////////////////
 		// Objects for Unconstrained and contrained motion and force generation
 		////////////////////////////////////////////////////////////////////////
