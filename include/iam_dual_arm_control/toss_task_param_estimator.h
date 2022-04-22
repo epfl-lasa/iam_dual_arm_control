@@ -40,11 +40,11 @@ class MatrixPseudoInverse
       template<typename _Matrix_Type_> _Matrix_Type_ pseudoInverse(const _Matrix_Type_ &a, double epsilon = std::numeric_limits<double>::epsilon())
       {
           
-          Eigen::JacobiSVD< _Matrix_Type_ > svd(a ,Eigen::ComputeThinU | Eigen::ComputeThinV);
+        Eigen::JacobiSVD< _Matrix_Type_ > svd(a ,Eigen::ComputeThinU | Eigen::ComputeThinV);
 
-          double tolerance = epsilon * std::max(a.cols(), a.rows()) *svd.singularValues().array().abs()(0);
+        double tolerance = epsilon * std::max(a.cols(), a.rows()) *svd.singularValues().array().abs()(0);
 
-          return svd.matrixV() *  (svd.singularValues().array().abs() > tolerance).select(svd.singularValues().array().inverse(), 0).matrix().asDiagonal() * svd.matrixU().adjoint();
+        return svd.matrixV() *  (svd.singularValues().array().abs() > tolerance).select(svd.singularValues().array().inverse(), 0).matrix().asDiagonal() * svd.matrixU().adjoint();
       }
 
 };
@@ -242,6 +242,17 @@ class my_pdf_gmr
 			return true;
 		}
 
+		Eigen::VectorXf  get_gmm_vector_of_priors(){
+			return Prior_gmm_toss_;
+		}
+
+		Eigen::MatrixXf get_gmm_matrix_of_means(){
+			return Mean_gmm_toss_;
+		} 
+		Eigen::MatrixXf  get_gmm_matrix_of_covariant_matrices(){
+			return CovMx_gmm_toss_;
+		}
+
 };
 
 
@@ -272,9 +283,9 @@ class toss_task_param_estimator
 
 	public:
 
-		// PHYS_IDEAL 		: physical model of ideal (point mass) projectile with no aerodynamic drag
+		// PHYS_IDEAL 			: physical model of ideal (point mass) projectile with no aerodynamic drag
 		// PHYS_WITH_DRAG 	: physical model of projectile (ball) with Newton (aerodynamic) drag
-		// LEARNED 			: learned model of projectile (ball) with Newton (aerodynamic) drag
+		// LEARNED 					: learned model of projectile (ball) with Newton (aerodynamic) drag
 		enum ProjectileType {PHYS_IDEAL = 0, PHYS_WITH_DRAG = 1, LEARNED = 2};
 
 		toss_task_param_estimator();
@@ -301,7 +312,6 @@ class toss_task_param_estimator
 
 		// float gaussPDF(Eigen::VectorXf Data, Eigen::VectorXf Mu, Eigen::MatrixXf Sigma);
 		// bool get_GMR_IO(Eigen::VectorXf Prior, Eigen::MatrixXf Mean_gmm, Eigen::MatrixXf CovMx, Eigen::VectorXf Input_, Eigen::VectorXf &Output_, Eigen::MatrixXf &E_Cov_I, Eigen::MatrixXf &E_Cov_O);
-
 
 		// 
 		Eigen::Vector3f get_state_variation(float dt, Eigen::Vector3f X, Eigen::Vector3f Xd, Eigen::Vector3f dX_d); //  need to add ds
