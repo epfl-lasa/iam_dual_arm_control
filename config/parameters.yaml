@@ -6,6 +6,9 @@ passiveDS:
     # left : "/iiwa1/control/lambda_Pos" #
     # right: "/iiwa_blue/control/lambda_Pos" #
 
+dual_system:
+  simulation: true
+
 # object
 object:
   mass : 2.5

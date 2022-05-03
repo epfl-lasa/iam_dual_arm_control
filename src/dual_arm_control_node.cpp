@@ -10,6 +10,9 @@ int main(int argc, char **argv)
 	ros::NodeHandle nh;
 	double frequency = 200.0f;
 
+	bool isSimulation = false;
+	nh.getParam(nh.getNamespace() + "/dual_system/simulation", isSimulation);
+
 	//
 	std::string DataID;
 
@@ -25,14 +28,21 @@ int main(int argc, char **argv)
 	topic_pose_robot_base[0]			= "/simo_track/robot_left/pose";
 	topic_pose_robot_ee[0]				= "/simo_track/robot_left/ee_pose";
 	topic_ee_commands[0]					= "/iiwa1/CustomControllers/command";
-	// topic_sub_ForceTorque_Sensor[0]	= "/ft_sensor_left/netft_data";
-	topic_sub_ForceTorque_Sensor[0]	= "/iiwa1/iiwa1_FTS_topic";
 	//
 	topic_pose_robot_base[1]			= "/simo_track/robot_right/pose";
 	topic_pose_robot_ee[1]				= "/simo_track/robot_right/ee_pose";
 	topic_ee_commands[1]					= "/iiwa_blue/CustomControllers/command";
-	// topic_sub_ForceTorque_Sensor[1]	= "/ft_sensor_right/netft_data";
-	topic_sub_ForceTorque_Sensor[1]	= "/iiwa_blue/iiwa_blue_FTS_topic";
+	
+	
+
+	if(isSimulation){
+		topic_sub_ForceTorque_Sensor[0]	= "/iiwa1/iiwa1_FTS_topic";
+		topic_sub_ForceTorque_Sensor[1]	= "/iiwa_blue/iiwa_blue_FTS_topic";
+	}
+	else{
+		topic_sub_ForceTorque_Sensor[0]	= "/ft_sensor_left/netft_data";
+		topic_sub_ForceTorque_Sensor[1]	= "/ft_sensor_right/netft_data";
+	}
 
 
 	// creating the streamer
