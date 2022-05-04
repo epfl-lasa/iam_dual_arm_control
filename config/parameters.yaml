@@ -64,7 +64,7 @@ impact_direction:
 
 # dual arm task
 dual_arm_task:
-  dualTaskSelector: 3
+  dualTaskSelector: 4
   old_dual_method: false
   modulated_reaching: true
   isNorm_impact_vel: false

@@ -543,6 +543,8 @@ void dual_arm_control::run()
 	// --------------------------------------------------------
 	while (nh_.ok()) {
 		//
+		auto start = std::chrono::high_resolution_clock::now();
+		//
 		update_states_machines();
 		//
 		// get the first eigen value of the passive ds controller and Check for update of passive ds controller eigen value
@@ -573,6 +575,14 @@ void dual_arm_control::run()
 		ros::spinOnce();
 		loop_rate_.sleep();
 		_cycle_count ++;    // counter the cycles
+
+		auto stop = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+
+    // To get the value of duration use the count()
+    // member function on the duration object
+    std::cout << " TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT" << std::endl;
+    std::cout << duration.count() << " ms" << std::endl;
 	}
 
 	// Send zero command
@@ -1120,11 +1130,20 @@ void dual_arm_control::computeCommands()
 {
 	// Update contact state
   updateContactState();
-
+  //
+  auto start = std::chrono::high_resolution_clock::now();
   //
   if( (!_releaseAndretract) && (fmod(_cycle_count, 20)==0)){
 		_dual_PathLen_AvgSpeed = FreeMotionCtrlEstim.predictRobotTranslation( _w_H_ee, _w_H_gp,  _w_H_eeStandby, _w_H_o, _tossVar.release_position, _desVtoss, 0.05f, 0.100f, _initSpeedScaling);
 	}
+
+	auto stop = std::chrono::high_resolution_clock::now();
+  auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+
+  // To get the value of duration use the count()
+  // member function on the duration object
+  std::cout << " PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP" << std::endl;
+  std::cout << duration.count() << " ms" << std::endl;
 
 	//
 	float y_2_go = _xd_landing(1) - _vt(1) * (_xd_landing(0) - _x_pickup(0))/(0.28f*_desVtoss); //
