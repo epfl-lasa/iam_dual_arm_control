@@ -59,15 +59,12 @@
       <arg name="robot_name_2" value="$(arg robot_name_2)"/>
   </include> -->
   
-  <!-- <include file="$(find dual_arm_control)/launch/dual_arm_control.launch">
-    <arg name="topic_pose_object"             value="$(arg TOPIC_OBJECT_POSE)"             />
-    <arg name="topic_pose_robot_base_left"    value="$(arg TOPIC_LEFT_ROBOT_BASE_POSE)"    />
-    <arg name="topic_pose_robot_ee_left"      value="$(arg TOPIC_LEFT_ROBOT_EE_POSE)"      />
-    <arg name="topic_ee_commands_left"        value="$(arg TOPIC_LEFT_ROBOT_COMMANDS)"     />
-    <arg name="topic_pose_robot_base_right"   value="$(arg TOPIC_RIGHT_ROBOT_BASE_POSE)"   />
-    <arg name="topic_pose_robot_ee_right"     value="$(arg TOPIC_RIGHT_ROBOT_EE_POSE)"     />
-    <arg name="topic_ee_commands_right"       value="$(arg TOPIC_RIGHT_ROBOT_COMMANDS)"    /> 
-  </include> -->
+  <!-- <group ns="dual_idyn"> -->
+        <rosparam file="$(find dual_feasible_tossing_config)/config/iiwa_control.yaml" command="load" /> <!--subst_value="true"/> -->
+
+        <node name="dual_feasible_tossing_config_node" pkg="dual_feasible_tossing_config" type="dual_feasible_tossing_config_node" respawn="false" output="screen">
+        </node>
+    <!-- </group> -->
 
 
 </launch>
