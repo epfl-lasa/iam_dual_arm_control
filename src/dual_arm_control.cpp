@@ -211,10 +211,11 @@ dual_arm_control::dual_arm_control(	ros::NodeHandle &n, double frequency, 	//std
 
 	_objCtrlKey 	= true;
 	_goHome 			= true;
-	_goToAttractors 	= true;     // true
+	_goToAttractors 		= true;     // true
 	_releaseAndretract 	= false;
 	_isThrowing 		= false;
-	_isPlacing          = false;
+	_isPlacing     	= false;
+	_isPlaceTossing = false;
 	// _t0_run = ros::Time::now().toSec();
 	_release_flag = false;
 	_startlogging = false;
@@ -222,15 +223,18 @@ dual_arm_control::dual_arm_control(	ros::NodeHandle &n, double frequency, 	//std
 	_dualTaskSelector = 1;
 	_old_dual_method  = true;
 	_mode_conveyor_belt = 0;
-	_desSpeed_conveyor_belt = 200;
+	_desSpeed_conveyor_belt = 0;
+	_nominalSpeed_conveyor_belt = 200;
 	_dual_PathLen_AvgSpeed.setZero();
 	_hasCaughtOnce = false;
 	_isIntercepting = false;
 	_isDisturbTarget = false;
 	_beta_vel_mod = 1.0f;
-	_initSpeedScaling = 0.75;
+	_initSpeedScaling = 0.75; //1.0f; //
 	_winLengthAvgSpeedEE = 20;
 	// _winCounterAvgSpeedEE = 0;
+	_isSimulation = true;
+
 }
 //
 dual_arm_control::~dual_arm_control(){}
@@ -374,7 +378,9 @@ bool dual_arm_control::init()
 	gotParam = gotParam && nh_.getParam("dual_arm_task/isQP_wrench_generation", isQP_wrench_generation);
 
 	gotParam = gotParam && nh_.getParam("dual_arm_task/lifting/increment_lift_pos", _increment_lift_pos);
-	gotParam = gotParam && nh_.getParam("conveyor_belt/control_mode", _ctrl_mode_conveyor_belt);
+	gotParam = gotParam && nh_.getParam("conveyor_belt/control_mode", _ctrl_mode_conveyor_belt); 
+	gotParam = gotParam && nh_.getParam("conveyor_belt/nominal_speed", _nominalSpeed_conveyor_belt); 
+	gotParam = gotParam && nh_.getParam("dual_system/simulation", _isSimulation);  
 
 	
 
@@ -543,6 +549,8 @@ void dual_arm_control::run()
 	// --------------------------------------------------------
 	while (nh_.ok()) {
 		//
+		auto start = std::chrono::high_resolution_clock::now();
+		//
 		update_states_machines();
 		//
 		// get the first eigen value of the passive ds controller and Check for update of passive ds controller eigen value
@@ -573,6 +581,14 @@ void dual_arm_control::run()
 		ros::spinOnce();
 		loop_rate_.sleep();
 		_cycle_count ++;    // counter the cycles
+
+		auto stop = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+
+    // To get the value of duration use the count()
+    // member function on the duration object
+    std::cout << " TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT" << std::endl;
+    std::cout << duration.count() << " ms" << std::endl;
 	}
 
 	// Send zero command
@@ -692,7 +708,17 @@ void dual_arm_control::update_states_machines(){
 								_dualTaskSelector = PICK_AND_LIFT; 
 							}				
 						  }
-					break;    
+					break;  
+				case 'o': {_isPlaceTossing = !_isPlaceTossing; 
+								if(_isPlaceTossing){
+									_dualTaskSelector = PLACE_TOSSING; 
+									_hasCaughtOnce = false;
+								}
+								else if(!_isPlaceTossing){
+									_dualTaskSelector = PICK_AND_LIFT; 
+								}				
+						  }
+					break;      
 				// control of impact and tossing velocity
 				case 'v': 
 						_desVtoss -=0.05f; 
@@ -784,18 +810,12 @@ void dual_arm_control::updatePoses()
 
 	/////////////////////////////////////////////////////////////////////////////////////////////
 	if(_isPlacing){
-		// _xDo    = _xDo_placing; //Eigen::Vector3f(0.65f, 0.155f, 0.35f);   // set attractor of placing task
 		_w_H_Do = Utils<float>::pose2HomoMx(_xDo_placing, _qDo);
 		// if((_w_H_o.block<3,1>(0,3)-_xDo_placing).norm()<=0.05){
 		// if((_w_H_o.block<2,1>(0,3)-_xDo_placing.head(2)).norm()<=0.04 && fabs(_w_H_o(2,3)-_xDo_placing(2)) <= 0.04){  // results with 0.04
 		// 	_releaseAndretract = true;
 		// }
 	}
-	// // 
-	// if(_isThrowing){
-	// 	_xDo    = _tossVar.release_position ; //Eigen::Vector3f(0.65f, 0.155f, 0.35f);   // set attractor of placing task
-	// 	_w_H_Do = Utils<float>::pose2HomoMx(_xDo, _qDo);
-	// }
 
 	/////////////////////////////////////////////////////////////////////////////////////////////
 	// Update trajectory of the object
@@ -1137,11 +1157,12 @@ void dual_arm_control::computeCommands()
 	Eigen::Vector3f XObj_Xrelease = _w_H_o.block(0,3,3,1) - _tossVar.release_position;
 
 	// _dual_PathLen_AvgSpeed(0) = XEE_Obj.norm() + XObj_Xrelease.norm();
-	// _dual_PathLen_AvgSpeed(1) = 0.90f*_desVtoss; //0.95f
+	// _dual_PathLen_AvgSpeed(1) = 0.50f*_desVtoss; //0.95f  0.90f
+	// Eigen::Vector2f Lp_Va_pred_bot = _dual_PathLen_AvgSpeed;
 
-	Eigen::Vector2f Lp_Va_pred_bot = {_dual_PathLen_AvgSpeed(0), 0.70f*_dual_PathLen_AvgSpeed(1)};
+	Eigen::Vector2f Lp_Va_pred_bot = {_dual_PathLen_AvgSpeed(0), 0.45f*_dual_PathLen_AvgSpeed(1)}; // 0.70f 		0.30f:good
 	Eigen::Vector2f Lp_Va_pred_tgt = tossParamEstimator.estimateTarget_SimpPathLength_AverageSpeed(_xt, _xd_landing, _vt); //_movingAvgVelTarget); //
-	float flytime_obj = 0.255f;
+	float flytime_obj = 0.200f; //0.255f;
 	_xt_state2go = tossParamEstimator.estimate_target_state_to_go(_xt, _vt, _xd_landing, Lp_Va_pred_bot, Lp_Va_pred_tgt, flytime_obj);
 
 	Eigen::Vector3f xt_bar 		= _xt - _xd_landing;
@@ -1153,7 +1174,7 @@ void dual_arm_control::computeCommands()
 
 
 	if((-xt_bar.dot(_vt) > 0) && ((_initPoseCount > 50) && ((xt_bar - xt2go_bar).norm() < 0.02f))){
-		_isIntercepting = true;
+		_isIntercepting = true; 
 	}
 
 
@@ -1172,7 +1193,7 @@ void dual_arm_control::computeCommands()
 	else{
 		beta_vel_mod_unfilt = 1.0f;
 	}	
-	float fil_beta = 0.08;
+	float fil_beta = 0.07;
 	_beta_vel_mod = (1.f- fil_beta)*_beta_vel_mod + fil_beta * beta_vel_mod_unfilt;
 
 
@@ -1219,6 +1240,7 @@ void dual_arm_control::computeCommands()
 				_isThrowing 	= false;
 				_isPlacing 		= false;
 				_isPickupSet 	= false;
+				_isPlaceTossing = false;
 				_nu_Wr0 = _nu_Wr1 	= 0.0f;
 				dsThrowing.reset_release_flag();
 				_isIntercepting = false;
@@ -1263,17 +1285,25 @@ void dual_arm_control::computeCommands()
 					_w_H_Dgp[LEFT].block(0,0,3,3)  = _w_H_o.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[LEFT],  _qgp_o[LEFT]).block(0,0,3,3);
 					_w_H_Dgp[RIGHT].block(0,0,3,3) = _w_H_o.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[RIGHT],  _qgp_o[RIGHT]).block(0,0,3,3);
 
-					if(_isPlacing || (_dualTaskSelector == PICK_AND_PLACE)){
+					if(_isPlacing || (_dualTaskSelector == PICK_AND_PLACE) || (_isPlaceTossing || (_dualTaskSelector == PLACE_TOSSING)) ){
 							Eigen::Matrix4f w_H_DesObj = Utils<float>::pose2HomoMx(_xDo_placing, _qDo_placing);
 							_w_H_Dgp[LEFT].block(0,0,3,3)  = w_H_DesObj.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[LEFT],  _qgp_o[LEFT]).block(0,0,3,3);
 							_w_H_Dgp[RIGHT].block(0,0,3,3)  = w_H_DesObj.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[RIGHT],  _qgp_o[RIGHT]).block(0,0,3,3);
 							_w_H_Do = Utils<float>::pose2HomoMx(_xDo_placing, _qDo);  //
 							// if((_w_H_o.block<2,1>(0,3)-_xDo_placing.head(2)).norm()<=0.025 && fabs(_w_H_o(2,3)-_xDo_placing(2)) <= 0.015){
 							// if((_w_H_o.block<3,1>(0,3)-_xDo_placing).norm()<=0.06){  // results with 0.6
-							if((_w_H_o.block<3,1>(0,3)-_tossVar.release_position).norm()<=0.07){  // results with 0.06
-								_releaseAndretract = true;
+							if(_isPlaceTossing || (_dualTaskSelector == PLACE_TOSSING)){
+								if((_w_H_o.block<3,1>(0,3)-_tossVar.release_position).norm()<=0.07){  // results with 0.06
+									_releaseAndretract = true;
+								}
+							}
+							else{
+								if((_w_H_o.block<3,1>(0,3)-_xDo_placing).norm()<=0.05){  // results with 0.06
+									_releaseAndretract = true;
+								}
 							}
 					}
+
 					if(_isThrowing || (_dualTaskSelector == TOSSING) || (_dualTaskSelector == PICK_AND_TOSS)){
 						Eigen::Matrix4f w_H_DesObj = Utils<float>::pose2HomoMx(_tossVar.release_position, _tossVar.release_orientation);
 							_w_H_Dgp[LEFT].block(0,0,3,3)   = w_H_DesObj.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[LEFT],  _qgp_o[LEFT]).block(0,0,3,3);
@@ -1342,8 +1372,11 @@ void dual_arm_control::computeCommands()
 		// }
 
 		//////////////////////////////////////////////////////////////////////////////////////////
-		_Vd_ee[LEFT].head(3)  *= _initSpeedScaling * _beta_vel_mod;
-		_Vd_ee[RIGHT].head(3) *= _initSpeedScaling * _beta_vel_mod;
+			if((_vt.norm() >= 0.05 && (!_releaseAndretract) && (dsThrowing.a_proximity_<=0.99f))){
+				_Vd_ee[LEFT].head(3)  *= _initSpeedScaling * _beta_vel_mod;
+				_Vd_ee[RIGHT].head(3) *= _initSpeedScaling * _beta_vel_mod;
+			}
+
 
 		// compute the object's grasp points velocity
 		getGraspPointsVelocity();
@@ -1371,7 +1404,7 @@ void dual_arm_control::computeCommands()
 
 	// control of conveyor belt speed
 	if(_ctrl_mode_conveyor_belt && _isDisturbTarget){
-			_desSpeed_conveyor_belt = (200 + 100 * sin((2.f*M_PI/1) * _dt * _cycle_count)); // static_cast<int>
+			_desSpeed_conveyor_belt = (int)(_nominalSpeed_conveyor_belt + 100 * sin((2.f*M_PI/1) * _dt * _cycle_count)); // static_cast<int>
 	}
 
 	// std::cout << "[dual_arm_control]: _w_H_o: \n" << _w_H_o << std::endl; 
@@ -1403,10 +1436,12 @@ void dual_arm_control::computeCommands()
 	std::cout << " EEEE- OBJECT MASS is  \t " << _objectMass << std::endl;  
 	std::cout << " CONVEYOR_BELT SPEED is  \t " << _desSpeed_conveyor_belt << std::endl;
 	std::cout << " CONVEYOR_BELT DISTURBED is  \t " << _isDisturbTarget << std::endl;
-	std::cout << " CONVEYOR_BELT PERTURBATION is  \t " << (int) (200 + 100 * sin((2.f*M_PI/1) * _dt * _cycle_count)) << std::endl;
-	std::cout << " CONVEYOR_BELT PERTURBATION is  \t " << (200 + 100 * sin((2.f*M_PI/1) * _dt * _cycle_count)) << std::endl; 
+	std::cout << " CONVEYOR_BELT PERTURBATION is  \t " << (int) (_nominalSpeed_conveyor_belt + 100 * sin((2.f*M_PI/1) * _dt * _cycle_count)) << std::endl;
+	std::cout << " CONVEYOR_BELT PERTURBATION is  \t " << (_nominalSpeed_conveyor_belt + 100 * sin((2.f*M_PI/1) * _dt * _cycle_count)) << std::endl; 
 	std::cout << " INTERCEPT STATUS is  \t " << _hasCaughtOnce << std::endl;
-	std::cout << " RELEASE_AND_RETRACT STATUS is  \t " << _releaseAndretract << std::endl; 
+
+	std::cout << " HOME STATUS is -----------------------> :  \t " << _goHome << std::endl; 
+	std::cout << " RELEASE_AND_RETRACT STATUS is -----------------------> : \t " << _releaseAndretract << std::endl; 
 	// std::cout << " _windowVelTarget.size() is  \t " << _windowVelTarget.size() << std::endl; 
 	std::cout << " TARGET _movingAvgVelTarget is  \t " << _movingAvgVelTarget.norm() << std::endl;
 
@@ -1460,8 +1495,13 @@ void dual_arm_control::objectPoseCallback(const geometry_msgs::Pose::ConstPtr& m
 {
 	// _xo << msg->position.x, 	msg->position.y, 	msg->position.z;
 	Eigen::Vector3f xom, t_xo_xom; // _objectDim
-	// t_xo_xom << 0.0f, 0.0f, -_objectDim(2)/2.0f;
-	t_xo_xom << 0.0f, 0.0f, 0.0f;
+	if(!_isSimulation){
+		t_xo_xom << 0.0f, 0.0f, -_objectDim(2)/2.0f;
+	}
+	else{
+		t_xo_xom << 0.0f, 0.0f, 0.0f;
+	}
+
 
 	xom << msg->position.x, 	msg->position.y, 	msg->position.z;
 	_qo << msg->orientation.w, 	msg->orientation.x, msg->orientation.y, msg->orientation.z;
@@ -1489,24 +1529,24 @@ void dual_arm_control::objectPoseCallback(const geometry_msgs::Pose::ConstPtr& m
 
 void dual_arm_control::targetPoseCallback(const geometry_msgs::Pose::ConstPtr& msg)
 {
-	
 	_xt << msg->position.x, 	msg->position.y, 	msg->position.z;
 	_qt << msg->orientation.w, 	msg->orientation.x, msg->orientation.y, msg->orientation.z;
 
-	// _xt += 0.02*Eigen::VectorXf::Random(_xt.rows());
-
 	// filtered object position
-	// SGF::Vec temp(3);
-    // _xt_filtered->AddData(_xt);
-    // _xt_filtered->GetOutput(0,temp);
-    // _xt = temp;
-    // _xt_filtered->GetOutput(1,temp);
-    // float afilt = 0.05f;
-    // _vt = (1.f - afilt) *_vt + afilt * temp;	
+	SGF::Vec temp(3);
+    _xt_filtered->AddData(_xt);
+    _xt_filtered->GetOutput(0,temp);
+    _xt = temp;
+    _xt_filtered->GetOutput(1,temp);
+    _vt = temp;	
+ //    // float afilt = 0.05f;
+ //    // _vt = (1.f - afilt) *_vt + afilt * temp;	
 
-	_xt_KF_filtered.update(_xt);
-	_xt = _xt_KF_filtered.get_estimate_position();
-	_vt = _xt_KF_filtered.get_estimate_velocity();
+	// _xt_KF_filtered.update(_xt);
+	// _xt = _xt_KF_filtered.get_estimate_position();
+	// _vt = _xt_KF_filtered.get_estimate_velocity();
+  _xt_KF_filtered.update(_vt);
+	_vt = _xt_KF_filtered.get_estimate_position();
 }
 
 void dual_arm_control::updateBasePoseCallback(const geometry_msgs::Pose::ConstPtr& msg, int k)
@@ -1848,6 +1888,8 @@ Eigen::Vector3f dual_arm_control::get_object_desired_direction(int task_type, Ei
 		case 3:  des_object_pos = dsThrowing.Xt_; 	break;
 		case 4:  des_object_pos = 0.5f*(object_pos + _xDo_placing);
 						 des_object_pos(2)=_xDo_placing(2) + _height_via_point; 		break;
+		case 5:  des_object_pos = 0.5f*(object_pos + _xDo_placing);
+						 des_object_pos(2)=_xDo_placing(2) + _height_via_point; 		break;
 		default: des_object_pos = _xDo; 						break;
 	}
 	//
@@ -1952,8 +1994,8 @@ void dual_arm_control::publishData()
   // send speed command to the conveyor belt
   std_msgs::Int32 _speedMessage;
   _speedMessage.data = _desSpeed_conveyor_belt;
-  if((fmod(_cycle_count, 25)==0)){
-	// _pubConveyorBeltSpeed.publish(_speedMessage);
+  if((fmod(_cycle_count, 30)==0)){
+	_pubConveyorBeltSpeed.publish(_speedMessage);
 	}
 }
 
