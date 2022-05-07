@@ -45,8 +45,6 @@ class dualArmFreeMotionController
 		Eigen::Matrix3f gain_o_rel;
 		float _cpl_grasp;
 
-    float _v_max;
-    float _w_max;
 
     float _coord_abs2;
     float _cpl_rel;
@@ -62,6 +60,9 @@ class dualArmFreeMotionController
 		Eigen::Matrix4f  _qvgp_o[NB_ROBOTS];
 
 	public :
+		float _v_max;
+    	float _w_max;
+
 		//
 		float _dt;
 		float reachable_p;
@@ -103,6 +104,7 @@ class dualArmFreeMotionController
 
 		Eigen::Vector3f _objectDim;
 		float _alpha_obs[NB_ROBOTS];
+		float _activationAperture;
 		
 		//
 		dualArmFreeMotionController();

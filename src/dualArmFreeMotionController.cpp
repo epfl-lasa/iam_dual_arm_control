@@ -94,6 +94,7 @@ dualArmFreeMotionController::dualArmFreeMotionController()
   _alpha_obs[LEFT]  = 0.0f;
   _alpha_obs[RIGHT] = 0.0f;
   _smoothcount = -100;
+  _activationAperture = 1.0f;
 
 }
 
@@ -705,6 +706,7 @@ void dualArmFreeMotionController::computeCoordinatedMotion2(Eigen::Matrix4f w_H_
   Eigen::Matrix4f w_H_ap, lp_H_rp;           // absolute and relative object's grasp points
   Eigen::Matrix4f w_H_ar_stb, lr_H_rr_stb;   // absolute and relative EE standby poses
   Eigen::Matrix4f lp_H_rp_pgrasp;            // relative pregrasp EE pose
+  Eigen::Matrix4f  w_H_ap_momentum, lp_H_rp_momentum;  // absolute and relative rectracting EE pose to give some momentum
   // Bimanual coordinated task-space transforms
   Utils<float>::getBimanualTransforms(w_H_ee[LEFT], w_H_ee[RIGHT], w_H_ar, lr_H_rr);    // EE
   // Utils<float>::getBimanualTransforms(w_H_gp[LEFT], w_H_gp[RIGHT], w_H_ap, lp_H_rp);      // object's grasp points
@@ -714,10 +716,19 @@ void dualArmFreeMotionController::computeCoordinatedMotion2(Eigen::Matrix4f w_H_
   lp_H_rp_pgrasp       = lp_H_rp;
   lp_H_rp_pgrasp(1, 3) = lp_H_rp(1,3)/fabs(lp_H_rp(1,3)) * (fabs(lp_H_rp(1,3)) + 0.30f);
 
+  float comb_coef  = 0.5f;
+  lp_H_rp_momentum = lp_H_rp;
+  lp_H_rp_momentum.block(0,3,3,1) = comb_coef*lp_H_rp_pgrasp.block(0,3,3,1) + (1. - comb_coef)*lr_H_rr_stb.block(0,3,3,1);
+
+  w_H_ap_momentum = w_H_ap;
+  w_H_ap_momentum.block(0,3,3,1) = comb_coef*w_H_ap.block(0,3,3,1) + (1. - comb_coef)*w_H_ar_stb.block(0,3,3,1);
+
   // =======================================
   // Absolute velocity of the End-effectors
   // =======================================
-  Eigen::Vector3f d_p_abs = reachable_p *w_H_ap.block<3,1>(0,3) + (1.0f-reachable_p)*w_H_ar_stb.block<3,1>(0,3);
+  // Eigen::Vector3f d_p_abs = reachable_p *w_H_ap.block<3,1>(0,3) + (1.0f-reachable_p)*w_H_ar_stb.block<3,1>(0,3);
+  Eigen::Vector3f d_p_abs = _activationAperture * reachable_p *w_H_ap.block<3,1>(0,3) 
+                          + (1.0f-_activationAperture * reachable_p)*(_activationAperture * w_H_ar_stb.block<3,1>(0,3) + (1. - _activationAperture)*w_H_ap_momentum.block<3,1>(0,3));
   _error_abs.head(3)      = w_H_ar.block<3,1>(0,3) - d_p_abs;
   
   // Coupling the orientation with the position error
@@ -771,12 +782,13 @@ void dualArmFreeMotionController::computeCoordinatedMotion2(Eigen::Matrix4f w_H_
 
   Eigen::Vector3f o_error_pos_abs = w_H_o.block<3,3>(0,0).transpose() * _error_abs.head(3);
   Eigen::Vector3f o_error_pos_abs_paral = Eigen::Vector3f(o_error_pos_abs(0), 0.0f, o_error_pos_abs(2));
-  float cp_ap = computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.06f, 1.0f, true);  // 50.0f, 0.12f, 1.0f  (0.04f) (0.02f)
+  float cp_ap = _activationAperture * computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.06f, 1.0f, true);  // 50.0f, 0.12f, 1.0f  (0.04f) (0.02f)
 
 
   // position error accounting for the reachability of the target
   // Eigen::Vector3f d_p_rel = reachable_p *(cpl_rel*cp_ap* lp_H_rp.block<3,1>(0,3) + (1.0f-cpl_rel*cp_ap) *lp_H_rp_pgrasp.block<3,1>(0,3)) + (1.0f-reachable_p) * lr_H_rr_stb.block<3,1>(0,3); // TBC 
-  Eigen::Vector3f d_p_rel = cpl_rel *(cp_ap * lp_H_rp.block<3,1>(0,3) + (1.0f-cp_ap) *lp_H_rp_pgrasp.block<3,1>(0,3)) + (1.0f-cpl_rel) * lr_H_rr_stb.block<3,1>(0,3); // TBC 
+  Eigen::Vector3f d_p_rel = cpl_rel *(cp_ap * lp_H_rp.block<3,1>(0,3) + (1.0f-cp_ap) * (_activationAperture * lp_H_rp_pgrasp.block<3,1>(0,3) + (1. - _activationAperture) * lp_H_rp_momentum.block<3,1>(0,3))  ) 
+                          + (1.0f-cpl_rel) * lr_H_rr_stb.block<3,1>(0,3); // TBC 
 
   _error_rel.head(3) = lr_H_rr.block<3,1>(0,3) - d_p_rel;  // 
 
@@ -1441,8 +1453,11 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
     else{
       cp_ap2 = 0.0f*Utils<float>::computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.02f, 1.2f, true);
        alp = 0.10f;
-      _refVreach[LEFT]  = (1.0f-alp)*_refVreach[LEFT]  + alp*(DS_ee_nominal.head(3).norm());
-      _refVreach[RIGHT] = (1.0f-alp)*_refVreach[RIGHT] + alp*(DS_ee_nominal.tail(3).norm());
+      // _refVreach[LEFT]  = (1.0f-alp)*_refVreach[LEFT]  + alp*(DS_ee_nominal.head(3).norm());
+      // _refVreach[RIGHT] = (1.0f-alp)*_refVreach[RIGHT] + alp*(DS_ee_nominal.tail(3).norm());
+      _refVreach[LEFT]  = (1.0f-alp)*_refVreach[LEFT]  + alp*((1.0f-cp_ap)*DS_ee_nominal.head(3).norm()+ cp_ap*VdImp[LEFT].norm());
+      _refVreach[RIGHT] = (1.0f-alp)*_refVreach[RIGHT] + alp*((1.0f-cp_ap)*DS_ee_nominal.tail(3).norm()+ cp_ap*VdImp[RIGHT].norm());
+
       speed_ee[LEFT]    = _refVreach[LEFT];
       speed_ee[RIGHT]   = _refVreach[RIGHT];
 

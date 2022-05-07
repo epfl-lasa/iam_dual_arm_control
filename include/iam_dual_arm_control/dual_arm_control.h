@@ -347,6 +347,8 @@ class dual_arm_control
 
 		float _delta_Imp  = 0.0f;
 		float _delta_Toss = 0.0f;
+		float _trackingFactor;
+		float _delta_tracking;
 
 		Vector6f _VEE_oa[NB_ROBOTS];
 		std::string _dsDampingTopic[NB_ROBOTS];
@@ -360,6 +362,7 @@ class dual_arm_control
 		int _mode_conveyor_belt;
 		int _desSpeed_conveyor_belt;
 		int _nominalSpeed_conveyor_belt;
+		int _magniture_pert_conveyor_belt;
 		Eigen::Vector2f _dual_PathLen_AvgSpeed;
 		bool _hasCaughtOnce = false;
 		bool _isIntercepting = false;
@@ -370,6 +373,7 @@ class dual_arm_control
 		float _movingAvgSpeedEE;
 		int _winLengthAvgSpeedEE;
 		// int _winCounterAvgSpeedEE;
+		bool _adaptationActive = false;
 
 		// target
 		std::deque<Eigen::Vector3f> _windowVelTarget;
