@@ -232,7 +232,7 @@ dual_arm_control::dual_arm_control(	ros::NodeHandle &n, double frequency, 	//std
 	_isDisturbTarget = false;
 	_beta_vel_mod = 1.0f;
 	_initSpeedScaling = 1.0f; //0.75; //
-	_trackingFactor = 0.30f; //0.17f; //
+	_trackingFactor = 0.30f; //0.17f; // 0.35f better
 	_delta_tracking = 0.0f;
 	_winLengthAvgSpeedEE = 20;
 	// _winCounterAvgSpeedEE = 0;
@@ -1927,7 +1927,7 @@ void dual_arm_control::prepareCommands(Vector6f Vd_ee[], Eigen::Vector4f qd[], V
   }
 
   // --------------------------------------------------------
-  if(_sensedContact && CooperativeCtrl._ContactConfidence == 1.0f)
+  if(_goToAttractors && _sensedContact && CooperativeCtrl._ContactConfidence == 1.0f)
   {
   	_nu_Wr0 = 0.80f*_nu_Wr0 + 0.20f;
   	_nu_Wr1 = 0.92f*_nu_Wr1 + 0.08f;
