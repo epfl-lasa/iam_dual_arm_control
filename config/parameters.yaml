@@ -12,8 +12,8 @@ dual_system:
 # object
 object:
   mass : 2.5
-  dimension:       [0.26, 0.26,  0.26] #[0.20, 0.20, 0.20] #[0.20, 0.30, 0.20] #[0.16, 0.29, 0.14] # 
-  graspOffset:     [-0.04, 0.00, 0.03] #[0.00, 0.00, 0.00] #[-0.04, 0.00,-0.035] #
+  dimension:       [0.18, 0.19, 0.18] #[0.26, 0.26,  0.26] #[0.20, 0.20, 0.20] #[0.20, 0.30, 0.20] #[0.16, 0.29, 0.14] # 
+  graspOffset:     [0.00, 0.00, 0.00] #[-0.04, 0.00, 0.03] #[-0.04, 0.00,-0.035] #
 
   cubicBox :       [0.26, 0.26, 0.26]
   coronaBottePack: [0.13, 0.19, 0.14] 
@@ -21,6 +21,7 @@ object:
   bottlesPack:     [0.25, 0.19, 0.20]
   drGabsPack:      [0.13, 0.14, 0.15]
   smallOpenBox:    [0.16, 0.29, 0.14]
+  optitrackBox:    [0.18, 0.19, 0.18]
 
 
 # End-effector tool
@@ -30,7 +31,7 @@ tool:
     right: 0.200 #  0.115   #
 
 #
-desVimp:   0.5
+desVimp:   0.4
 desVreach: 0.75
 # tossing task parameters
 tossing:
@@ -64,7 +65,7 @@ impact_direction:
 
 # dual arm task
 dual_arm_task:
-  dualTaskSelector: 3
+  dualTaskSelector: 4
   old_dual_method: false
   modulated_reaching: false
   isNorm_impact_vel: false
@@ -74,7 +75,7 @@ dual_arm_task:
     orientation: [1.00, 0.00, 0.00, 0.00]
     increment_lift_pos: false
   placing: 
-    position: [0.72, 0.0, 0.30] #[0.675, 0.0, 0.25]  [0.72, 0.0, 0.25]
+    position: [0.72, 0.00, 0.25] #[0.675, 0.0, 0.25]  [0.72, 0.0, 0.25]
     orientation: [1.00, 0.00, 0.00, 0.00]
     height_via_point: 0.05
 # converyor-belt

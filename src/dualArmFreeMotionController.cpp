@@ -519,8 +519,6 @@ void dualArmFreeMotionController::computeReleaseAndRetractMotion(Eigen::Matrix4f
   _V_rel.head(3) = -4.0f*gain_p_rel * _error_rel.head(3);
   _V_rel.tail(3) = -jacMuTheta_rel.inverse() * gain_o_rel * _error_rel.tail(3);
 
-  std::cout << "[dual_arm_control]: Relative Velo: \t" <<  _V_rel.transpose() << std::endl;
-
   // =======================================
   // Absolute velocity of the End-effectors
   // =======================================
@@ -528,7 +526,6 @@ void dualArmFreeMotionController::computeReleaseAndRetractMotion(Eigen::Matrix4f
 
   Eigen::Vector3f d_p_abs = (1.f - cpl_rel) *w_H_ar.block<3,1>(0,3) + cpl_rel*w_H_ar_stb.block<3,1>(0,3);
   _error_abs.head(3)      = w_H_ar.block<3,1>(0,3) - d_p_abs;
-  std::cout << "[dual_arm_control]: Absolute Error: \t" <<  _V_abs.transpose() << std::endl;
 
   // Coupling the orientation with the position error
   float cpl_abs = computeCouplingFactor(_error_abs.head(3), 50.0f, 0.02f, 1.0f, false);  // 0.2f
@@ -548,8 +545,6 @@ void dualArmFreeMotionController::computeReleaseAndRetractMotion(Eigen::Matrix4f
   // ~~~~~~~~~~~~~~~~~~~~~~~
   _V_abs.head(3) = -gain_p_abs * _error_abs.head(3);
   _V_abs.tail(3) = -jacMuTheta_abs.inverse() * gain_o_abs * _error_abs.tail(3);
-
-  std::cout << "[dual_arm_control]: Absolute Velo: \t" <<  _V_abs.transpose() << std::endl;
 
   // ========================================
   // Computation of individual EE motion
@@ -571,10 +566,6 @@ void dualArmFreeMotionController::computeReleaseAndRetractMotion(Eigen::Matrix4f
 
   Vd_ee[LEFT]  = Utils<float>::SaturationTwist(_v_max, _w_max, Vd_ee[LEFT]);
   Vd_ee[RIGHT] = Utils<float>::SaturationTwist(_v_max, _w_max, Vd_ee[RIGHT]);
-
-  std::cout << "[dual_arm_control]: CCCCCCCCCCC cpl_abs: \t" <<  cpl_abs << std::endl;
-  std::cout << "[dual_arm_control]: CCCCCCCCCCC TANH: \t" <<  1.0f-std::tanh(3.0f*_error_rel.head(3).norm()) << std::endl;
-  std::cout << "[dual_arm_control]: CCCCCCCCCCC cpl_rel: \t" <<  cpl_rel << std::endl;
 
   // // Computation of desired orientation
   // // this->computeDesiredOrientation(coord_abs, w_H_ee, w_H_gp, w_H_o, qd, isOrient3d);
@@ -1451,13 +1442,12 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
       std::cout << " IIIIIIIIIIIIIIIIIIIIIIIIIIIIII HERE IN NORM IMPACT IIIIIIIIIIIIIII " << std::endl;
     }
     else{
-      cp_ap2 = 0.0f*Utils<float>::computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.02f, 1.2f, true);
+      cp_ap2 = Utils<float>::computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.10f, 1.5f, true);
        alp = 0.10f;
       // _refVreach[LEFT]  = (1.0f-alp)*_refVreach[LEFT]  + alp*(DS_ee_nominal.head(3).norm());
       // _refVreach[RIGHT] = (1.0f-alp)*_refVreach[RIGHT] + alp*(DS_ee_nominal.tail(3).norm());
-      _refVreach[LEFT]  = (1.0f-alp)*_refVreach[LEFT]  + alp*((1.0f-cp_ap)*DS_ee_nominal.head(3).norm()+ cp_ap*VdImp[LEFT].norm());
-      _refVreach[RIGHT] = (1.0f-alp)*_refVreach[RIGHT] + alp*((1.0f-cp_ap)*DS_ee_nominal.tail(3).norm()+ cp_ap*VdImp[RIGHT].norm());
-
+      _refVreach[LEFT]  = (1.0f-alp)*_refVreach[LEFT]  + alp*((1.0f-cp_ap2)*DS_ee_nominal.head(3).norm()+ cp_ap2*VdImp[LEFT].norm());
+      _refVreach[RIGHT] = (1.0f-alp)*_refVreach[RIGHT] + alp*((1.0f-cp_ap2)*DS_ee_nominal.tail(3).norm()+ cp_ap2*VdImp[RIGHT].norm());
       speed_ee[LEFT]    = _refVreach[LEFT];
       speed_ee[RIGHT]   = _refVreach[RIGHT];
 
