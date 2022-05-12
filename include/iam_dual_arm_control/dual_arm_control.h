@@ -97,7 +97,7 @@ class dual_arm_control
     // TaskType
     // enum TASK_TYPE {GOHOME = 0, RELEASE_AND_RETRACT = 1, PICK_AND_LIFT = 2, PICK_AND_THROW = 3, PICK_AND_PLACE = 4, 
     // 								PICK_AND_HANDOVER = 5, THROWING = 6, HANDINGOVER = 7, PAUSE_MOTION = 8};
-    enum TASK_TYPE {REACH = 0, PICK_AND_LIFT = 1, TOSSING = 2, PICK_AND_TOSS = 3, PICK_AND_PLACE = 4, PICK_AND_HANDOVER = 5, THROWING = 6, HANDINGOVER = 7, PAUSE_MOTION = 8};
+    enum TASK_TYPE {REACH = 0, PICK_AND_LIFT = 1, TOSSING = 2, PICK_AND_TOSS = 3, PICK_AND_PLACE = 4, PLACE_TOSSING = 5, THROWING = 6, HANDINGOVER = 7, PAUSE_MOTION = 8};
 
 		// 0=reach, 1=pick, 2=toss, 3=pick_and_toss, 4=pick_and_place
 
@@ -311,6 +311,7 @@ class dual_arm_control
 		bool _goToAttractors;															// send the robots to their attractors
 		bool _isPlacing;
 		bool _isPickupSet;
+		bool _isPlaceTossing;															// fast interrupted placing motion
 		bool _impact_dir_preset = true;
 		int  _dualTaskSelector  = 1;
 		bool _old_dual_method   = false;
@@ -346,6 +347,8 @@ class dual_arm_control
 
 		float _delta_Imp  = 0.0f;
 		float _delta_Toss = 0.0f;
+		float _trackingFactor;
+		float _delta_tracking;
 
 		Vector6f _VEE_oa[NB_ROBOTS];
 		std::string _dsDampingTopic[NB_ROBOTS];
@@ -358,6 +361,8 @@ class dual_arm_control
 
 		int _mode_conveyor_belt;
 		int _desSpeed_conveyor_belt;
+		int _nominalSpeed_conveyor_belt;
+		int _magniture_pert_conveyor_belt;
 		Eigen::Vector2f _dual_PathLen_AvgSpeed;
 		bool _hasCaughtOnce = false;
 		bool _isIntercepting = false;
@@ -368,6 +373,7 @@ class dual_arm_control
 		float _movingAvgSpeedEE;
 		int _winLengthAvgSpeedEE;
 		// int _winCounterAvgSpeedEE;
+		bool _adaptationActive = false;
 
 		// target
 		std::deque<Eigen::Vector3f> _windowVelTarget;
@@ -382,6 +388,7 @@ class dual_arm_control
 		toss_task_param_estimator 		tossParamEstimator; 			// tossing task param estimator
 		dualArmFreeMotionController 	FreeMotionCtrlEstim;
 		throwingDS 										dsThrowingEstim;				//
+		bool 													_isSimulation;
 
 
 		// Callbacks

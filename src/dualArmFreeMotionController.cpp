@@ -94,6 +94,7 @@ dualArmFreeMotionController::dualArmFreeMotionController()
   _alpha_obs[LEFT]  = 0.0f;
   _alpha_obs[RIGHT] = 0.0f;
   _smoothcount = -100;
+  _activationAperture = 1.0f;
 
 }
 
@@ -518,8 +519,6 @@ void dualArmFreeMotionController::computeReleaseAndRetractMotion(Eigen::Matrix4f
   _V_rel.head(3) = -4.0f*gain_p_rel * _error_rel.head(3);
   _V_rel.tail(3) = -jacMuTheta_rel.inverse() * gain_o_rel * _error_rel.tail(3);
 
-  std::cout << "[dual_arm_control]: Relative Velo: \t" <<  _V_rel.transpose() << std::endl;
-
   // =======================================
   // Absolute velocity of the End-effectors
   // =======================================
@@ -527,7 +526,6 @@ void dualArmFreeMotionController::computeReleaseAndRetractMotion(Eigen::Matrix4f
 
   Eigen::Vector3f d_p_abs = (1.f - cpl_rel) *w_H_ar.block<3,1>(0,3) + cpl_rel*w_H_ar_stb.block<3,1>(0,3);
   _error_abs.head(3)      = w_H_ar.block<3,1>(0,3) - d_p_abs;
-  std::cout << "[dual_arm_control]: Absolute Error: \t" <<  _V_abs.transpose() << std::endl;
 
   // Coupling the orientation with the position error
   float cpl_abs = computeCouplingFactor(_error_abs.head(3), 50.0f, 0.02f, 1.0f, false);  // 0.2f
@@ -547,8 +545,6 @@ void dualArmFreeMotionController::computeReleaseAndRetractMotion(Eigen::Matrix4f
   // ~~~~~~~~~~~~~~~~~~~~~~~
   _V_abs.head(3) = -gain_p_abs * _error_abs.head(3);
   _V_abs.tail(3) = -jacMuTheta_abs.inverse() * gain_o_abs * _error_abs.tail(3);
-
-  std::cout << "[dual_arm_control]: Absolute Velo: \t" <<  _V_abs.transpose() << std::endl;
 
   // ========================================
   // Computation of individual EE motion
@@ -570,10 +566,6 @@ void dualArmFreeMotionController::computeReleaseAndRetractMotion(Eigen::Matrix4f
 
   Vd_ee[LEFT]  = Utils<float>::SaturationTwist(_v_max, _w_max, Vd_ee[LEFT]);
   Vd_ee[RIGHT] = Utils<float>::SaturationTwist(_v_max, _w_max, Vd_ee[RIGHT]);
-
-  std::cout << "[dual_arm_control]: CCCCCCCCCCC cpl_abs: \t" <<  cpl_abs << std::endl;
-  std::cout << "[dual_arm_control]: CCCCCCCCCCC TANH: \t" <<  1.0f-std::tanh(3.0f*_error_rel.head(3).norm()) << std::endl;
-  std::cout << "[dual_arm_control]: CCCCCCCCCCC cpl_rel: \t" <<  cpl_rel << std::endl;
 
   // // Computation of desired orientation
   // // this->computeDesiredOrientation(coord_abs, w_H_ee, w_H_gp, w_H_o, qd, isOrient3d);
@@ -705,6 +697,7 @@ void dualArmFreeMotionController::computeCoordinatedMotion2(Eigen::Matrix4f w_H_
   Eigen::Matrix4f w_H_ap, lp_H_rp;           // absolute and relative object's grasp points
   Eigen::Matrix4f w_H_ar_stb, lr_H_rr_stb;   // absolute and relative EE standby poses
   Eigen::Matrix4f lp_H_rp_pgrasp;            // relative pregrasp EE pose
+  Eigen::Matrix4f  w_H_ap_momentum, lp_H_rp_momentum;  // absolute and relative rectracting EE pose to give some momentum
   // Bimanual coordinated task-space transforms
   Utils<float>::getBimanualTransforms(w_H_ee[LEFT], w_H_ee[RIGHT], w_H_ar, lr_H_rr);    // EE
   // Utils<float>::getBimanualTransforms(w_H_gp[LEFT], w_H_gp[RIGHT], w_H_ap, lp_H_rp);      // object's grasp points
@@ -714,10 +707,19 @@ void dualArmFreeMotionController::computeCoordinatedMotion2(Eigen::Matrix4f w_H_
   lp_H_rp_pgrasp       = lp_H_rp;
   lp_H_rp_pgrasp(1, 3) = lp_H_rp(1,3)/fabs(lp_H_rp(1,3)) * (fabs(lp_H_rp(1,3)) + 0.30f);
 
+  float comb_coef  = 0.5f;
+  lp_H_rp_momentum = lp_H_rp;
+  lp_H_rp_momentum.block(0,3,3,1) = comb_coef*lp_H_rp_pgrasp.block(0,3,3,1) + (1. - comb_coef)*lr_H_rr_stb.block(0,3,3,1);
+
+  w_H_ap_momentum = w_H_ap;
+  w_H_ap_momentum.block(0,3,3,1) = comb_coef*w_H_ap.block(0,3,3,1) + (1. - comb_coef)*w_H_ar_stb.block(0,3,3,1);
+
   // =======================================
   // Absolute velocity of the End-effectors
   // =======================================
-  Eigen::Vector3f d_p_abs = reachable_p *w_H_ap.block<3,1>(0,3) + (1.0f-reachable_p)*w_H_ar_stb.block<3,1>(0,3);
+  // Eigen::Vector3f d_p_abs = reachable_p *w_H_ap.block<3,1>(0,3) + (1.0f-reachable_p)*w_H_ar_stb.block<3,1>(0,3);
+  Eigen::Vector3f d_p_abs = _activationAperture * reachable_p *w_H_ap.block<3,1>(0,3) 
+                          + (1.0f-_activationAperture * reachable_p)*(_activationAperture * w_H_ar_stb.block<3,1>(0,3) + (1. - _activationAperture)*w_H_ap_momentum.block<3,1>(0,3));
   _error_abs.head(3)      = w_H_ar.block<3,1>(0,3) - d_p_abs;
   
   // Coupling the orientation with the position error
@@ -771,12 +773,13 @@ void dualArmFreeMotionController::computeCoordinatedMotion2(Eigen::Matrix4f w_H_
 
   Eigen::Vector3f o_error_pos_abs = w_H_o.block<3,3>(0,0).transpose() * _error_abs.head(3);
   Eigen::Vector3f o_error_pos_abs_paral = Eigen::Vector3f(o_error_pos_abs(0), 0.0f, o_error_pos_abs(2));
-  float cp_ap = computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.06f, 1.0f, true);  // 50.0f, 0.12f, 1.0f  (0.04f) (0.02f)
+  float cp_ap = _activationAperture * computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.06f, 1.0f, true);  // 50.0f, 0.12f, 1.0f  (0.04f) (0.02f)
 
 
   // position error accounting for the reachability of the target
   // Eigen::Vector3f d_p_rel = reachable_p *(cpl_rel*cp_ap* lp_H_rp.block<3,1>(0,3) + (1.0f-cpl_rel*cp_ap) *lp_H_rp_pgrasp.block<3,1>(0,3)) + (1.0f-reachable_p) * lr_H_rr_stb.block<3,1>(0,3); // TBC 
-  Eigen::Vector3f d_p_rel = cpl_rel *(cp_ap * lp_H_rp.block<3,1>(0,3) + (1.0f-cp_ap) *lp_H_rp_pgrasp.block<3,1>(0,3)) + (1.0f-cpl_rel) * lr_H_rr_stb.block<3,1>(0,3); // TBC 
+  Eigen::Vector3f d_p_rel = cpl_rel *(cp_ap * lp_H_rp.block<3,1>(0,3) + (1.0f-cp_ap) * (_activationAperture * lp_H_rp_pgrasp.block<3,1>(0,3) + (1. - _activationAperture) * lp_H_rp_momentum.block<3,1>(0,3))  ) 
+                          + (1.0f-cpl_rel) * lr_H_rr_stb.block<3,1>(0,3); // TBC 
 
   _error_rel.head(3) = lr_H_rr.block<3,1>(0,3) - d_p_rel;  // 
 
@@ -812,7 +815,7 @@ void dualArmFreeMotionController::computeCoordinatedMotion2(Eigen::Matrix4f w_H_
 
 }
 
-Vector6f dualArmFreeMotionController::generatePlacingMotion2(Eigen::Matrix4f w_H_o, Eigen::Matrix4f w_H_Do, float via_height, Vector6f Vo)
+Vector6f dualArmFreeMotionController::generatePlacingMotion2(Eigen::Matrix4f w_H_o, Eigen::Matrix4f w_H_Do, float via_height, Vector6f Vo, bool isPlaceTossing)
 {
   // 
   Eigen::Matrix4f w_H_o_z, w_H_Do_z;   // current and desired object pose but with height of via plane
@@ -820,8 +823,13 @@ Vector6f dualArmFreeMotionController::generatePlacingMotion2(Eigen::Matrix4f w_H
   Eigen::Matrix4f w_H_ar, lr_H_rr;     // absolute and relative EE poses
 
   w_H_o_z       = w_H_o;
+  if(isPlaceTossing){
+    w_H_o_z(2,3)  = w_H_Do(2,3) + 0.0*via_height;
+  }
+  else{
+    w_H_o_z(2,3)  = w_H_Do(2,3) + via_height;
+  }
   w_H_Do_z      = w_H_Do;
-  w_H_o_z(2,3)  = w_H_Do(2,3) + 0.0*via_height;
   w_H_Do_z(2,3) = w_H_Do(2,3) + via_height;
 
   Eigen::Vector3f error_z  = Eigen::Vector3f(0.f, 0.f, w_H_o(2,3) - w_H_o_z(2,3));
@@ -1233,8 +1241,8 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
 
         Vector6f v_task_bi = ( A * _Tbi*(X_dual - Xstar_dual));
                  v_task_bi = Utils<float>::SaturationTwist(Vd_o.head(3).norm(), _w_max, v_task_bi);
-        // v_task_bi.head(3)  = v_task_bi.head(3)/(v_task_bi.head(3).norm()+1e-10)*1.0f*v_task_bi.head(3).norm();
-        // v_task_bi.head(3) = v_task_bi.head(3)/(v_task_bi.head(3).norm()+1e-10)*Vd_o.head(3).norm();
+        // v_task_bi.head(3)  = v_task_bi.head(3).normalized()*1.0f*v_task_bi.head(3).norm();
+        // v_task_bi.head(3) = v_task_bi.head(3).normalized()*Vd_o.head(3).norm();
 
         Amodul_ee_norm = _Tbi.inverse() * v_task_bi;  // 
         Amodul_ee_tang = _Tbi.inverse() * v_task_bi;  //
@@ -1264,7 +1272,7 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
         Xdot_bi.tail(3)  = w_o.cross(X_rel);
 
         Vector6f v_task_bi = ( A * _Tbi*(X_dual - Xstar_dual) + 1.0f*sw_norm_Do* Xdot_bi );
-        v_task_bi.head(3) = v_task_bi.head(3)/(v_task_bi.head(3).norm()+1e-10)*Vd_o.head(3).norm();
+        v_task_bi.head(3) = v_task_bi.head(3).normalized()*Vd_o.head(3).norm();
 
         Amodul_ee_norm = _Tbi.inverse() * v_task_bi;  // 
         Amodul_ee_tang = _Tbi.inverse() * v_task_bi;  //
@@ -1292,8 +1300,8 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
         Xdot_bi.tail(3)       = w_o.cross(X_rel);
 
         Vector6f v_task_bi = ( A * _Tbi*(X_dual - Xstar_dual) + 1.0f*sw_norm_Do* Xdot_bi );
-        v_task_bi.head(3)  = v_task_bi.head(3)/(v_task_bi.head(3).norm()+1e-10)*1.0f*v_task_bi.head(3).norm();
-        // v_task_bi.head(3) = v_task_bi.head(3)/(v_task_bi.head(3).norm()+1e-10)*Vd_o.head(3).norm();
+        v_task_bi.head(3)  = v_task_bi.head(3).normalized()*1.0f*v_task_bi.head(3).norm();
+        // v_task_bi.head(3) = v_task_bi.head(3).normalized()*Vd_o.head(3).norm();
 
         Amodul_ee_norm = _Tbi.inverse() * v_task_bi;  // 
         Amodul_ee_tang = _Tbi.inverse() * v_task_bi;  //
@@ -1316,15 +1324,17 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
         Vector6f Xdot_bi      = Eigen::VectorXf::Zero(6);
         Eigen::Vector3f X_rel = X[RIGHT] - X[LEFT];
         Vector6f Vo = Eigen::VectorXf::Zero(6);
-        Vector6f Vo_place = this->generatePlacingMotion2(w_H_o, w_H_Do, _height_via_point, Vo);
+        Vector6f Vo_place = this->generatePlacingMotion2(w_H_o, w_H_Do, _height_via_point, Vo, false);
         float cp_obj = Utils<float>::computeCouplingFactor(w_H_o.block<3,1>(0,3)-w_H_Do.block<3,1>(0,3), 50.0f, 0.12f, 1.0f, true);
         // float cp_obj = 0.5f*(std::tanh(1.5f*this->sw_norm_  * (1.0f*this->range_norm_ - (w_H_o.block<3,1>(0,3)-w_H_Do.block<3,1>(0,3)).norm()))  + 1.0f );
-        if(false){ // false
-          Vo_place.head(3) = Vo_place.head(3).normalized() * (cp_obj*Vo_place.head(3).norm() +(1.0f -cp_obj)*Vd_o.head(3).norm());
-        }
-        else{
-          Vo_place.head(3) = Vo_place.head(3).normalized() * (Vd_o.head(3).norm());
-        }
+
+        Vo_place.head(3) = Vo_place.head(3).normalized() * (cp_obj*Vo_place.head(3).norm() +(1.0f -cp_obj)*Vd_o.head(3).norm());
+        // if(false){ // false
+        //   Vo_place.head(3) = Vo_place.head(3).normalized() * (cp_obj*Vo_place.head(3).norm() +(1.0f -cp_obj)*Vd_o.head(3).norm());
+        // }
+        // else{
+        //   Vo_place.head(3) = Vo_place.head(3).normalized() * (Vd_o.head(3).norm());
+        // }
         // 
 
         Eigen::Vector3f w_o   = 0.0f*Vo_place.tail(3);
@@ -1333,9 +1343,9 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
        
         Vector6f v_task_bi = ( A * _Tbi*(X_dual - Xstar_dual) + Xdot_bi );
 
-        // v_task_bi.head(3) = v_task_bi.head(3)/(v_task_bi.head(3).norm()+1e-10)*(cp_obj*v_task_bi.head(3).norm() +(1.0f -cp_obj)*Vd_o.head(3).norm());
-        // v_task_bi.head(3) = v_task_bi.head(3)/(v_task_bi.head(3).norm()+1e-10)*(v_task_bi.head(3).norm());
-        v_task_bi.head(3) = v_task_bi.head(3)/(v_task_bi.head(3).norm()+1e-10)*Vd_o.head(3).norm();
+        // v_task_bi.head(3) = v_task_bi.head(3).normalized()*(cp_obj*v_task_bi.head(3).norm() +(1.0f -cp_obj)*Vd_o.head(3).norm());
+        // v_task_bi.head(3) = v_task_bi.head(3).normalized()*(v_task_bi.head(3).norm());
+        v_task_bi.head(3) = v_task_bi.head(3).normalized()*Vd_o.head(3).norm();
 
         Amodul_ee_norm = _Tbi.inverse() * v_task_bi;  // 
         Amodul_ee_tang = _Tbi.inverse() * v_task_bi;  //
@@ -1344,6 +1354,44 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
         //
         this->computeDesiredOrientation(1.0f, w_H_ee, w_H_gp, w_H_o, qd_nom, false);
 
+        //
+        Vd_ee_nom[LEFT].tail(3)  = Vo_place.tail(3);
+        Vd_ee_nom[RIGHT].tail(3) = Vo_place.tail(3);
+      }
+      break;
+
+      case 5:{ // placeTossing (fast interrupted placing)
+        //
+        _integral_Vee_d[LEFT].setZero();
+        _integral_Vee_d[RIGHT].setZero();
+        //
+        Vector6f X_bi = Eigen::VectorXf::Zero(6);
+        X_bi.head(3)  = 0.50f*(X[LEFT] + X[RIGHT]);
+        X_bi.tail(3)  = 0.95f*(X[RIGHT] - X[LEFT]);
+        Xstar_dual    =  _Tbi.inverse() * X_bi;
+        //
+        //velocity based motion of the object
+        Vector6f Xdot_bi      = Eigen::VectorXf::Zero(6);
+        Eigen::Vector3f X_rel = X[RIGHT] - X[LEFT];
+        Vector6f Vo = Eigen::VectorXf::Zero(6);
+        Vector6f Vo_place = this->generatePlacingMotion2(w_H_o, w_H_Do, _height_via_point, Vo, true);
+        float cp_obj = Utils<float>::computeCouplingFactor(w_H_o.block<3,1>(0,3)-w_H_Do.block<3,1>(0,3), 50.0f, 0.12f, 1.0f, true);
+
+        Vo_place.head(3) = Vo_place.head(3).normalized() * (Vd_o.head(3).norm());
+
+        Eigen::Vector3f w_o   = 0.0f*Vo_place.tail(3);
+        Xdot_bi.head(3)       = Vo_place.head(3);
+        Xdot_bi.tail(3)       = w_o.cross(X_rel);
+       
+        Vector6f v_task_bi = ( A * _Tbi*(X_dual - Xstar_dual) + Xdot_bi );
+        v_task_bi.head(3) = v_task_bi.head(3).normalized()*Vd_o.head(3).norm();
+
+        Amodul_ee_norm = _Tbi.inverse() * v_task_bi;  // 
+        Amodul_ee_tang = _Tbi.inverse() * v_task_bi;  //
+        //
+        activation = 1.0f;
+        //
+        this->computeDesiredOrientation(1.0f, w_H_ee, w_H_gp, w_H_o, qd_nom, false);
         //
         Vd_ee_nom[LEFT].tail(3)  = Vo_place.tail(3);
         Vd_ee_nom[RIGHT].tail(3) = Vo_place.tail(3);
@@ -1394,10 +1442,12 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
       std::cout << " IIIIIIIIIIIIIIIIIIIIIIIIIIIIII HERE IN NORM IMPACT IIIIIIIIIIIIIII " << std::endl;
     }
     else{
-      cp_ap2 = 0.0f*Utils<float>::computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.02f, 1.2f, true);
+      cp_ap2 = Utils<float>::computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.10f, 1.5f, true);
        alp = 0.10f;
-      _refVreach[LEFT]  = (1.0f-alp)*_refVreach[LEFT]  + alp*(DS_ee_nominal.head(3).norm());
-      _refVreach[RIGHT] = (1.0f-alp)*_refVreach[RIGHT] + alp*(DS_ee_nominal.tail(3).norm());
+      // _refVreach[LEFT]  = (1.0f-alp)*_refVreach[LEFT]  + alp*(DS_ee_nominal.head(3).norm());
+      // _refVreach[RIGHT] = (1.0f-alp)*_refVreach[RIGHT] + alp*(DS_ee_nominal.tail(3).norm());
+      _refVreach[LEFT]  = (1.0f-alp)*_refVreach[LEFT]  + alp*((1.0f-cp_ap2)*DS_ee_nominal.head(3).norm()+ cp_ap2*VdImp[LEFT].norm());
+      _refVreach[RIGHT] = (1.0f-alp)*_refVreach[RIGHT] + alp*((1.0f-cp_ap2)*DS_ee_nominal.tail(3).norm()+ cp_ap2*VdImp[RIGHT].norm());
       speed_ee[LEFT]    = _refVreach[LEFT];
       speed_ee[RIGHT]   = _refVreach[RIGHT];
 
@@ -1417,8 +1467,8 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
       speed_ee[RIGHT] = DS_ee_modulated.tail(3).norm();
     }
     //
-    Vd_ee[LEFT].head(3)  = Vd_ee[LEFT].head(3)/(Vd_ee[LEFT].head(3).norm()+1e-10)  * speed_ee[LEFT]; 
-    Vd_ee[RIGHT].head(3) = Vd_ee[RIGHT].head(3)/(Vd_ee[RIGHT].head(3).norm()+1e-10)* speed_ee[RIGHT]; 
+    Vd_ee[LEFT].head(3)  = Vd_ee[LEFT].head(3).normalized()  * speed_ee[LEFT]; 
+    Vd_ee[RIGHT].head(3) = Vd_ee[RIGHT].head(3).normalized() * speed_ee[RIGHT]; 
     //
     // Vd_ee[LEFT]  = Utils<float>::SaturationTwist(_v_max, _w_max, Vd_ee[LEFT]);
     // Vd_ee[RIGHT] = Utils<float>::SaturationTwist(_v_max, _w_max, Vd_ee[RIGHT]);

@@ -7,13 +7,13 @@ passiveDS:
     # right: "/iiwa_blue/control/lambda_Pos" #
 
 dual_system:
-  simulation: true
+  simulation: false
 
 # object
 object:
   mass : 2.5
-  dimension:       [0.20, 0.20, 0.20] #[0.26, 0.26,  0.26] #[0.20, 0.30, 0.20] #[0.16, 0.29, 0.14] # 
-  graspOffset:     [0.00, 0.00, 0.00] #[-0.03, 0.00, -0.0] #[-0.04, 0.00,-0.035] #
+  dimension:       [0.26, 0.26,  0.26] #[0.18, 0.19, 0.18] #[0.20, 0.20, 0.20] #[0.20, 0.30, 0.20] #[0.16, 0.29, 0.14] # 
+  graspOffset:     [-0.04, 0.00, 0.03] #[0.00, 0.00, 0.00] #[-0.04, 0.00,-0.035] #
 
   cubicBox :       [0.26, 0.26, 0.26]
   coronaBottePack: [0.13, 0.19, 0.14] 
@@ -21,20 +21,21 @@ object:
   bottlesPack:     [0.25, 0.19, 0.20]
   drGabsPack:      [0.13, 0.14, 0.15]
   smallOpenBox:    [0.16, 0.29, 0.14]
+  optitrackBox:    [0.18, 0.19, 0.18]
 
 
 # End-effector tool
 tool:
   offset2end_effector:
-    left:  0.115   #0.175 #  
-    right: 0.115   #0.200 #  
+    left:  0.175 #  0.115   #
+    right: 0.200 #  0.115   #
 
 #
 desVimp:   0.4
-desVreach: 1.0
+desVreach: 0.75
 # tossing task parameters
 tossing:
-  desVtoss:           0.7
+  desVtoss:           0.75
   releasePos:         [0.70, 0.00, 0.35] #[0.70, 0.00, 0.60] [0.70, 0.00, 0.40]
   releaseOrient:      [1.00, 0.00, 0.00, 0.00]
   releaseLinVel_dir:  [1.00, 0.00, 0.50] # [1.00, 0.00, 1.00]
@@ -66,7 +67,7 @@ impact_direction:
 dual_arm_task:
   dualTaskSelector: 4
   old_dual_method: false
-  modulated_reaching: true
+  modulated_reaching: false
   isNorm_impact_vel: false
   isQP_wrench_generation: true
   lifting: 
@@ -74,9 +75,11 @@ dual_arm_task:
     orientation: [1.00, 0.00, 0.00, 0.00]
     increment_lift_pos: false
   placing: 
-    position: [0.71, 0.0, 0.30] #[0.675, 0.0, 0.25]  [0.72, 0.0, 0.25]
+    position: [0.72, 0.00, 0.25] #[0.675, 0.0, 0.25]  [0.72, 0.0, 0.25]
     orientation: [1.00, 0.00, 0.00, 0.00]
     height_via_point: 0.05
 # converyor-belt
 conveyor_belt:
   control_mode: true
+  nominal_speed: 300
+  magnitude_perturbation: 150

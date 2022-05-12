@@ -45,8 +45,6 @@ class dualArmFreeMotionController
 		Eigen::Matrix3f gain_o_rel;
 		float _cpl_grasp;
 
-    float _v_max;
-    float _w_max;
 
     float _coord_abs2;
     float _cpl_rel;
@@ -62,6 +60,9 @@ class dualArmFreeMotionController
 		Eigen::Matrix4f  _qvgp_o[NB_ROBOTS];
 
 	public :
+		float _v_max;
+    	float _w_max;
+
 		//
 		float _dt;
 		float reachable_p;
@@ -103,6 +104,7 @@ class dualArmFreeMotionController
 
 		Eigen::Vector3f _objectDim;
 		float _alpha_obs[NB_ROBOTS];
+		float _activationAperture;
 		
 		//
 		dualArmFreeMotionController();
@@ -115,8 +117,7 @@ class dualArmFreeMotionController
 
 		void computeConstrainedMotion(Eigen::Matrix4f w_H_ee[],  Eigen::Matrix4f w_H_gp[], Eigen::Matrix4f w_H_o, Vector6f (&Vd_ee)[NB_ROBOTS], Eigen::Vector4f (&qd)[NB_ROBOTS], bool isOrient3d);
 		void computeReleaseAndRetractMotion(Eigen::Matrix4f w_H_ee[],  Eigen::Matrix4f w_H_gp[], Eigen::Matrix4f w_H_o, Vector6f (&Vd_ee)[NB_ROBOTS], Eigen::Vector4f (&qd)[NB_ROBOTS], bool isOrient3d);
-		void generatePlacingMotion(	Eigen::Matrix4f w_H_ee[],  Eigen::Matrix4f w_H_gp[], Eigen::Matrix4f w_H_o, Eigen::Matrix4f w_H_Do, float via_height, 
-																Vector6f (&Vd_ee)[NB_ROBOTS], Eigen::Vector4f (&qd)[NB_ROBOTS], bool isOrient3d);
+		
 
 		void computeCoordinatedMotion2(Eigen::Matrix4f w_H_ee[],  Eigen::Matrix4f w_H_gp[], Eigen::Matrix4f w_H_o, Vector6f (&Vd_ee)[NB_ROBOTS], Eigen::Vector4f (&qd)[NB_ROBOTS], bool isOrient3d);
 
@@ -129,7 +130,12 @@ class dualArmFreeMotionController
 
 		Eigen::Vector3f getAbsoluteTangentError(Eigen::Matrix4f w_H_o, Eigen::Matrix4f w_H_ee[], Eigen::Matrix4f w_H_gp[]);
 
-		Vector6f generatePlacingMotion2(Eigen::Matrix4f w_H_o, Eigen::Matrix4f w_H_Do, float via_height, Vector6f Vo);
+		void generatePlacingMotion(	Eigen::Matrix4f w_H_ee[],  Eigen::Matrix4f w_H_gp[], Eigen::Matrix4f w_H_o, Eigen::Matrix4f w_H_Do, float via_height, 
+																Vector6f (&Vd_ee)[NB_ROBOTS], Eigen::Vector4f (&qd)[NB_ROBOTS], bool isOrient3d);
+
+		Vector6f generatePlacingMotion2(Eigen::Matrix4f w_H_o, Eigen::Matrix4f w_H_Do, float via_height, Vector6f Vo, bool isPlaceTossing);
+
+		Vector6f generatePlacingMotion3(Eigen::Matrix4f w_H_o, Eigen::Matrix4f w_H_Do, float via_height, Vector6f Vo);
 
 		void compute_EE_avoidance_velocity(Eigen::Matrix4f w_H_ee[], Vector6f (&VEE_oa)[NB_ROBOTS]);
 
