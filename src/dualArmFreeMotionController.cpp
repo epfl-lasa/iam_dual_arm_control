@@ -1414,7 +1414,8 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
     float speed_ee[2];
  
     Eigen::Vector3f o_error_pos_abs_paral = this->getAbsoluteTangentError(w_H_o, w_H_ee, w_H_gp);
-    float cp_ap = Utils<float>::computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.05f, 1.5f, true);  // 50.0f, 0.05f, 2.8f /  50.0f, 0.15f, 1.0f
+    // float cp_ap = Utils<float>::computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.05f, 1.5f, true);  // 50.0f, 0.05f, 2.8f /  50.0f, 0.15f, 1.0f
+    float cp_ap = Utils<float>::computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.03f, 1.2f, true);  // 50.0f, 0.05f, 2.8f /  50.0f, 0.15f, 1.0f
     float cp_ap2 = 0.0f;
     float  alp  = 1.0f; //0.05f;
     
@@ -1435,8 +1436,10 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
     }
     else if(_isNorm_impact_vel){
       cp_ap2     = 0.0f;
-      _refVreach[LEFT]  = (1.0f-cp_ap)*DS_ee_modulated.head(3).norm() + cp_ap*VdImp[LEFT].norm();
-      _refVreach[RIGHT] = (1.0f-cp_ap)*DS_ee_modulated.tail(3).norm() + cp_ap*VdImp[RIGHT].norm();
+      // _refVreach[LEFT]  = (1.0f-cp_ap)*DS_ee_modulated.head(3).norm() + cp_ap*VdImp[LEFT].norm();
+      // _refVreach[RIGHT] = (1.0f-cp_ap)*DS_ee_modulated.tail(3).norm() + cp_ap*VdImp[RIGHT].norm();
+      _refVreach[LEFT]  = VdImp[LEFT].norm();
+      _refVreach[RIGHT] = VdImp[RIGHT].norm();
       speed_ee[LEFT]    = _refVreach[LEFT];
       speed_ee[RIGHT]   = _refVreach[RIGHT];
       std::cout << " IIIIIIIIIIIIIIIIIIIIIIIIIIIIII HERE IN NORM IMPACT IIIIIIIIIIIIIII " << std::endl;
@@ -1446,8 +1449,8 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
        alp = 0.10f;
       // _refVreach[LEFT]  = (1.0f-alp)*_refVreach[LEFT]  + alp*(DS_ee_nominal.head(3).norm());
       // _refVreach[RIGHT] = (1.0f-alp)*_refVreach[RIGHT] + alp*(DS_ee_nominal.tail(3).norm());
-      _refVreach[LEFT]  = (1.0f-alp)*_refVreach[LEFT]  + alp*((1.0f-cp_ap2)*DS_ee_nominal.head(3).norm()+ cp_ap2*VdImp[LEFT].norm());
-      _refVreach[RIGHT] = (1.0f-alp)*_refVreach[RIGHT] + alp*((1.0f-cp_ap2)*DS_ee_nominal.tail(3).norm()+ cp_ap2*VdImp[RIGHT].norm());
+      _refVreach[LEFT]  = (1.0f-alp)*_refVreach[LEFT]  + alp*((1.0f-cp_ap)*DS_ee_nominal.head(3).norm()+ cp_ap*VdImp[LEFT].norm());
+      _refVreach[RIGHT] = (1.0f-alp)*_refVreach[RIGHT] + alp*((1.0f-cp_ap)*DS_ee_nominal.tail(3).norm()+ cp_ap*VdImp[RIGHT].norm());
       speed_ee[LEFT]    = _refVreach[LEFT];
       speed_ee[RIGHT]   = _refVreach[RIGHT];
 

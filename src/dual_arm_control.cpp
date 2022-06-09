@@ -232,7 +232,7 @@ dual_arm_control::dual_arm_control(	ros::NodeHandle &n, double frequency, 	//std
 	_isDisturbTarget = false;
 	_beta_vel_mod = 1.0f;
 	_initSpeedScaling = 1.0f; //0.75; //
-	_trackingFactor = 0.30f; //0.17f; // 0.35f better
+	_trackingFactor = 0.35f; //0.17f; // 0.35f better
 	_delta_tracking = 0.0f;
 	_winLengthAvgSpeedEE = 20;
 	// _winCounterAvgSpeedEE = 0;
@@ -1247,14 +1247,14 @@ void dual_arm_control::computeCommands()
 	// if(_isIntercepting && !_releaseAndretract && (dsThrowing.a_proximity_<=0.99f)){
 	// if(_isIntercepting && !_releaseAndretract && (dsThrowing.a_proximity_<=0.99f)){
 	if(_isIntercepting && !_releaseAndretract){
-		// beta_vel_mod_unfilt = (Lp_Va_pred_tgt(1)/(Lp_Va_pred_bot(1) +1e-6)) * (Lp_Va_pred_bot(0)/fabs(Lp_Va_pred_tgt(0) +1e-6 - Lp_Va_pred_tgt(1)*flytime_obj) );
+		beta_vel_mod_unfilt = (Lp_Va_pred_tgt(1)/(Lp_Va_pred_bot(1) +1e-6)) * (Lp_Va_pred_bot(0)/fabs(Lp_Va_pred_tgt(0) +1e-6 - Lp_Va_pred_tgt(1)*flytime_obj) );
 		// beta_vel_mod_unfilt = ( Lp_Va_pred_tgt(1)/(absVeloEE +1e-6)) * ((Lp_Va_pred_bot(0) + Lp_Va_pred_bot(1)*flytime_obj)/(Lp_Va_pred_tgt(0) +1e-6) );
 		// beta_vel_mod_unfilt = ( Lp_Va_pred_tgt(1)/(absVeloEE +1e-6)) * ((Lp_Va_pred_bot(0) )/fabs(Lp_Va_pred_tgt(0) +1e-6 - Lp_Va_pred_tgt(1)*flytime_obj) );
 
 		time2intercept_tgt = fabs(fabs(Lp_Va_pred_tgt(0) +1e-6 - Lp_Va_pred_tgt(1)*flytime_obj)/(Lp_Va_pred_tgt(1)+1e-6));
 		time2intercept_bot = Lp_Va_pred_bot(0)/Lp_Va_pred_bot(1);
 
-		beta_vel_mod_unfilt = (std::tanh(7.f * (time2intercept_bot - time2intercept_tgt)) + 1.0 );
+		// beta_vel_mod_unfilt = (std::tanh(5.f * (time2intercept_bot - time2intercept_tgt)) + 1.0 );
 
 		if(beta_vel_mod_unfilt >=beta_vel_mod_max){
 			beta_vel_mod_unfilt = beta_vel_mod_max;
@@ -1286,7 +1286,7 @@ void dual_arm_control::computeCommands()
 			if(_adaptationActive){
 				_tossVar.release_position.head(2) = x_t_intercept.head(2);
 				if(_isPlaceTossing || (_dualTaskSelector == PLACE_TOSSING) ){
-					_xDo_placing.head(2) = _xt.head(2) + _vt.head(2)*(time2intercept_bot + flytime_obj);
+					_xDo_placing.head(2) = _xt.head(2) + 0.35*_vt.head(2)*(time2intercept_bot + flytime_obj);
 				}
 			}
 			Eigen::Vector3f x_release_bar = _tossVar.release_position - _x_pickup;
@@ -1528,7 +1528,7 @@ void dual_arm_control::computeCommands()
 	 			_Vd_o.setZero();	// for data logging
 
 	 			//
-	 			if(FreeMotionCtrl.a_proximity_ >= 0.5f){
+	 			if(FreeMotionCtrl.a_proximity_ >= 0.2f){
 					beta_vel_mod_unfilt = 1.0;
 				}
 			}
