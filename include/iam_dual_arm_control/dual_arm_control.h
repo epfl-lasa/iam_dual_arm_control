@@ -124,6 +124,13 @@ class dual_arm_control
 		ros::Subscriber _sub_ee_velo[NB_ROBOTS];					// subscribe to the end effectors velocity Twist
 		ros::Subscriber _subForceTorqueSensor[NB_ROBOTS];	// Subscribe to force torque sensors
 		ros::Subscriber _sub_joint_states[NB_ROBOTS];			// subscriber for the joint position
+
+		// Feasibility of release state
+		ros::Subscriber _sub_feasible_release_pose;								// subscribe to the topic of the feasible release pose
+		ros::Subscriber _sub_feasible_release_twist;							// subscribe to the topic of the feasible release twist
+		ros::Subscriber _sub_feasible_release_jt_pos[NB_ROBOTS];	// subscribe to the topic of the feasible release joint position
+		ros::Subscriber _sub_feasible_release_jt_vel[NB_ROBOTS];	// subscribe to the topic of the feasible release joint velocity
+
 		//////////////////////////////
 		// Publishers:
 		//////////////////////////////
@@ -143,6 +150,12 @@ class dual_arm_control
 
 		ros::Publisher _pubConveyorBeltMode;              	// Publish conveyor belt mode
 		ros::Publisher _pubConveyorBeltSpeed;              	// Publish conveyor belt Speed
+
+		// Feasibility of release state
+		ros::Publisher _pubDesiredLandingPose;							// Publish the desired landing pose or intercept pose for moving target
+		ros::Publisher _pubDesiredReleasePose;							// Publish the desired release position and orientation of the object
+		ros::Publisher _pubDesiredReleaseTwist;							// Publish the desired release linear and angular velocity of the target
+		ros::Publisher _pubDesiredFeasibilityMode;					// Publish the desired mode of the feasible release state algorithm
 
 		//////////////////////////////
 		// List of the topics
@@ -375,6 +388,9 @@ class dual_arm_control
 		// int _winCounterAvgSpeedEE;
 		bool _adaptationActive = false;
 
+		// Feasible release state
+		int _desFeasibilityMode;
+
 		// target
 		std::deque<Eigen::Vector3f> _windowVelTarget;
 		Eigen::Vector3f _movingAvgVelTarget;
@@ -390,6 +406,17 @@ class dual_arm_control
 		throwingDS 										dsThrowingEstim;				//
 		bool 													_isSimulation;
 
+		// release states
+		Eigen::Vector3f _xFeasible_release; 
+		Eigen::Vector4f _qFeasible_release; 
+
+		Eigen::Vector3f _vFeasible_release;
+		Eigen::Vector3f _wFeasible_release;
+
+		Vector7f _joints_Feas_Release_pos[NB_ROBOTS];
+		Vector7f _joints_Feas_Release_vel[NB_ROBOTS];
+
+
 
 		// Callbacks
 		void objectPoseCallback(const geometry_msgs::Pose::ConstPtr& msg);
@@ -404,6 +431,12 @@ class dual_arm_control
 		void updateRobotStatesLeft(const sensor_msgs::JointState::ConstPtr &msg);
 		void updateRobotStatesRight(const sensor_msgs::JointState::ConstPtr &msg);
 		void updateObjectsPoseCallback(const geometry_msgs::Pose::ConstPtr& msg , int k);
+
+		//
+		void feasibleReleasePoseCallback(const geometry_msgs::Pose::ConstPtr& msg);
+		void feasibleReleaseTwistCallback(const geometry_msgs::Twist::ConstPtr& msg);
+		// void feasibleReleaseJointPosCallback(const std_msgs::Float64MultiArray::ConstPtr& msg);
+		// void feasibleReleaseJointVelCallback(const std_msgs::Float64MultiArray::ConstPtr& msg);
 
 	public :
 		/////////////////////

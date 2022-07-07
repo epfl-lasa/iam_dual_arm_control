@@ -112,6 +112,9 @@ dual_arm_control::dual_arm_control(	ros::NodeHandle &n, double frequency, 	//std
 		_joints_torques[k].setZero();
 
 		_VEE_oa[k].setZero();
+
+		_joints_Feas_Release_pos[k].setZero();
+		_joints_Feas_Release_vel[k].setZero();
 	}
 	// 
 	// Filtered variable (SG)
@@ -238,6 +241,12 @@ dual_arm_control::dual_arm_control(	ros::NodeHandle &n, double frequency, 	//std
 	// _winCounterAvgSpeedEE = 0;
 	_isSimulation = true;
 	_adaptationActive = false;
+	//
+	_desFeasibilityMode = 0;
+	_xFeasible_release.setZero(); 
+	_qFeasible_release << 1.0f, 0.0f, 0.0f, 0.0f;
+	_vFeasible_release.setZero(); 
+	_wFeasible_release.setZero(); 
 }
 //
 dual_arm_control::~dual_arm_control(){}
@@ -249,6 +258,10 @@ bool dual_arm_control::init()
 	// Subscribers
 	//------------
 	std::string topic_pose_target = "/simo_track/target_pose";
+	std::string topic_feasible_release_pose   = "/dual_feasible_config/release/pose";
+	std::string topic_feasible_release_twist  = "/dual_feasible_config/release/twist";
+	std::string topic_feasible_release_jt_pos = "/dual_feasible_config/release/joint/position";
+	std::string topic_feasible_release_jt_vel = "/dual_feasible_config/release/joint/velocity";
 
 	_sub_object_pose 			 				= nh_.subscribe(_topic_pose_object,1, &dual_arm_control::objectPoseCallback, this, ros::TransportHints().reliable().tcpNoDelay());
 	_sub_base_pose[LEFT] 	 	 			= nh_.subscribe<geometry_msgs::Pose>(_topic_pose_robot_base[LEFT], 1, boost::bind(&dual_arm_control::updateBasePoseCallback,this,_1,LEFT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
@@ -266,6 +279,15 @@ bool dual_arm_control::init()
 	_sub_joint_states[RIGHT]	 		= nh_.subscribe<sensor_msgs::JointState>("/iiwa_blue/joint_states", 1, boost::bind(&dual_arm_control::updateRobotStatesRight,this,_1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 	
 	_sub_target_pose 			 				= nh_.subscribe(topic_pose_target,1, &dual_arm_control::targetPoseCallback, this, ros::TransportHints().reliable().tcpNoDelay());
+
+	// Feasibility of release state
+	// ----------------------------
+	_sub_feasible_release_pose   = nh_.subscribe(topic_feasible_release_pose,1, &dual_arm_control::feasibleReleasePoseCallback, this, ros::TransportHints().reliable().tcpNoDelay());
+	_sub_feasible_release_twist  = nh_.subscribe(topic_feasible_release_twist,1, &dual_arm_control::feasibleReleaseTwistCallback, this, ros::TransportHints().reliable().tcpNoDelay());
+	// _sub_feasible_release_jt_pos = nh_.subscribe(topic_feasible_release_jt_pos, 1, &dual_arm_control::feasibleReleaseJointPosCallback, this, ros::TransportHints().reliable().tcpNoDelay());
+	// _sub_feasible_release_jt_vel = nh_.subscribe(topic_feasible_release_jt_vel, 1, &dual_arm_control::feasibleReleaseJointVelCallback, this, ros::TransportHints().reliable().tcpNoDelay());
+
+
 	//-------------
 	// Publishers:
 	//-------------
@@ -305,6 +327,13 @@ bool dual_arm_control::init()
 
 	_pubConveyorBeltMode 					= nh_.advertise<std_msgs::Int32>("/conveyor_belt/desired_mode", 1); 
 	_pubConveyorBeltSpeed 				= nh_.advertise<std_msgs::Int32>("/conveyor_belt/desired_speed", 1); 
+
+	// Feasibility of release state
+	// ----------------------------
+	_pubDesiredLandingPose				= nh_.advertise<geometry_msgs::Pose>("/dual_arm_control/desired_landing/pose", 1);
+	_pubDesiredReleasePose				= nh_.advertise<geometry_msgs::Pose>("/dual_arm_control/desired_release/pose", 1);
+	_pubDesiredReleaseTwist				= nh_.advertise<geometry_msgs::Twist>("/dual_arm_control/desired_release/twist", 1);
+	_pubDesiredFeasibilityMode		= nh_.advertise<std_msgs::Int32>("/dual_arm_control/feasibility_mode", 1);
 
 	// initialize the tossing DS
 	//---------------------------
@@ -461,7 +490,7 @@ bool dual_arm_control::init()
 	file_gmm[2]     = path2LearnedModelfolder + dataType + "_sigma.txt";
 
 	tossParamEstimator.init(file_gmm, _tossVar.release_position, _tossVar.release_orientation, 
-							_tossVar.release_linear_velocity, _tossVar.release_angular_velocity);
+																		_tossVar.release_linear_velocity, _tossVar.release_angular_velocity);
 	//
 	_xd_landing = Eigen::Vector3f(1.0f, 0.0f, 0.0f);
 	//
@@ -489,12 +518,17 @@ bool dual_arm_control::init()
 	// 				_tossVar.rest_position, _tossVar.rest_orientation);
 	// _desVtoss = tossParamEstimator.get_release_linear_velocity().norm();
 
-		//
+	//
 	dsThrowing.set_pickup_object_pose(_xo, _qo);
 	// Eigen::Vector3f new_toss_velocity = _desVtoss * (_tossVar.release_position -_xo).normalized();
 	_tossVar.release_linear_velocity = _desVtoss * (_tossVar.release_position -_xo).normalized();
 	dsThrowing.set_toss_linear_velocity(_tossVar.release_linear_velocity);
 	dsThrowing._refVtoss = _desVimp;
+	//
+	// initialize the Feasible release configuration
+	// -----------------------------------------------
+	_xFeasible_release = _tossVar.release_position; 
+	_qFeasible_release = _tossVar.release_orientation;
 
 	// release_pos.from_cartesian(_tossVar.release_position -_xDo_lifting);
 
@@ -1876,6 +1910,30 @@ void dual_arm_control::updateRobotStatesRight(const sensor_msgs::JointState::Con
  	_joints_accelerations[RIGHT]	= temp_acc.cast<float>();		
 }
 
+void dual_arm_control::feasibleReleasePoseCallback(const geometry_msgs::Pose::ConstPtr& msg){
+    _xFeasible_release << msg->position.x,  msg->position.y,    msg->position.z;
+    _qFeasible_release << msg->orientation.w,   msg->orientation.x, msg->orientation.y, msg->orientation.z;
+}
+
+void dual_arm_control::feasibleReleaseTwistCallback(const geometry_msgs::Twist::ConstPtr& msg){
+    _vFeasible_release << msg->linear.x, msg->linear.y, msg->linear.z;
+    _wFeasible_release << msg->angular.x, msg->angular.y, msg->angular.z;
+}
+
+// void dual_arm_control::feasibleReleaseJointPosCallback(const std_msgs::Float64MultiArray::ConstPtr& msg, int k){
+// 	// for(int i=0; i<7; i++){
+// 	//     _joints_Feas_Release_pos[k](i) = msg->data[i];
+// 	// }
+//    _joints_Feas_Release_pos[k] = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(msg->data(), msg->size());
+// }
+
+// void dual_arm_control::feasibleReleaseJointVelCallback(const std_msgs::Float64MultiArray::ConstPtr& msg, int k){
+// 	// for(int i=0; i<7; i++){
+// 	//     _joints_Feas_Release_vel[k](i) = msg->data[i];
+// 	// }
+// 	_joints_Feas_Release_vel[k] = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(msg->data(), msg->size());
+// }
+
 void dual_arm_control::updateContactState()
 {
   for(int k = 0; k < NB_ROBOTS; k++){
@@ -2137,6 +2195,7 @@ void dual_arm_control::publishData()
     //
     msg.data = _err[k];
 		_pubDistAttractorEe[k].publish(msg);
+		//
 		geometry_msgs::Pose msgPose;
 		msgPose.position.x    = _w_H_gp[k](0,3);
 		msgPose.position.y    = _w_H_gp[k](1,3);
@@ -2173,6 +2232,53 @@ void dual_arm_control::publishData()
 			msgFnormMoment.torque.z = -CooperativeCtrl._f_applied[k](5);
 		_pubApplied_fnornMoment[k].publish(msgFnormMoment);
   }
+
+  // send data to the feasible release state algorithm
+  // ==================================================
+  // desired landing position
+  //-------------------------
+	  geometry_msgs::Pose msgDesLandingPose;
+		msgDesLandingPose.position.x    = _xd_landing(0);
+		msgDesLandingPose.position.y    = _xd_landing(1);
+		msgDesLandingPose.position.z    = _xd_landing(2);
+		msgDesLandingPose.orientation.x = _tossVar.release_orientation(1);
+		msgDesLandingPose.orientation.y = _tossVar.release_orientation(2);
+		msgDesLandingPose.orientation.z = _tossVar.release_orientation(3);
+		msgDesLandingPose.orientation.w = _tossVar.release_orientation(0);
+		_pubDesiredLandingPose.publish(msgDesLandingPose);
+
+  // desired release pose and twist
+	//-------------------------------
+  	// pose
+		geometry_msgs::Pose msgDesReleasePose;
+		msgDesReleasePose.position.x    = _tossVar.release_position(0);
+		msgDesReleasePose.position.y    = _tossVar.release_position(1);
+		msgDesReleasePose.position.z    = _tossVar.release_position(2);
+		msgDesReleasePose.orientation.x = _tossVar.release_orientation(1);
+		msgDesReleasePose.orientation.y = _tossVar.release_orientation(2);
+		msgDesReleasePose.orientation.z = _tossVar.release_orientation(3);
+		msgDesReleasePose.orientation.w = _tossVar.release_orientation(0);
+		_pubDesiredReleasePose.publish(msgDesReleasePose);
+		// twist
+		geometry_msgs::Twist msgDesReleaseTwist;
+    msgDesReleaseTwist.linear.x  = _tossVar.release_linear_velocity(0);
+    msgDesReleaseTwist.linear.y  = _tossVar.release_linear_velocity(1);
+    msgDesReleaseTwist.linear.z  = _tossVar.release_linear_velocity(2);
+    msgDesReleaseTwist.angular.x = _tossVar.release_angular_velocity(0);
+    msgDesReleaseTwist.angular.y = _tossVar.release_angular_velocity(1);
+    msgDesReleaseTwist.angular.z = _tossVar.release_angular_velocity(2);
+    _pubDesiredReleaseTwist.publish(msgDesReleaseTwist);
+
+  // desired mode (type of solution) of the feasibility algorithm 
+  // -------------------------------------------------------------
+  // - 0: feasible release state 
+  // - 1: equivalent feasible release state (input: x_release_des, v_release_des)
+  // - 2: closest feasible release state (input: x_release_des, v_release_des)
+  // - 3: feasible release state with maximum release velocity (input: x_release_des, v_release_des)
+    std_msgs::Int32 _feasModeMessage;
+  	_feasModeMessage.data = _desFeasibilityMode;
+  	_pubDesiredFeasibilityMode.publish(_feasModeMessage);
+
 
   // send speed command to the conveyor belt
   std_msgs::Int32 _speedMessage;
