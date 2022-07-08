@@ -260,8 +260,13 @@ bool dual_arm_control::init()
 	std::string topic_pose_target = "/simo_track/target_pose";
 	std::string topic_feasible_release_pose   = "/dual_feasible_config/release/pose";
 	std::string topic_feasible_release_twist  = "/dual_feasible_config/release/twist";
-	std::string topic_feasible_release_jt_pos = "/dual_feasible_config/release/joint/position";
-	std::string topic_feasible_release_jt_vel = "/dual_feasible_config/release/joint/velocity";
+
+	std::string topic_feasible_release_jt_pos[NB_ROBOTS];
+	std::string topic_feasible_release_jt_vel[NB_ROBOTS];
+	topic_feasible_release_jt_pos[LEFT]  = "/dual_feasible_config/release/joint/left/position";
+	topic_feasible_release_jt_pos[RIGHT] = "/dual_feasible_config/release/joint/right/position";
+	topic_feasible_release_jt_vel[LEFT]  = "/dual_feasible_config/release/joint/left/velocity";
+	topic_feasible_release_jt_vel[RIGHT] = "/dual_feasible_config/release/joint/right/velocity";
 
 	_sub_object_pose 			 				= nh_.subscribe(_topic_pose_object,1, &dual_arm_control::objectPoseCallback, this, ros::TransportHints().reliable().tcpNoDelay());
 	_sub_base_pose[LEFT] 	 	 			= nh_.subscribe<geometry_msgs::Pose>(_topic_pose_robot_base[LEFT], 1, boost::bind(&dual_arm_control::updateBasePoseCallback,this,_1,LEFT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
@@ -284,8 +289,11 @@ bool dual_arm_control::init()
 	// ----------------------------
 	_sub_feasible_release_pose   = nh_.subscribe(topic_feasible_release_pose,1, &dual_arm_control::feasibleReleasePoseCallback, this, ros::TransportHints().reliable().tcpNoDelay());
 	_sub_feasible_release_twist  = nh_.subscribe(topic_feasible_release_twist,1, &dual_arm_control::feasibleReleaseTwistCallback, this, ros::TransportHints().reliable().tcpNoDelay());
-	// _sub_feasible_release_jt_pos = nh_.subscribe(topic_feasible_release_jt_pos, 1, &dual_arm_control::feasibleReleaseJointPosCallback, this, ros::TransportHints().reliable().tcpNoDelay());
-	// _sub_feasible_release_jt_vel = nh_.subscribe(topic_feasible_release_jt_vel, 1, &dual_arm_control::feasibleReleaseJointVelCallback, this, ros::TransportHints().reliable().tcpNoDelay());
+	_sub_feasible_release_jt_pos[LEFT] 	= nh_.subscribe<std_msgs::Float64MultiArray>(topic_feasible_release_jt_pos[LEFT], 1, boost::bind(&dual_arm_control::feasibleReleaseJointPosCallback,this,_1,LEFT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+	_sub_feasible_release_jt_pos[RIGHT] = nh_.subscribe<std_msgs::Float64MultiArray>(topic_feasible_release_jt_pos[RIGHT], 1, boost::bind(&dual_arm_control::feasibleReleaseJointPosCallback,this,_1,RIGHT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+	_sub_feasible_release_jt_vel[LEFT] 	= nh_.subscribe<std_msgs::Float64MultiArray>(topic_feasible_release_jt_vel[LEFT], 1, boost::bind(&dual_arm_control::feasibleReleaseJointVelCallback,this,_1,LEFT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+	_sub_feasible_release_jt_vel[RIGHT] = nh_.subscribe<std_msgs::Float64MultiArray>(topic_feasible_release_jt_vel[RIGHT], 1, boost::bind(&dual_arm_control::feasibleReleaseJointVelCallback,this,_1,RIGHT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
+
 
 
 	//-------------
@@ -538,9 +546,9 @@ bool dual_arm_control::init()
 	FreeMotionCtrl._desVreach = _desVreach;
 	FreeMotionCtrl._refVreach[LEFT]  = _refVreach;
 	FreeMotionCtrl._refVreach[RIGHT] = _refVreach;
-	FreeMotionCtrl._modulated_reaching = modulated_reaching;
-	FreeMotionCtrl._isNorm_impact_vel  = isNorm_impact_vel;
-	FreeMotionCtrl._height_via_point = _height_via_point;
+	FreeMotionCtrl._modulated_reaching 	= modulated_reaching;
+	FreeMotionCtrl._isNorm_impact_vel  	= isNorm_impact_vel;
+	FreeMotionCtrl._height_via_point 		= _height_via_point;
 
 	//
 	FreeMotionCtrlEstim = FreeMotionCtrl;
@@ -1920,19 +1928,19 @@ void dual_arm_control::feasibleReleaseTwistCallback(const geometry_msgs::Twist::
     _wFeasible_release << msg->angular.x, msg->angular.y, msg->angular.z;
 }
 
-// void dual_arm_control::feasibleReleaseJointPosCallback(const std_msgs::Float64MultiArray::ConstPtr& msg, int k){
-// 	// for(int i=0; i<7; i++){
-// 	//     _joints_Feas_Release_pos[k](i) = msg->data[i];
-// 	// }
-//    _joints_Feas_Release_pos[k] = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(msg->data(), msg->size());
-// }
+void dual_arm_control::feasibleReleaseJointPosCallback(const std_msgs::Float64MultiArray::ConstPtr& msg, int k){
+	for(int i=0; i<NB_JOINTS; i++){
+	    _joints_Feas_Release_pos[k](i) = msg->data[i];
+	}
+   // _joints_Feas_Release_pos[k] = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(msg->data(), msg->size());
+}
 
-// void dual_arm_control::feasibleReleaseJointVelCallback(const std_msgs::Float64MultiArray::ConstPtr& msg, int k){
-// 	// for(int i=0; i<7; i++){
-// 	//     _joints_Feas_Release_vel[k](i) = msg->data[i];
-// 	// }
-// 	_joints_Feas_Release_vel[k] = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(msg->data(), msg->size());
-// }
+void dual_arm_control::feasibleReleaseJointVelCallback(const std_msgs::Float64MultiArray::ConstPtr& msg, int k){
+	for(int i=0; i<NB_JOINTS; i++){
+	    _joints_Feas_Release_vel[k](i) = msg->data[i];
+	}
+	// _joints_Feas_Release_vel[k] = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(msg->data(), msg->size());
+}
 
 void dual_arm_control::updateContactState()
 {

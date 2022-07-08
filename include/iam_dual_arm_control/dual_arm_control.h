@@ -43,12 +43,10 @@
 #include "toss_task_param_estimator.h"
 #include "data_logging.hpp"
 
-#define NB_ROBOTS 2                  // Number of robots
-#define NB_FT_SENSOR_SAMPLES 50      // Number of force torque sensors' samples used for initial calibration (compute the offsets)
-#define NB_OPTITRACK_SAMPLES 100     // Number of optitrack samples used for initial objects' pose estimation
-#define NB_TRACKED_OBJECTS 6         // Number of objects tracked by the motion capture system (optitrack)
-#define MOVING_FORCE_WINDOW_SIZE 10  // Window's size used to average the force data and detect peristent contact
-
+#define NB_ROBOTS 2                  	// Number of robots
+#define NB_FT_SENSOR_SAMPLES 50      	// Number of force torque sensors' samples used for initial calibration (compute the offsets)
+#define MOVING_FORCE_WINDOW_SIZE 10  	// Window's size used to average the force data and detect peristent contact
+#define NB_JOINTS 7 									// NUmber of Joints
 #define NB_OBJECTS 3                  // Number of objects
 
 // typedef Eigen::Matrix<float, 7, 1> Vector7f;
@@ -435,8 +433,8 @@ class dual_arm_control
 		//
 		void feasibleReleasePoseCallback(const geometry_msgs::Pose::ConstPtr& msg);
 		void feasibleReleaseTwistCallback(const geometry_msgs::Twist::ConstPtr& msg);
-		// void feasibleReleaseJointPosCallback(const std_msgs::Float64MultiArray::ConstPtr& msg);
-		// void feasibleReleaseJointVelCallback(const std_msgs::Float64MultiArray::ConstPtr& msg);
+		void feasibleReleaseJointPosCallback(const std_msgs::Float64MultiArray::ConstPtr& msg, int k);
+		void feasibleReleaseJointVelCallback(const std_msgs::Float64MultiArray::ConstPtr& msg, int k);
 
 	public :
 		/////////////////////
