@@ -334,14 +334,19 @@ bool dual_arm_control::init()
 	bool modulated_reaching = true;
 	bool isNorm_impact_vel  = false;
 	bool isQP_wrench_generation  = false;
-	std::string param_damping_topic_left  = "/iiwa1/CustomControllers/controllers/PassiveDS/params";
-	std::string param_damping_topic_right = "/iiwa_blue/CustomControllers/controllers/PassiveDS/params";
+	std::string param_damping_topic_CustomCtrl_left  = "/iiwa1/CustomControllers/controllers/PassiveDS/params";
+	std::string param_damping_topic_CustomCtrl_right = "/iiwa_blue/CustomControllers/controllers/PassiveDS/params";
+	std::string param_damping_topic_TorqueCtrl_left  = "/iiwa1/control/lambda_Pos";
+	std::string param_damping_topic_TorqueCtrl_right = "/iiwa_blue/control/lambda_Pos";
 
 	bool gotParam = true;
 
 
-	gotParam = gotParam && nh_.getParam("passiveDS/dampingTopic/left", param_damping_topic_left);
-	gotParam = gotParam && nh_.getParam("passiveDS/dampingTopic/right", param_damping_topic_right);
+	gotParam = gotParam && nh_.getParam("passiveDS/dampingTopic/CustomController/left", param_damping_topic_CustomCtrl_left);
+	gotParam = gotParam && nh_.getParam("passiveDS/dampingTopic/CustomController/right", param_damping_topic_CustomCtrl_right);
+	gotParam = gotParam && nh_.getParam("passiveDS/dampingTopic/TorqueController/left", param_damping_topic_TorqueCtrl_left);
+	gotParam = gotParam && nh_.getParam("passiveDS/dampingTopic/TorqueController/right", param_damping_topic_TorqueCtrl_right);
+
 	gotParam = gotParam && nh_.getParam("object/mass", param_objectMass);
 	gotParam = gotParam && nh_.getParam("object/dimension", param_objectDim); 
 	gotParam = gotParam && nh_.getParam("object/graspOffset", param_graspOffset);
@@ -392,8 +397,19 @@ bool dual_arm_control::init()
     ROS_ERROR("Couldn't the retrieve one or many parameters. ");
 		return false;
   }
-  	_dsDampingTopic[LEFT] 				= param_damping_topic_left;
-  	_dsDampingTopic[RIGHT]  			= param_damping_topic_right;
+  	
+	std::vector<float> param_damp_l;
+	std::vector<float> param_damp_r;
+	ros::param::getCached(param_damping_topic_TorqueCtrl_left,  param_damp_l);
+	ros::param::getCached(param_damping_topic_TorqueCtrl_right, param_damp_r);
+	if((!param_damp_l.empty()) && (!param_damp_r.empty())){ // nonEmpty
+		_dsDampingTopic[LEFT]  = param_damping_topic_TorqueCtrl_left;
+		_dsDampingTopic[RIGHT] = param_damping_topic_TorqueCtrl_left;
+	} 
+	else{
+		_dsDampingTopic[LEFT]  = param_damping_topic_CustomCtrl_left;
+		_dsDampingTopic[RIGHT] = param_damping_topic_CustomCtrl_right;
+	}
 
 	_objectMass 					  				= param_objectMass;
 	_objectDim 						  				= Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_objectDim.data(), param_objectDim.size());
@@ -562,10 +578,8 @@ void dual_arm_control::run()
 		//
 		// get the first eigen value of the passive ds controller and Check for update of passive ds controller eigen value
 		std::vector<float> param_values;
-		// ros::param::getCached("/iiwa1/CustomControllers/controllers/PassiveDS/params", param_values);	  _d1[LEFT]    = param_values[0];
 		ros::param::getCached(_dsDampingTopic[LEFT], param_values);	  _d1[LEFT] = param_values[0];
 		if(_d1[LEFT] <FLT_EPSILON) _d1[LEFT]   = 150.0f;
-		// ros::param::getCached("/iiwa_blue/CustomControllers/controllers/PassiveDS/params", param_values); _d1[RIGHT] = param_values[0];
 		ros::param::getCached(_dsDampingTopic[RIGHT], param_values);  _d1[RIGHT] = param_values[0];
 		if(_d1[RIGHT]<FLT_EPSILON)  _d1[RIGHT] = 150.0f;
 
@@ -1385,7 +1399,7 @@ void dual_arm_control::computeCommands()
 				if(_old_dual_method){
 					FreeMotionCtrl.computeConstrainedMotion(_w_H_ee, _w_H_Dgp, _w_H_o, _Vd_ee, _qd, false);
 					//
-					if(_isPlacing){
+					if(_isPlacing || (_dualTaskSelector == PICK_AND_PLACE)){
 							Eigen::Matrix4f w_H_DesObj = Utils<float>::pose2HomoMx(_xDo_placing, _qDo_placing);
 							_w_H_Dgp[LEFT].block(0,0,3,3)  = w_H_DesObj.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[LEFT],  _qgp_o[LEFT]).block(0,0,3,3);
 							_w_H_Dgp[RIGHT].block(0,0,3,3)  = w_H_DesObj.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[RIGHT],  _qgp_o[RIGHT]).block(0,0,3,3);
@@ -1394,7 +1408,7 @@ void dual_arm_control::computeCommands()
 								_releaseAndretract = true;
 							}
 					}
-					if(_isThrowing){
+					if(_isThrowing || (_dualTaskSelector == TOSSING) || (_dualTaskSelector == PICK_AND_TOSS)){
 						Eigen::Matrix4f w_H_DesObj = Utils<float>::pose2HomoMx(_tossVar.release_position, _tossVar.release_orientation);
 						_w_H_Dgp[LEFT]  = w_H_DesObj * _o_H_ee[LEFT];
 						_w_H_Dgp[RIGHT] = w_H_DesObj * _o_H_ee[RIGHT];
@@ -1404,17 +1418,21 @@ void dual_arm_control::computeCommands()
 						float scale   = 80.f;
 						float in_d    = 0.5f*(_w_H_ee[LEFT](0,3)+_w_H_ee[RIGHT](0,3));
 						float sigmoid = 1.0f/(1+exp(-scale*(in_d- 0.41f)));
-					  _Vd_ee[LEFT].head(3)  = _Vd_ee[LEFT].head(3)/( _Vd_ee[LEFT].head(3).norm() +1e-10) * sigmoid* _desVtoss;
-	  				_Vd_ee[RIGHT].head(3) = _Vd_ee[RIGHT].head(3)/(_Vd_ee[RIGHT].head(3).norm()+1e-10) * sigmoid* _desVtoss;
-	  				//
-	  				if((_w_H_o.block<3,1>(0,3)-_tossVar.release_position).norm()<=0.035){
-								_releaseAndretract = true;
+					  	_Vd_ee[LEFT].head(3)  = _Vd_ee[LEFT].head(3)/( _Vd_ee[LEFT].head(3).norm() +1e-10) * sigmoid* _desVtoss;
+	  					_Vd_ee[RIGHT].head(3) = _Vd_ee[RIGHT].head(3)/(_Vd_ee[RIGHT].head(3).norm()+1e-10) * sigmoid* _desVtoss;
+		  				//
+		  				if((_w_H_o.block<3,1>(0,3)-_tossVar.release_position).norm()<=0.035){
+									_releaseAndretract = true;
+							}
 						}
-					}
 				}
 				else{
-					_w_H_Dgp[LEFT].block(0,0,3,3)  = _w_H_o.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[LEFT],  _qgp_o[LEFT]).block(0,0,3,3);
-					_w_H_Dgp[RIGHT].block(0,0,3,3) = _w_H_o.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[RIGHT],  _qgp_o[RIGHT]).block(0,0,3,3);
+					Eigen::Matrix4f w_H_DesObj = Utils<float>::pose2HomoMx(_xDo_lifting, _qDo_lifting);
+					_w_H_Dgp[LEFT].block(0,0,3,3)  = w_H_DesObj.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[LEFT],  _qgp_o[LEFT]).block(0,0,3,3);
+					_w_H_Dgp[RIGHT].block(0,0,3,3) = w_H_DesObj.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[RIGHT],  _qgp_o[RIGHT]).block(0,0,3,3);
+					_w_H_Do = Utils<float>::pose2HomoMx(_xDo_lifting, _qDo_lifting);  //
+					// _w_H_Dgp[LEFT].block(0,0,3,3)  = _w_H_o.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[LEFT],  _qgp_o[LEFT]).block(0,0,3,3);
+					// _w_H_Dgp[RIGHT].block(0,0,3,3) = _w_H_o.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[RIGHT],  _qgp_o[RIGHT]).block(0,0,3,3);
 
 					if(_isPlacing || (_dualTaskSelector == PICK_AND_PLACE)){
 
@@ -1455,7 +1473,6 @@ void dual_arm_control::computeCommands()
 							}
 					}
 
-
 					if(_isThrowing || (_dualTaskSelector == TOSSING) || (_dualTaskSelector == PICK_AND_TOSS)){ 
 						Eigen::Matrix4f w_H_DesObj = Utils<float>::pose2HomoMx(_tossVar.release_position, _tossVar.release_orientation);
 							_w_H_Dgp[LEFT].block(0,0,3,3)   = w_H_DesObj.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[LEFT],  _qgp_o[LEFT]).block(0,0,3,3);
@@ -1491,7 +1508,6 @@ void dual_arm_control::computeCommands()
 					beta_vel_mod_unfilt = 1.0;
 				}	
 				
-
 			}
 			else  // Free-motion: reaching
 			{
@@ -1519,12 +1535,8 @@ void dual_arm_control::computeCommands()
 				else{
 					FreeMotionCtrl.dual_arm_motion(_w_H_ee,  _Vee, _w_H_gp,  _w_H_o, _w_H_Do, _Vd_o, _BasisQ, _VdImpact, false, 0, _Vd_ee, _qd, _release_flag);    // 0: reach
 				}
-				// if(fabs(_w_H_o(0,3) -_xDo_lifting(0)) <=0.05){
-				// 				_releaseAndretract = true;
-				// }
-				//
 				
-  			dsThrowing._refVtoss = _desVimp;
+  				dsThrowing._refVtoss = _desVimp;
 	 			_Vd_o.setZero();	// for data logging
 
 	 			//
@@ -1564,7 +1576,7 @@ void dual_arm_control::computeCommands()
 	// compute the velocity to avoid EE collision
 	FreeMotionCtrl.compute_EE_avoidance_velocity(_w_H_ee, _VEE_oa);
 
-  // Extract linear velocity commands and desired axis angle command
+  	// Extract linear velocity commands and desired axis angle command
 	prepareCommands(_Vd_ee, _qd, _V_gpo);
 
 
@@ -1608,16 +1620,19 @@ void dual_arm_control::computeCommands()
 	// std::cout << " CONVEYOR_BELT PERTURBATION is  \t " << (int) (_nominalSpeed_conveyor_belt + (int)_isDisturbTarget *_magniture_pert_conveyor_belt * sin((2.f*M_PI/1) * _dt * _cycle_count)) << std::endl;
 	std::cout << " INTERCEPT STATUS is  \t " << _hasCaughtOnce << std::endl;
 
-	std::cout << " HOME STATUS is -----------------------> :  \t " << _goHome << std::endl; 
-	std::cout << " RELEASE_AND_RETRACT STATUS is -----------------------> : \t " << _releaseAndretract << std::endl; 
+	std::cout << " HOME STATUS is --------------------------> : \t " << _goHome << std::endl; 
+	std::cout << " RELEASE_AND_RETRACT STATUS is -----------> : \t " << _releaseAndretract << std::endl; 
+	std::cout << " TOSSING STATUS is -----------------------> : \t " << _isThrowing << std::endl; 
+	std::cout << " PLACING STATUS is -----------------------> : \t " << _isPlacing << std::endl;  
 	// std::cout << " _windowVelTarget.size() is  \t " << _windowVelTarget.size() << std::endl; 
-	std::cout << " TARGET _movingAvgVelTarget is  \t " << _movingAvgVelTarget.norm() << std::endl;
+	// std::cout << " TARGET _movingAvgVelTarget is  \t " << _movingAvgVelTarget.norm() << std::endl;
 	std::cout << " AAAA  TRACKING FACTOR AAAAA is  \t " << _trackingFactor << std::endl; 
 	std::cout << " AAAA  ADAPTATION STATUS AAAAA is  -----------> : \t " << _adaptationActive << std::endl; 
 	std::cout << " PPPPPPPPPPPPp _magniture_pert_conveyor_belt PPPPPP is  -----------> : \t " << _magniture_pert_conveyor_belt << std::endl; 
-	std::cout << " CCCCCCCCCCCCCCCC FreeMotionCtrl._activationAperture CCCCCCCCCC is  -----------> : \t " << FreeMotionCtrl._activationAperture << std::endl;  
+	// std::cout << " CCCCCCCCCCCCCCCC FreeMotionCtrl._activationAperture CCCCCCCCCC is  -----------> : \t " << FreeMotionCtrl._activationAperture << std::endl;  
 	std::cout << " PPPPPPPPPPPPPPP _xDo_placing PPPPPPPPPP  is  -----------> : \t " << _xDo_placing.transpose() << std::endl; 
-	std::cout << " PPPPPPPPUUUUUUUUUUU _x_pickup PPPPPPPPPPUUUUUUUUUUU  is  -----------> : \t " << _x_pickup.transpose() << std::endl; 
+	// std::cout << " PPPPPPPPUUUUUUUUUUU _x_pickup PPPPPPPPPPUUUUUUUUUUU  is  -----------> : \t " << _x_pickup.transpose() << std::endl; 
+
 
 
 	// if( (!_releaseAndretract) && (fmod(_cycle_count, 20)==0)){

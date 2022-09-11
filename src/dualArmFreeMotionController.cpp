@@ -1233,7 +1233,7 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
       case 1:{ // point to point motion of the object 
         Vector6f X_bi = Eigen::VectorXf::Zero(6);
         X_bi.head(3)  = w_H_Do.block<3,1>(0,3) - w_H_o.block<3,1>(0,3)+ 0.5f*(X[LEFT] + X[RIGHT]);
-        X_bi.tail(3)  = 0.99f*(X[RIGHT] - X[LEFT]);
+        X_bi.tail(3)  = 0.95f*(X[RIGHT] - X[LEFT]);
 
         Xstar_dual =  _Tbi.inverse() * X_bi;
         // Amodul_ee_norm = _Tbi.inverse() * A * _Tbi *(X_dual - Xstar_dual);          // Modulated DS that aligned  the EE with the desired velocity
@@ -1250,7 +1250,7 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
         activation = 1.0f;
 
         //
-        // this->constrained_ang_vel_correction(w_H_ee, w_H_gp, w_H_o, w_H_Do, Vd_ee_nom, true);
+        this->constrained_ang_vel_correction(w_H_ee, w_H_gp, w_H_o, w_H_Do, Vd_ee_nom, true);
       }
       break;
 
@@ -1262,7 +1262,7 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
         Vector6f X_bi = Eigen::VectorXf::Zero(6);
         X_bi.head(3)  = 0.5f*(X[LEFT] + X[RIGHT]);
         X_bi.tail(3)  = 0.95f*(X[RIGHT] - X[LEFT]);
-        Xstar_dual =  _Tbi.inverse() * X_bi;
+        Xstar_dual    =  _Tbi.inverse() * X_bi;
         //velocity based motion of the object
         Vector6f Xdot_bi = Eigen::VectorXf::Zero(6);
         Eigen::Vector3f X_rel = X[RIGHT] - X[LEFT];
