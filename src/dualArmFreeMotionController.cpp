@@ -111,7 +111,7 @@ bool dualArmFreeMotionController::init(Eigen::Matrix4f w_H_eeStandby[], Matrix6f
   // _w_max       = 2.0f;
   // _v_max = 2.0f;     // velocity limits
   // _w_max = 4.0f;     // velocity limits
-  _v_max      = 1.0f;
+  _v_max      = 1.5f; //0.1
   _w_max      = 3.0f;
 
   gain_p_abs = gain_abs_.topLeftCorner(3,3);
@@ -1535,7 +1535,7 @@ void dualArmFreeMotionController::constrained_ang_vel_correction(Eigen::Matrix4f
 
     if(wIntegral){
       _integral_Vee_d[k] = _integral_Vee_d[k] + 0.5f*_dt*VEE[k].tail(3); 
-      if(_integral_Vee_d[k].norm() > 0.5f){
+      if(_integral_Vee_d[k].norm() > 0.4f){  //0.5
         _integral_Vee_d[k] = _integral_Vee_d[k].normalized() * 0.5f;
       }
     }

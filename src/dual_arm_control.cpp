@@ -1591,8 +1591,8 @@ void dual_arm_control::computeCommands()
 	// std::cout << "[dual_arm_control]: _w_H_o: \n" << _w_H_o << std::endl; 
 	// std::cout << "[dual_arm_control]: _w_H_Do: \n" <<  _w_H_Do << std::endl;
 
-	std::cout << "[dual_arm_control]: STATE 2 GO : \t"     << y_2_go << std::endl;
-	std::cout << "[dual_arm_control]: 3D STATE 2 GO : \t"  << xt2go_bar.transpose() << std::endl;  
+	// std::cout << "[dual_arm_control]: STATE 2 GO : \t"     << y_2_go << std::endl;
+	// std::cout << "[dual_arm_control]: 3D STATE 2 GO : \t"  << xt2go_bar.transpose() << std::endl;  
 
 	// std::cout << "[dual_arm_control]:  ------------- _sensedContact: \t" << _sensedContact << std::endl;
 	// std::cout << "[dual_arm_control]: _Vd_ee[LEFT]:  \t" << _Vd_ee[LEFT].transpose() << std::endl;
@@ -1607,8 +1607,8 @@ void dual_arm_control::computeCommands()
 	// std::cout << " [dual_arm_control]: _dirImp[RIGHT] \t " << _dirImp[RIGHT].transpose() << " normal RIGHT \t " << _n[RIGHT].transpose()<< std::endl;
 	std::cout << " EEEE----------- EEEPPP   _desVtoss IIIIIIII ----------- ONNNNNNNN \t " << _desVtoss << std::endl; 
 	std::cout << " EEEE----------- EEEPPP   _desVimp  IIIIIIII ----------- ONNNNNNNN \t " <<  _desVimp <<  std::endl; 
-	std::cout << " EEEE---- RELEASE POSITION  IIIIIIII ----------- ONNNNNNNN \t " <<  _tossVar.release_position.transpose() <<  std::endl;
-	std::cout << " EEEE---- RELEASE DIRECTION  IIIIIIII ----------- ONNNNNNNN \t " <<  _tossVar.release_linear_velocity.normalized().transpose() <<  std::endl;
+	// std::cout << " EEEE---- RELEASE POSITION  IIIIIIII ----------- ONNNNNNNN \t " <<  _tossVar.release_position.transpose() <<  std::endl;
+	// std::cout << " EEEE---- RELEASE DIRECTION  IIIIIIII ----------- ONNNNNNNN \t " <<  _tossVar.release_linear_velocity.normalized().transpose() <<  std::endl;
 	// std::cout << " EEEE---- RELEASE POSITION  SPHERICAL  -- r: \t " <<  release_pos.r ;
 	// std::cout << " theta: \t " <<  180.f/M_PI * release_pos.theta;
 	// std::cout << " phi: \t " <<  180.f/M_PI * release_pos.phi <<  std::endl;
@@ -1622,13 +1622,20 @@ void dual_arm_control::computeCommands()
 
 	std::cout << " HOME STATUS is --------------------------> : \t " << _goHome << std::endl; 
 	std::cout << " RELEASE_AND_RETRACT STATUS is -----------> : \t " << _releaseAndretract << std::endl; 
-	std::cout << " TOSSING STATUS is -----------------------> : \t " << _isThrowing << std::endl; 
-	std::cout << " PLACING STATUS is -----------------------> : \t " << _isPlacing << std::endl;  
-	// std::cout << " _windowVelTarget.size() is  \t " << _windowVelTarget.size() << std::endl; 
-	// std::cout << " TARGET _movingAvgVelTarget is  \t " << _movingAvgVelTarget.norm() << std::endl;
-	std::cout << " AAAA  TRACKING FACTOR AAAAA is  \t " << _trackingFactor << std::endl; 
-	std::cout << " AAAA  ADAPTATION STATUS AAAAA is  -----------> : \t " << _adaptationActive << std::endl; 
-	std::cout << " PPPPPPPPPPPPp _magniture_pert_conveyor_belt PPPPPP is  -----------> : \t " << _magniture_pert_conveyor_belt << std::endl; 
+	switch(_dualTaskSelector){
+		case 0: std::cout << " DUAL_ARM MODE is -----------------------> : \t " << "REACHING-TO-GRASP" << std::endl; break;
+		case 1: std::cout << " DUAL_ARM MODE is -----------------------> : \t " << "LIFTING" << std::endl; break;
+		case 2: std::cout << " DUAL_ARM MODE is -----------------------> : \t " << "TOSSING" << std::endl; break;
+		case 3: std::cout << " DUAL_ARM MODE is -----------------------> : \t " << "PICK_AND_TOSS" << std::endl; break;
+		case 4: std::cout << " DUAL_ARM MODE is -----------------------> : \t " << "PICK_AND_PLACE" << std::endl; break;
+		case 5: std::cout << " DUAL_ARM MODE is -----------------------> : \t " << "PLACE-TOSSING" << std::endl; break;
+	}
+
+	// // std::cout << " _windowVelTarget.size() is  \t " << _windowVelTarget.size() << std::endl; 
+	// // std::cout << " TARGET _movingAvgVelTarget is  \t " << _movingAvgVelTarget.norm() << std::endl;
+	// std::cout << " AAAA  TRACKING FACTOR AAAAA is  \t " << _trackingFactor << std::endl; 
+	// std::cout << " AAAA  ADAPTATION STATUS AAAAA is  -----------> : \t " << _adaptationActive << std::endl; 
+	// std::cout << " PPPPPPPPPPPPp _magniture_pert_conveyor_belt PPPPPP is  -----------> : \t " << _magniture_pert_conveyor_belt << std::endl; 
 	// std::cout << " CCCCCCCCCCCCCCCC FreeMotionCtrl._activationAperture CCCCCCCCCC is  -----------> : \t " << FreeMotionCtrl._activationAperture << std::endl;  
 	std::cout << " PPPPPPPPPPPPPPP _xDo_placing PPPPPPPPPP  is  -----------> : \t " << _xDo_placing.transpose() << std::endl; 
 	// std::cout << " PPPPPPPPUUUUUUUUUUU _x_pickup PPPPPPPPPPUUUUUUUUUUU  is  -----------> : \t " << _x_pickup.transpose() << std::endl; 
