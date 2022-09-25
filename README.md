@@ -228,3 +228,19 @@ ctrl_mode_conveyor_belt in yaml : True
 - **k**: activate the motion adaptation of the robot
 - **m**: decrease the magnitude of the perturbation by -50 mm/s
 - **i**: increase the magnitude of the perturbation by +50 mm/s
+
+
+# References
+
+_Dual Arm grabbing and tossing:_
+
+> [1] M. Bombile and A. Billard, "Dual-Arm Control for Coordinated Fast Grabbing and Tossing of an Object: Proposing a New Approach," in IEEE Robotics & Automation Magazine, vol. 29, no. 3, pp. 127-138, Sept. 2022, doi: 10.1109/MRA.2022.3177355.  https://www.youtube.com/watch?v=sW4yxDBf-XM
+
+
+**Contact**: 
+[Michael Bombile]
+michael.bombile@epfl.ch; micbombile@gmail.com 
+
+**Acknowledgments**
+This project was partially founded by:
+> The EU Horizon 2020 Research and Innovation Programme (call: H2020-ICT-09-2019-2020, RIA) under Grant Agreement No. 871899: https://i-am-project.eu/
