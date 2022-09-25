@@ -111,7 +111,7 @@ bool dualArmFreeMotionController::init(Eigen::Matrix4f w_H_eeStandby[], Matrix6f
   // _w_max       = 2.0f;
   // _v_max = 2.0f;     // velocity limits
   // _w_max = 4.0f;     // velocity limits
-  _v_max      = 1.5f; //0.1
+  _v_max      = 1.1f; //0.1
   _w_max      = 3.0f;
 
   gain_p_abs = gain_abs_.topLeftCorner(3,3);
@@ -707,7 +707,7 @@ void dualArmFreeMotionController::computeCoordinatedMotion2(Eigen::Matrix4f w_H_
   lp_H_rp_pgrasp       = lp_H_rp;
   lp_H_rp_pgrasp(1, 3) = lp_H_rp(1,3)/fabs(lp_H_rp(1,3)) * (fabs(lp_H_rp(1,3)) + 0.30f);
 
-  float comb_coef  = 0.5f;
+  float comb_coef  = 0.3f;
   lp_H_rp_momentum = lp_H_rp;
   lp_H_rp_momentum.block(0,3,3,1) = comb_coef*lp_H_rp_pgrasp.block(0,3,3,1) + (1. - comb_coef)*lr_H_rr_stb.block(0,3,3,1);
 
@@ -1250,7 +1250,7 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
         activation = 1.0f;
 
         //
-        this->constrained_ang_vel_correction(w_H_ee, w_H_gp, w_H_o, w_H_Do, Vd_ee_nom, true);
+        // this->constrained_ang_vel_correction(w_H_ee, w_H_gp, w_H_o, w_H_Do, Vd_ee_nom, true);
       }
       break;
 
