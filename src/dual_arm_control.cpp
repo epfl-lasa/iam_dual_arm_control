@@ -1305,7 +1305,7 @@ void dual_arm_control::computeCommands()
 	
 
 
-	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	if(_goHome)
 	{
 		FreeMotionCtrl.computeAsyncMotion(_w_H_ee, _w_H_eeStandby, _w_H_o, _Vd_ee, _qd, true);		
@@ -1329,10 +1329,7 @@ void dual_arm_control::computeCommands()
 			_xDo_placing(1) = 0.0f;
 		}
 
-		// if((_initPoseCount > 50) && (fabs(_xt(1)-y_2_go) < 0.02f)) // 0.80 						// tossing
-		// if((-xt_bar.dot(_vt) > 0) && (_initPoseCount > 50) && ((xt_bar - xt2go_bar).norm() < 0.02f) ) // 0.80     // tossing
 		if((_initPoseCount > 50) && ((xt_bar - xt2go_bar).norm() < 0.04f) && (!_hasCaughtOnce)) // 0.80     // tossing
-		// if((_initPoseCount > 50) && (fabs(_xo(1)-y_2_go) < 0.02f) && (!_hasCaughtOnce)) // 0.80   					// catching
 		{
 			_goHome = false;
 			// _startlogging  = true;
@@ -1341,12 +1338,9 @@ void dual_arm_control::computeCommands()
 	}
 	else 
 	{
-		// if((ros::Time::now().toSec()-_t0_run) < 0.4f){
-		// 	FreeMotionCtrl.computeAsyncMotion(_w_H_ee, _w_H_gp, _w_H_o, _Vd_ee, _qd, true);
-		// }
-		// else
-		// {
+			////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 			if(_releaseAndretract) //  release_and_retract || release
+			////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 			{
 				FreeMotionCtrl.computeReleaseAndRetractMotion(_w_H_ee, _w_H_Dgp,  _w_H_o, _Vd_ee, _qd, true);
 				_isThrowing 	= false;
@@ -1357,161 +1351,174 @@ void dual_arm_control::computeCommands()
 				dsThrowing.reset_release_flag();
 				_isIntercepting = false;
 			}
-			else if(true && _sensedContact && CooperativeCtrl._ContactConfidence == 1.0f)  // TODO : Replace by contact
+			////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+			else  // reaching and constrained motion
+			////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 			{
-				_Vd_o  = dsThrowing.apply(_xo, _qo, _vo, Eigen::Vector3f(0.0f, 0.0f, 0.0f), 1);  // Function to call in a loop
-				// _releaseAndretract = dsThrowing.get_release_flag();
 
+				if(true && _sensedContact && CooperativeCtrl._ContactConfidence == 1.0f)  // TODO : Replace by contact
+				{
+					_Vd_o  = dsThrowing.apply(_xo, _qo, _vo, Eigen::Vector3f(0.0f, 0.0f, 0.0f), 1);  // Function to call in a loop
+					// _releaseAndretract = dsThrowing.get_release_flag();
 
-				if(_old_dual_method){
-					FreeMotionCtrl.computeConstrainedMotion(_w_H_ee, _w_H_Dgp, _w_H_o, _Vd_ee, _qd, false);
-					//
-					if(_isPlacing || (_dualTaskSelector == PICK_AND_PLACE)){
-							Eigen::Matrix4f w_H_DesObj = Utils<float>::pose2HomoMx(_xDo_placing, _qDo_placing);
-							_w_H_Dgp[LEFT].block(0,0,3,3)  = w_H_DesObj.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[LEFT],  _qgp_o[LEFT]).block(0,0,3,3);
-							_w_H_Dgp[RIGHT].block(0,0,3,3)  = w_H_DesObj.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[RIGHT],  _qgp_o[RIGHT]).block(0,0,3,3);
-							FreeMotionCtrl.generatePlacingMotion(_w_H_ee, _w_H_Dgp,  _w_H_o, w_H_DesObj, _height_via_point, _Vd_ee, _qd, false);
-							if((_w_H_o.block<3,1>(0,3)-_xDo_placing).norm()<=0.05){
-								_releaseAndretract = true;
-							}
-					}
-					if(_isThrowing || (_dualTaskSelector == TOSSING) || (_dualTaskSelector == PICK_AND_TOSS)){
-						Eigen::Matrix4f w_H_DesObj = Utils<float>::pose2HomoMx(_tossVar.release_position, _tossVar.release_orientation);
-						_w_H_Dgp[LEFT]  = w_H_DesObj * _o_H_ee[LEFT];
-						_w_H_Dgp[RIGHT] = w_H_DesObj * _o_H_ee[RIGHT];
+					// -------------------------------------------------------------------------------------------------------------------------
+					if(_old_dual_method)
+					// -------------------------------------------------------------------------------------------------------------------------
+					{
 						FreeMotionCtrl.computeConstrainedMotion(_w_H_ee, _w_H_Dgp, _w_H_o, _Vd_ee, _qd, false);
 						//
-						Eigen::Vector3f t_Do_absEE = (_tossVar.release_position + _tossVar.release_linear_velocity.normalized() * 0.05) - 0.5f * (_w_H_ee[LEFT].block(0, 3, 3, 1) + _w_H_ee[RIGHT].block(0, 3, 3, 1));
-						float scale   = 80.f;
-						float in_d    = 0.5f*(_w_H_ee[LEFT](0,3)+_w_H_ee[RIGHT](0,3));
-						float sigmoid = 1.0f/(1+exp(-scale*(in_d- 0.41f)));
-					  	_Vd_ee[LEFT].head(3)  = _Vd_ee[LEFT].head(3)/( _Vd_ee[LEFT].head(3).norm() +1e-10) * sigmoid* _desVtoss;
-	  					_Vd_ee[RIGHT].head(3) = _Vd_ee[RIGHT].head(3)/(_Vd_ee[RIGHT].head(3).norm()+1e-10) * sigmoid* _desVtoss;
-		  				//
-		  				if((_w_H_o.block<3,1>(0,3)-_tossVar.release_position).norm()<=0.035){
+						if(_isPlacing || (_dualTaskSelector == PICK_AND_PLACE)){
+								Eigen::Matrix4f w_H_DesObj = Utils<float>::pose2HomoMx(_xDo_placing, _qDo_placing);
+								_w_H_Dgp[LEFT].block(0,0,3,3)  = w_H_DesObj.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[LEFT],  _qgp_o[LEFT]).block(0,0,3,3);
+								_w_H_Dgp[RIGHT].block(0,0,3,3)  = w_H_DesObj.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[RIGHT],  _qgp_o[RIGHT]).block(0,0,3,3);
+								FreeMotionCtrl.generatePlacingMotion(_w_H_ee, _w_H_Dgp,  _w_H_o, w_H_DesObj, _height_via_point, _Vd_ee, _qd, false);
+								if((_w_H_o.block<3,1>(0,3)-_xDo_placing).norm()<=0.05){
+									_releaseAndretract = true;
+								}
+						}
+						if(_isThrowing || (_dualTaskSelector == TOSSING) || (_dualTaskSelector == PICK_AND_TOSS)){
+							Eigen::Matrix4f w_H_DesObj = Utils<float>::pose2HomoMx(_tossVar.release_position, _tossVar.release_orientation);
+							_w_H_Dgp[LEFT]  = w_H_DesObj * _o_H_ee[LEFT];
+							_w_H_Dgp[RIGHT] = w_H_DesObj * _o_H_ee[RIGHT];
+							FreeMotionCtrl.computeConstrainedMotion(_w_H_ee, _w_H_Dgp, _w_H_o, _Vd_ee, _qd, false);
+							//
+							Eigen::Vector3f t_Do_absEE = (_tossVar.release_position + _tossVar.release_linear_velocity.normalized() * 0.05) - 0.5f * (_w_H_ee[LEFT].block(0, 3, 3, 1) + _w_H_ee[RIGHT].block(0, 3, 3, 1));
+							float scale   = 80.f;
+							float in_d    = 0.5f*(_w_H_ee[LEFT](0,3)+_w_H_ee[RIGHT](0,3));
+							float sigmoid = 1.0f/(1+exp(-scale*(in_d- 0.41f)));
+						  	_Vd_ee[LEFT].head(3)  = _Vd_ee[LEFT].head(3)/( _Vd_ee[LEFT].head(3).norm() +1e-10) * sigmoid* _desVtoss;
+		  					_Vd_ee[RIGHT].head(3) = _Vd_ee[RIGHT].head(3)/(_Vd_ee[RIGHT].head(3).norm()+1e-10) * sigmoid* _desVtoss;
+			  				//
+			  				if((_w_H_o.block<3,1>(0,3)-_tossVar.release_position).norm()<=0.035){
+										_releaseAndretract = true;
+								}
+							}
+					}
+					// ----------------------------------------------------------------------------------------------------------------------------
+					else // MDS
+					// ----------------------------------------------------------------------------------------------------------------------------
+					{
+						Eigen::Matrix4f w_H_DesObj = Utils<float>::pose2HomoMx(_xDo_lifting, _qDo_lifting);
+						_w_H_Dgp[LEFT].block(0,0,3,3)  = w_H_DesObj.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[LEFT],  _qgp_o[LEFT]).block(0,0,3,3);
+						_w_H_Dgp[RIGHT].block(0,0,3,3) = w_H_DesObj.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[RIGHT],  _qgp_o[RIGHT]).block(0,0,3,3);
+						_w_H_Do = Utils<float>::pose2HomoMx(_xDo_lifting, _qDo_lifting);  //
+						// _w_H_Dgp[LEFT].block(0,0,3,3)  = _w_H_o.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[LEFT],  _qgp_o[LEFT]).block(0,0,3,3);
+						// _w_H_Dgp[RIGHT].block(0,0,3,3) = _w_H_o.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[RIGHT],  _qgp_o[RIGHT]).block(0,0,3,3);
+
+						if(_isPlacing || (_dualTaskSelector == PICK_AND_PLACE))
+						{
+							_xDo_placing.head(2) = _xDo_placing.head(2) + _adaptationActive * _dt * (- 5.0f*(_xDo_placing.head(2) - _xt.head(2)));
+							if( (_xt(1) >= -0.10f) && (_xt(1) <= 0.10f)){
+								_xDo_placing.head(2) = _xDo_placing.head(2) + _adaptationActive * _dt * (_vt.head(2) - 5.0f*(_xDo_placing.head(2) - _xt.head(2)));
+							}
+							if(_xDo_placing(0)<0.60) 	_xDo_placing(0) = 0.60;
+							if(_xDo_placing(0)>0.75) 	_xDo_placing(0) = 0.75;
+							if(_xDo_placing(1)<-0.10) _xDo_placing(1) =-0.10;
+							if(_xDo_placing(1)> 0.10) _xDo_placing(1) = 0.10;
+
+								Eigen::Matrix4f w_H_DesObj = Utils<float>::pose2HomoMx(_xDo_placing, _qDo_placing);
+								_w_H_Dgp[LEFT].block(0,0,3,3)  = w_H_DesObj.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[LEFT],  _qgp_o[LEFT]).block(0,0,3,3);
+								_w_H_Dgp[RIGHT].block(0,0,3,3)  = w_H_DesObj.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[RIGHT],  _qgp_o[RIGHT]).block(0,0,3,3);
+								_w_H_Do = Utils<float>::pose2HomoMx(_xDo_placing, _qDo);  //
+
+								if((_w_H_o.block<3,1>(0,3)-_xDo_placing).norm()<=0.05){  // results with 0.06
+									_releaseAndretract = true;
+								}
+						}
+
+						if(_isPlaceTossing || (_dualTaskSelector == PLACE_TOSSING) ){
+
+							// _xDo_placing.head(2) = _xt.head(2) + _vt.head(2)*(time2intercept_bot + flytime_obj);
+							if(_xDo_placing(0)<0.60) 	_xDo_placing(0) = 0.60;
+							if(_xDo_placing(0)>0.75) 	_xDo_placing(0) = 0.75;
+							if(_xDo_placing(1)<-0.10) _xDo_placing(1) =-0.10;
+							if(_xDo_placing(1)> 0.10) _xDo_placing(1) = 0.10;
+
+								Eigen::Matrix4f w_H_DesObj = Utils<float>::pose2HomoMx(_xDo_placing, _qDo_placing);
+								_w_H_Dgp[LEFT].block(0,0,3,3)  = w_H_DesObj.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[LEFT],  _qgp_o[LEFT]).block(0,0,3,3);
+								_w_H_Dgp[RIGHT].block(0,0,3,3)  = w_H_DesObj.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[RIGHT],  _qgp_o[RIGHT]).block(0,0,3,3);
+								_w_H_Do = Utils<float>::pose2HomoMx(_xDo_placing, _qDo);  //
+								
+								if(((_w_H_o.block<3,1>(0,3)-_tossVar.release_position).norm()<=0.07) || ((_w_H_o.block<2,1>(0,3)-_xDo_placing.head(2)).norm() <= 0.05 ) ){  // results with 0.06
+									_releaseAndretract = true;
+								}
+						}
+
+						if(_isThrowing || (_dualTaskSelector == TOSSING) || (_dualTaskSelector == PICK_AND_TOSS)){ 
+							Eigen::Matrix4f w_H_DesObj = Utils<float>::pose2HomoMx(_tossVar.release_position, _tossVar.release_orientation);
+								_w_H_Dgp[LEFT].block(0,0,3,3)   = w_H_DesObj.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[LEFT],  _qgp_o[LEFT]).block(0,0,3,3);
+								_w_H_Dgp[RIGHT].block(0,0,3,3)  = w_H_DesObj.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[RIGHT],  _qgp_o[RIGHT]).block(0,0,3,3);
+							// if(dsThrowing.a_normal_> 0.90f){
+							if(dsThrowing.a_tangent_> 0.99f){ // 0.95
+								_w_H_Dgp[LEFT]  = _w_H_o * _o_H_ee[LEFT];
+								_w_H_Dgp[RIGHT] = _w_H_o * _o_H_ee[RIGHT];
+								// w_H_DesObj.block<3,1>(0,3) = _w_H_o.block<3,1>(0,3); 
+								// _w_H_Dgp[LEFT]  = w_H_DesObj * _o_H_ee[LEFT];
+								// _w_H_Dgp[RIGHT] = w_H_DesObj * _o_H_ee[RIGHT];
+							}
+							_w_H_Do = Utils<float>::pose2HomoMx(_tossVar.release_position, _qDo);  //
+							// if((_release_flag) || ((_w_H_o.block<3,1>(0,3)-_tossVar.release_position).norm()<=0.035)){ 
+							if( ((_w_H_o.block<3,1>(0,3)-_tossVar.release_position).norm()<=0.035) ){ 
 									_releaseAndretract = true;
 							}
 						}
-				}
-				else{
-					Eigen::Matrix4f w_H_DesObj = Utils<float>::pose2HomoMx(_xDo_lifting, _qDo_lifting);
-					_w_H_Dgp[LEFT].block(0,0,3,3)  = w_H_DesObj.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[LEFT],  _qgp_o[LEFT]).block(0,0,3,3);
-					_w_H_Dgp[RIGHT].block(0,0,3,3) = w_H_DesObj.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[RIGHT],  _qgp_o[RIGHT]).block(0,0,3,3);
-					_w_H_Do = Utils<float>::pose2HomoMx(_xDo_lifting, _qDo_lifting);  //
-					// _w_H_Dgp[LEFT].block(0,0,3,3)  = _w_H_o.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[LEFT],  _qgp_o[LEFT]).block(0,0,3,3);
-					// _w_H_Dgp[RIGHT].block(0,0,3,3) = _w_H_o.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[RIGHT],  _qgp_o[RIGHT]).block(0,0,3,3);
-
-					if(_isPlacing || (_dualTaskSelector == PICK_AND_PLACE)){
-
-						_xDo_placing.head(2) = _xDo_placing.head(2) + _adaptationActive * _dt * (- 5.0f*(_xDo_placing.head(2) - _xt.head(2)));
-						if( (_xt(1) >= -0.10f) && (_xt(1) <= 0.10f)){
-							_xDo_placing.head(2) = _xDo_placing.head(2) + _adaptationActive * _dt * (_vt.head(2) - 5.0f*(_xDo_placing.head(2) - _xt.head(2)));
-						}
-						if(_xDo_placing(0)<0.60) 	_xDo_placing(0) = 0.60;
-						if(_xDo_placing(0)>0.75) 	_xDo_placing(0) = 0.75;
-						if(_xDo_placing(1)<-0.10) _xDo_placing(1) =-0.10;
-						if(_xDo_placing(1)> 0.10) _xDo_placing(1) = 0.10;
-
-							Eigen::Matrix4f w_H_DesObj = Utils<float>::pose2HomoMx(_xDo_placing, _qDo_placing);
-							_w_H_Dgp[LEFT].block(0,0,3,3)  = w_H_DesObj.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[LEFT],  _qgp_o[LEFT]).block(0,0,3,3);
-							_w_H_Dgp[RIGHT].block(0,0,3,3)  = w_H_DesObj.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[RIGHT],  _qgp_o[RIGHT]).block(0,0,3,3);
-							_w_H_Do = Utils<float>::pose2HomoMx(_xDo_placing, _qDo);  //
-
-							if((_w_H_o.block<3,1>(0,3)-_xDo_placing).norm()<=0.05){  // results with 0.06
-								_releaseAndretract = true;
-							}
+						FreeMotionCtrl.dual_arm_motion(_w_H_ee,  _Vee, _w_H_Dgp,  _w_H_o, _w_H_Do, _Vd_o, _BasisQ, _VdImpact, false, _dualTaskSelector, _Vd_ee, _qd, _release_flag); // 0=reach, 1=pick, 2=toss, 3=pick_and_toss, 4=pick_and_place
 					}
-
-					if(_isPlaceTossing || (_dualTaskSelector == PLACE_TOSSING) ){
-
-						// _xDo_placing.head(2) = _xt.head(2) + _vt.head(2)*(time2intercept_bot + flytime_obj);
-						if(_xDo_placing(0)<0.60) 	_xDo_placing(0) = 0.60;
-						if(_xDo_placing(0)>0.75) 	_xDo_placing(0) = 0.75;
-						if(_xDo_placing(1)<-0.10) _xDo_placing(1) =-0.10;
-						if(_xDo_placing(1)> 0.10) _xDo_placing(1) = 0.10;
-
-							Eigen::Matrix4f w_H_DesObj = Utils<float>::pose2HomoMx(_xDo_placing, _qDo_placing);
-							_w_H_Dgp[LEFT].block(0,0,3,3)  = w_H_DesObj.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[LEFT],  _qgp_o[LEFT]).block(0,0,3,3);
-							_w_H_Dgp[RIGHT].block(0,0,3,3)  = w_H_DesObj.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[RIGHT],  _qgp_o[RIGHT]).block(0,0,3,3);
-							_w_H_Do = Utils<float>::pose2HomoMx(_xDo_placing, _qDo);  //
-							
-							if(((_w_H_o.block<3,1>(0,3)-_tossVar.release_position).norm()<=0.07) || ((_w_H_o.block<2,1>(0,3)-_xDo_placing.head(2)).norm() <= 0.05 ) ){  // results with 0.06
-								_releaseAndretract = true;
-							}
+					// force feedback to grab objects
+					float f_gain = 0.02f;
+					float abs_force_correction = f_gain * 0.5f*( (_filteredWrench[LEFT].segment(0,3)  - CooperativeCtrl._f_applied[LEFT].head(3)).dot(_n[LEFT])  
+					 			   			     + (_filteredWrench[RIGHT].segment(0,3) - CooperativeCtrl._f_applied[RIGHT].head(3)).dot(_n[RIGHT]) );   
+					if(fabs(abs_force_correction)  > 0.2f){
+						abs_force_correction = abs_force_correction/fabs(abs_force_correction) * 0.2f;
 					}
+					_Vd_ee[LEFT].head(3)  =  _Vd_ee[LEFT].head(3)  - 0.00*abs_force_correction * _n[LEFT];
+					_Vd_ee[RIGHT].head(3) =  _Vd_ee[RIGHT].head(3) - 0.00*abs_force_correction * _n[RIGHT];
 
-					if(_isThrowing || (_dualTaskSelector == TOSSING) || (_dualTaskSelector == PICK_AND_TOSS)){ 
-						Eigen::Matrix4f w_H_DesObj = Utils<float>::pose2HomoMx(_tossVar.release_position, _tossVar.release_orientation);
-							_w_H_Dgp[LEFT].block(0,0,3,3)   = w_H_DesObj.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[LEFT],  _qgp_o[LEFT]).block(0,0,3,3);
-							_w_H_Dgp[RIGHT].block(0,0,3,3)  = w_H_DesObj.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[RIGHT],  _qgp_o[RIGHT]).block(0,0,3,3);
-						// if(dsThrowing.a_normal_> 0.90f){
-						if(dsThrowing.a_tangent_> 0.99f){ // 0.95
-							_w_H_Dgp[LEFT]  = _w_H_o * _o_H_ee[LEFT];
-							_w_H_Dgp[RIGHT] = _w_H_o * _o_H_ee[RIGHT];
-							// w_H_DesObj.block<3,1>(0,3) = _w_H_o.block<3,1>(0,3); 
-							// _w_H_Dgp[LEFT]  = w_H_DesObj * _o_H_ee[LEFT];
-							// _w_H_Dgp[RIGHT] = w_H_DesObj * _o_H_ee[RIGHT];
-						}
-						_w_H_Do = Utils<float>::pose2HomoMx(_tossVar.release_position, _qDo);  //
-						// if((_release_flag) || ((_w_H_o.block<3,1>(0,3)-_tossVar.release_position).norm()<=0.035)){ 
-						if( ((_w_H_o.block<3,1>(0,3)-_tossVar.release_position).norm()<=0.035) ){ 
-								_releaseAndretract = true;
-						}
-					}
-					FreeMotionCtrl.dual_arm_motion(_w_H_ee,  _Vee, _w_H_Dgp,  _w_H_o, _w_H_Do, _Vd_o, _BasisQ, _VdImpact, false, _dualTaskSelector, _Vd_ee, _qd, _release_flag); // 0=reach, 1=pick, 2=toss, 3=pick_and_toss, 4=pick_and_place
-				}
-				// force feedback to grab objects
-				float f_gain = 0.02f;
-				float abs_force_correction = f_gain * 0.5f*( (_filteredWrench[LEFT].segment(0,3)  - CooperativeCtrl._f_applied[LEFT].head(3)).dot(_n[LEFT])  
-				 			   			     + (_filteredWrench[RIGHT].segment(0,3) - CooperativeCtrl._f_applied[RIGHT].head(3)).dot(_n[RIGHT]) );   
-				if(fabs(abs_force_correction)  > 0.2f){
-					abs_force_correction = abs_force_correction/fabs(abs_force_correction) * 0.2f;
-				}
-				_Vd_ee[LEFT].head(3)  =  _Vd_ee[LEFT].head(3)  - 0.00*abs_force_correction * _n[LEFT];
-				_Vd_ee[RIGHT].head(3) =  _Vd_ee[RIGHT].head(3) - 0.00*abs_force_correction * _n[RIGHT];
-
-				//
-				if(dsThrowing.a_proximity_>=0.99f){
-					beta_vel_mod_unfilt = 1.0;
-				}	
-				
-			}
-			else  // Free-motion: reaching
-			{
-				if( _w_H_ee[LEFT](0,3) >= 0.72f ||  _w_H_ee[RIGHT](0,3) >= 0.72f ){   // 0.70
-					FreeMotionCtrl.reachable_p = 0.0f;
-				}
-				else{
-					FreeMotionCtrl.reachable_p = 1.0f;
-				}
-
-				if(false || _old_dual_method){
-					FreeMotionCtrl.computeCoordinatedMotion2(_w_H_ee, _w_H_gp, _w_H_o, _Vd_ee, _qd, false);
-					// FreeMotionCtrl.computeCoordinatedMotion3(_w_H_ee, _w_H_gp, _w_H_o, _Vo, _x_intercept, _Vd_ee, _qd, false);
 					//
-					Eigen::Vector3f error_p_abs     = _w_H_o.block(0,3,3,1) - 0.5f*( _w_H_ee[LEFT].block(0,3,3,1) +  _w_H_ee[RIGHT].block(0,3,3,1));
-					Eigen::Vector3f o_error_pos_abs = _w_H_o.block<3,3>(0,0).transpose() * error_p_abs;
-					Eigen::Vector3f o_error_pos_abs_paral = Eigen::Vector3f(o_error_pos_abs(0), 0.0f, o_error_pos_abs(2));
-					float cp_ap = Utils<float>::computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.17f, 1.0f, true);  // 50.0f, 0.05f, 2.8f
-					// create impact in the normal direction
-					// _Vd_ee[LEFT].head(3)  = _Vd_ee[LEFT].head(3)  + _n[LEFT]  * cp_ap * _desVimp; //0.05f; //
-					// _Vd_ee[RIGHT].head(3) = _Vd_ee[RIGHT].head(3) + _n[RIGHT] * cp_ap * _desVimp; //0.05f; //
-					_Vd_ee[LEFT].head(3)  = _Vd_ee[LEFT].head(3)  + _dirImp[LEFT]  * cp_ap * _desVimp; //0.05f; //
-					_Vd_ee[RIGHT].head(3) = _Vd_ee[RIGHT].head(3) + _dirImp[RIGHT] * cp_ap * _desVimp; //0.05f; //
+					if(dsThrowing.a_proximity_>=0.99f){
+						beta_vel_mod_unfilt = 1.0;
+					}	
+					
 				}
-				else{
-					FreeMotionCtrl.dual_arm_motion(_w_H_ee,  _Vee, _w_H_gp,  _w_H_o, _w_H_Do, _Vd_o, _BasisQ, _VdImpact, false, 0, _Vd_ee, _qd, _release_flag);    // 0: reach
-				}
-				
-  				dsThrowing._refVtoss = _desVimp;
-	 			_Vd_o.setZero();	// for data logging
+				////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+				else  // Free-motion: reaching
+				////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+				{
+					if( _w_H_ee[LEFT](0,3) >= 0.72f ||  _w_H_ee[RIGHT](0,3) >= 0.72f ){   // 0.70
+						FreeMotionCtrl.reachable_p = 0.0f;
+					}
+					else{
+						FreeMotionCtrl.reachable_p = 1.0f;
+					}
 
-	 			//
-	 			if(FreeMotionCtrl.a_proximity_ >= 0.2f){
-					beta_vel_mod_unfilt = 1.0;
+					if(false || _old_dual_method){
+						FreeMotionCtrl.computeCoordinatedMotion2(_w_H_ee, _w_H_gp, _w_H_o, _Vd_ee, _qd, false);
+						// FreeMotionCtrl.computeCoordinatedMotion3(_w_H_ee, _w_H_gp, _w_H_o, _Vo, _x_intercept, _Vd_ee, _qd, false);
+						//
+						Eigen::Vector3f error_p_abs     = _w_H_o.block(0,3,3,1) - 0.5f*( _w_H_ee[LEFT].block(0,3,3,1) +  _w_H_ee[RIGHT].block(0,3,3,1));
+						Eigen::Vector3f o_error_pos_abs = _w_H_o.block<3,3>(0,0).transpose() * error_p_abs;
+						Eigen::Vector3f o_error_pos_abs_paral = Eigen::Vector3f(o_error_pos_abs(0), 0.0f, o_error_pos_abs(2));
+						float cp_ap = Utils<float>::computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.17f, 1.0f, true);  // 50.0f, 0.05f, 2.8f
+						// create impact in the normal direction
+						// _Vd_ee[LEFT].head(3)  = _Vd_ee[LEFT].head(3)  + _n[LEFT]  * cp_ap * _desVimp; //0.05f; //
+						// _Vd_ee[RIGHT].head(3) = _Vd_ee[RIGHT].head(3) + _n[RIGHT] * cp_ap * _desVimp; //0.05f; //
+						_Vd_ee[LEFT].head(3)  = _Vd_ee[LEFT].head(3)  + _dirImp[LEFT]  * cp_ap * _desVimp; //0.05f; //
+						_Vd_ee[RIGHT].head(3) = _Vd_ee[RIGHT].head(3) + _dirImp[RIGHT] * cp_ap * _desVimp; //0.05f; //
+					}
+					else{
+						FreeMotionCtrl.dual_arm_motion(_w_H_ee,  _Vee, _w_H_gp,  _w_H_o, _w_H_Do, _Vd_o, _BasisQ, _VdImpact, false, 0, _Vd_ee, _qd, _release_flag);    // 0: reach
+					}
+					
+	  			dsThrowing._refVtoss = _desVimp;
+		 			_Vd_o.setZero();	// for data logging
+
+		 			//
+		 			if(FreeMotionCtrl.a_proximity_ >= 0.2f){
+						beta_vel_mod_unfilt = 1.0;
+					}
 				}
+				////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 			}
-		// }
 
 		// //////////////////////////////////////////////////////////////////////////////////////////
 		float fil_beta = 0.10;
@@ -1522,7 +1529,7 @@ void dual_arm_control::computeCommands()
 				_Vd_ee[RIGHT].head(3) *= _initSpeedScaling * ((float)_adaptationActive * _beta_vel_mod + (1. - (float)_adaptationActive));
 			}
 
-
+		////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// compute the object's grasp points velocity
 		getGraspPointsVelocity();
 	  	//
@@ -1530,7 +1537,7 @@ void dual_arm_control::computeCommands()
 		// _desired_object_wrench.head(3) = 0.5f*(_d1[LEFT]+_d1[RIGHT])* 0.0f* (0.5f*(_Vd_ee[LEFT].head(3) + _Vd_ee[RIGHT].head(3)))// - 0.5f*(_Vee[LEFT].head(3) + _Vee[RIGHT].head(3))) 
 		// 							   - 0.f*std::sqrt(0.5f*(_d1[LEFT]+_d1[RIGHT]) * 1.0f*_gain_abs(0)) * 0.5f*(_Vee[LEFT].head(3) + _Vee[RIGHT].head(3))
 		// 							   - _objectMass * _gravity;
-		// _desired_object_wrench.tail(3) = 0.0f*FreeMotionCtrl.Omega_object_d_; //(0.5f*(_Vd_ee[LEFT].tail(3) + _Vd_ee[RIGHT].tail(3)) - 0.0f*0.5f*(_Vee[LEFT].tail(3) + _Vee[RIGHT].tail(3)));
+		_desired_object_wrench.tail(3) = 0.0f*FreeMotionCtrl.Omega_object_d_; //(0.5f*(_Vd_ee[LEFT].tail(3) + _Vd_ee[RIGHT].tail(3)) - 0.0f*0.5f*(_Vee[LEFT].tail(3) + _Vee[RIGHT].tail(3)));
 
 	  // CooperativeCtrl.getAppliedWrenches(_goHome, _contactState, _w_H_o, _w_H_ee, _w_H_gp, _desired_object_wrench, _qp_wrench_generation);
 	  bool isForceDetected = (_normalForceAverage[LEFT] > _forceThreshold || _normalForceAverage[RIGHT] > _forceThreshold);
