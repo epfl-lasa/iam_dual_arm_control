@@ -232,7 +232,7 @@ dual_arm_control::dual_arm_control(	ros::NodeHandle &n, double frequency, 	//std
 	_isDisturbTarget = false;
 	_beta_vel_mod = 1.0f;
 	_initSpeedScaling = 1.0f; //0.75; //
-	_trackingFactor = 0.35f; //0.17f; // 0.35f better
+	_trackingFactor = 1.0f; //0.35f; //0.17f; // 0.35f better
 	_delta_tracking = 0.0f;
 	_winLengthAvgSpeedEE = 20;
 	// _winCounterAvgSpeedEE = 0;
@@ -308,8 +308,10 @@ bool dual_arm_control::init()
 
 	// initialize the tossing DS
 	//---------------------------
-	float param_toolOffset_left;
-	float param_toolOffset_right;
+	float param_toolOffset_real_left;
+	float param_toolOffset_real_right;
+	float param_toolOffset_sim_left;
+	float param_toolOffset_sim_right;
 
 	float param_objectMass;
 	std::vector<float> param_objectDim;
@@ -351,8 +353,10 @@ bool dual_arm_control::init()
 	gotParam = gotParam && nh_.getParam("object/dimension", param_objectDim); 
 	gotParam = gotParam && nh_.getParam("object/graspOffset", param_graspOffset);
 
-	gotParam = gotParam && nh_.getParam("tool/offset2end_effector/left",  param_toolOffset_left);
-	gotParam = gotParam && nh_.getParam("tool/offset2end_effector/right", param_toolOffset_right);
+	gotParam = gotParam && nh_.getParam("tool/offset2end_effector/real/left",  param_toolOffset_real_left);
+	gotParam = gotParam && nh_.getParam("tool/offset2end_effector/real/right", param_toolOffset_real_right);
+	gotParam = gotParam && nh_.getParam("tool/offset2end_effector/sim/left",  param_toolOffset_sim_left);
+	gotParam = gotParam && nh_.getParam("tool/offset2end_effector/sim/right", param_toolOffset_sim_right);
 	gotParam = gotParam && nh_.getParam("desVimp", _desVimp);
 	gotParam = gotParam && nh_.getParam("desVreach", _desVreach);
 	gotParam = gotParam && nh_.getParam("tossing/desVtoss", _desVtoss);
@@ -415,8 +419,8 @@ bool dual_arm_control::init()
 	_objectDim 						  				= Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_objectDim.data(), param_objectDim.size());
 	Eigen::Vector3f graspOffset    	= Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_graspOffset.data(), param_graspOffset.size());
 
-	_toolOffsetFromEE[0]  			  		= param_toolOffset_left;
-	_toolOffsetFromEE[1]  			  		= param_toolOffset_right;
+	_toolOffsetFromEE[0]  			  		= _isSimulation ? param_toolOffset_sim_left :  param_toolOffset_real_left;
+	_toolOffsetFromEE[1]  			  		= _isSimulation ? param_toolOffset_sim_right :  param_toolOffset_real_right;
 	_tossVar.release_position      	  = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_releasePos.data(), param_releasePos.size());
 	_tossVar.release_orientation      = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_releaseOrient.data(), param_releaseOrient.size());
 	_tossVar.release_linear_velocity  = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_releaseLinVel_dir.data(), param_releaseLinVel_dir.size());
@@ -903,38 +907,7 @@ void dual_arm_control::updatePoses()
 			// }
 		}
 	}
-	// // update object's pickup position and release state
-	// if(!_isPickupSet && !_releaseAndretract){
-	// 	if(_sensedContact && (CooperativeCtrl._ContactConfidence == 1.0)){
-	// 		// update the release pose
-	// 		// dsThrowing.set_toss_pose(_tossVar.release_position, _tossVar.release_orientation);
-	// 		// dsThrowingEstim.set_toss_pose(_tossVar.release_position, _tossVar.release_orientation);
-	// 		//
-	// 		// dsThrowing.set_pickup_object_pose(_xo, _qo);
-	// 		dsThrowing.set_pickup_object_pose(_x_pickup, _qo);
-	// 		// dsThrowingEstim.set_pickup_object_pose(_xo, _qo);
-	// 		// Eigen::Vector3f new_toss_velocity = _desVtoss * (_tossVar.release_position -_xo).normalized();
-	// 		// Eigen::Vector3f new_toss_velocity = _desVtoss * (_tossVar.release_position -_x_pickup).normalized();
-
-	// 		// _tossVar.release_linear_velocity = _desVtoss * (_tossVar.release_position -_xo).normalized();
-	// 		// _tossVar.release_linear_velocity = _desVtoss * (_tossVar.release_position -_x_pickup).normalized();
-	// 		if(_increment_release_pos){
-	// 				// _tossVar.release_linear_velocity = _desVtoss * (_tossVar.release_position -_xDo_lifting).normalized();
-	// 		}
-	// 		dsThrowing.set_toss_linear_velocity(_tossVar.release_linear_velocity);
-	// 		// dsThrowingEstim.set_toss_linear_velocity(_tossVar.release_linear_velocity);
-	// 		// dsThrowing.set_toss_linear_velocity(new_toss_velocity);
-	// 		_isPickupSet = true;
-	// 	}
-	// 	else{
-	// 		_x_pickup = _xo;
-	// 		dsThrowing.set_pickup_object_pose(_x_pickup, _qo);
-	// 		// dsThrowingEstim.set_pickup_object_pose(_xo, _qo);
-
-	// 	}
-	// }
-
-
+	
 	// Compute errors to object center position and dimension vector
 	Eigen::Matrix4f le_H_re     =  _w_H_ee[LEFT].inverse() * _w_H_ee[RIGHT];
 	Eigen::Matrix4f lgp_H_rgp   =  _w_H_gp[LEFT].inverse() * _w_H_gp[RIGHT];
@@ -1230,11 +1203,6 @@ void dual_arm_control::computeCommands()
 	Eigen::Vector3f XEE_Obj = 0.5f*( _w_H_ee[LEFT].block(0,3,3,1) +  _w_H_ee[RIGHT].block(0,3,3,1)) - _w_H_o.block(0,3,3,1);
 	Eigen::Vector3f XObj_Xrelease = _w_H_o.block(0,3,3,1) - _tossVar.release_position;
 
-	// _dual_PathLen_AvgSpeed(0) = XEE_Obj.norm() + XObj_Xrelease.norm();
-	// // _dual_PathLen_AvgSpeed(1) = 0.50f*_desVtoss; //0.95f  0.90f
-	// _dual_PathLen_AvgSpeed(1) =_trackingFactor*(FreeMotionCtrl._v_max + _desVimp + 0.5f* _desVtoss); //0.95f  0.90f
-	// Eigen::Vector2f Lp_Va_pred_bot = _dual_PathLen_AvgSpeed;
-
 	Eigen::Vector2f Lp_Va_pred_bot = {_dual_PathLen_AvgSpeed(0), _trackingFactor *_dual_PathLen_AvgSpeed(1)}; // 0.70f 		0.30f:good //  
 	Eigen::Vector2f Lp_Va_pred_tgt = tossParamEstimator.estimateTarget_SimpPathLength_AverageSpeed(_xt, _xd_landing, _vt); //_movingAvgVelTarget); //
 	float flytime_obj = 0.200f; //0.255f;
@@ -1251,7 +1219,6 @@ void dual_arm_control::computeCommands()
 	if((-xt_bar.dot(_vt) > 0) && ((_initPoseCount > 50) && ((xt_bar - xt2go_bar).norm() < 0.04f))){
 		_isIntercepting = true; 
 	}
-
 
 	float absVeloEE = _movingAvgSpeedEE; //0.5*(_Vd_ee[LEFT].head(3)+_Vd_ee[RIGHT].head(3));
 
@@ -1639,9 +1606,6 @@ void dual_arm_control::computeCommands()
 	// std::cout << " CCCCCCCCCCCCCCCC FreeMotionCtrl._activationAperture CCCCCCCCCC is  -----------> : \t " << FreeMotionCtrl._activationAperture << std::endl;  
 	std::cout << " PPPPPPPPPPPPPPP _xDo_placing PPPPPPPPPP  is  -----------> : \t " << _xDo_placing.transpose() << std::endl; 
 	// std::cout << " PPPPPPPPUUUUUUUUUUU _x_pickup PPPPPPPPPPUUUUUUUUUUU  is  -----------> : \t " << _x_pickup.transpose() << std::endl; 
-
-
-
 	// if( (!_releaseAndretract) && (fmod(_cycle_count, 20)==0)){
 	// 	_dual_PathLen_AvgSpeed = FreeMotionCtrlEstim.estimateRobotTranslation( _w_H_ee, _w_H_gp,  _w_H_eeStandby, _w_H_o, _tossVar.release_position, _desVtoss, 0.05f, 0.100f, _initSpeedScaling);
 	// }

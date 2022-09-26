@@ -2,20 +2,20 @@
 passiveDS:
   dampingTopic:
     CustomController:
-      left : "/iiwa1/CustomControllers/controllers/PassiveDS/params" # "/control/lambda_Pos" #
-      right: "/iiwa_blue/CustomControllers/controllers/PassiveDS/params" #"/control/lambda_Pos" #
+      left : "/iiwa1/CustomControllers/controllers/PassiveDS/params" # 
+      right: "/iiwa_blue/CustomControllers/controllers/PassiveDS/params" #
     TorqueController:
       left : "/iiwa1/control/lambda_Pos" #
       right: "/iiwa_blue/control/lambda_Pos" #
 
 dual_system:
-  simulation: false
+  simulation: true
 
 # object
 object:
-  mass : 3 #2.5
-  dimension:       [0.26, 0.26,  0.26] #[0.18, 0.19, 0.18] #[0.18, 0.19, 0.18] #[0.20, 0.20, 0.20] #[0.20, 0.30, 0.20] # 
-  graspOffset:     [-0.06, 0.00, 0.03] #[-0.02, 0.00, -0.015] #[0.00, 0.00, 0.00] #
+  mass : 1 #2.5
+  dimension:       [0.20, 0.20, 0.20] #[0.26, 0.26,  0.26] #[0.18, 0.19, 0.18] #[0.18, 0.19, 0.18] #[0.20, 0.30, 0.20]
+  graspOffset:     [0.00, 0.00, 0.00] #[-0.06, 0.00, 0.03] #[-0.02, 0.00, -0.015] #
 
   cubicBox :       [0.26, 0.26, 0.26]
   coronaBottePack: [0.13, 0.19, 0.14] 
@@ -25,16 +25,19 @@ object:
   smallOpenBox:    [0.16, 0.29, 0.14]
   optitrackBox:    [0.18, 0.19, 0.18]
 
-
 # End-effector tool
 tool:
   offset2end_effector:
-    left:  0.175 #  0.115   #
-    right: 0.200 #  0.115   #
-
+    real:
+      left:  0.175
+      right: 0.200
+    sim:
+      left:  0.115
+      right: 0.115
 #
 desVimp:   0.5
 desVreach: 0.85
+
 # tossing task parameters (user defined)
 tossing:
   desVtoss:           0.85

@@ -214,11 +214,7 @@ class dual_arm_control
 		Eigen::Matrix4f _w_H_rb[NB_ROBOTS];								// Homogenenous transform of robots base frame (4x4)
 		Eigen::Matrix4f _rb_H_eeStandby[NB_ROBOTS];				// Homogenenous transform of EE standby poses relatve to robots base (4x4)
 		Eigen::Vector3f _xrbStandby[NB_ROBOTS];		    		// quaternion orientation of EE standby poses relatve to robots base (3x1)
-		Eigen::Vector4f _qrbStandby[NB_ROBOTS];		    		// quaternion orientation of EE standby poses relatve to robots base (4x1)
-
-
-
-		
+		Eigen::Vector4f _qrbStandby[NB_ROBOTS];		    		// quaternion orientation of EE standby poses relatve to robots base (4x1)	
 
 		Eigen::Vector3f _n[NB_ROBOTS];               			// Normal vector to surface object for each robot (3x1)
 		Vector6f        _V_gpo[NB_ROBOTS];
