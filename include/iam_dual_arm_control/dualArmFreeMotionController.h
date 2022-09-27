@@ -154,7 +154,7 @@ class dualArmFreeMotionController
                                       Eigen::Matrix4f o_H_ee[],
                                       Eigen::Matrix4f w_H_o,
                                       Eigen::Matrix4f &w_H_Do,
-                                      Eigen::Vector3f xDo_placing,
+                                      Eigen::Vector3f &xDo_placing,
                                       Eigen::Vector4f qDo_placing,
                                       Eigen::Vector3f release_position,
                                       Eigen::Vector4f release_orientation,
