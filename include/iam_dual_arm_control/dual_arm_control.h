@@ -447,6 +447,8 @@ class dual_arm_control
 		Eigen::Vector3f get_object_desired_direction(int task_type, Eigen::Vector3f object_pos);
 		void update_release_position();
 		void publish_conveyor_belt_cmds();
+		void update_placing_position(float y_t_min, float y_t_max);
+		void constrain_placing_position(float x_t_min, float x_t_max, float y_t_min, float y_t_max);
 
 };
 

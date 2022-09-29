@@ -52,9 +52,9 @@
   </include>
 
 
-  <node name="dual_iiwa_toolkit" pkg="dual_iiwa_toolkit" type="dual_iiwa_toolkit" output="screen"></node>
+  <node name="dual_gen_idyn_controller_node" pkg="dual_gen_idyn_controller" type="dual_gen_idyn_controller_node" output="screen"></node>
 
-  <rosparam file="$(find dual_iiwa_toolkit)/config/passive_track_params.yaml" command="load"/>
+  <rosparam file="$(find dual_gen_idyn_controller)/config/iiwa_control.yaml" command="load"/>
 
   <!-- <include file="$(find sim_models_poses)/launch/sim_models_poses.launch">
   </include> -->

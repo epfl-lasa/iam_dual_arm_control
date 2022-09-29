@@ -718,8 +718,10 @@ void dualArmFreeMotionController::computeCoordinatedMotion2(Eigen::Matrix4f w_H_
   // Absolute velocity of the End-effectors
   // =======================================
   // Eigen::Vector3f d_p_abs = reachable_p *w_H_ap.block<3,1>(0,3) + (1.0f-reachable_p)*w_H_ar_stb.block<3,1>(0,3);
-  Eigen::Vector3f d_p_abs = _activationAperture * reachable_p *w_H_ap.block<3,1>(0,3) 
-                          + (1.0f-_activationAperture * reachable_p)*(_activationAperture * w_H_ar_stb.block<3,1>(0,3) + (1. - _activationAperture)*w_H_ap_momentum.block<3,1>(0,3));
+  // Eigen::Vector3f d_p_abs = _activationAperture * reachable_p *w_H_ap.block<3,1>(0,3) 
+  //                         + (1.0f-_activationAperture * reachable_p)*(_activationAperture * w_H_ar_stb.block<3,1>(0,3) + (1. - _activationAperture)*w_H_ap_momentum.block<3,1>(0,3));
+    Eigen::Vector3f d_p_abs = _activationAperture * reachable_p *w_H_ap.block<3,1>(0,3) 
+                          + _activationAperture * (1.0f-reachable_p)*w_H_ar_stb.block<3,1>(0,3) + (1. - _activationAperture)*(w_H_ap_momentum.block<3,1>(0,3));
   _error_abs.head(3)      = w_H_ar.block<3,1>(0,3) - d_p_abs;
   
   // Coupling the orientation with the position error
@@ -1551,7 +1553,7 @@ void dualArmFreeMotionController::constrained_ang_vel_correction(Eigen::Matrix4f
   
 }
 
-
+//
 void dualArmFreeMotionController::updateDesiredGraspingPoints(bool no_dual_mds_method, 
                                                               bool isPlacing,
                                                               bool isThrowing,
@@ -1561,8 +1563,8 @@ void dualArmFreeMotionController::updateDesiredGraspingPoints(bool no_dual_mds_m
                                                               Eigen::Matrix4f o_H_ee[],
                                                               Eigen::Matrix4f w_H_o,
                                                               Eigen::Matrix4f &w_H_Do,
-                                                              Eigen::Vector3f xDo_placing,
-                                                              Eigen::Vector4f qDo_placing,
+                                                              Eigen::Vector3f &xDo_placing,
+                                                              Eigen::Vector4f &qDo_placing,
                                                               Eigen::Vector3f release_position,
                                                               Eigen::Vector4f release_orientation,
                                                               Eigen::Matrix4f &w_H_DesObj,
@@ -1606,7 +1608,7 @@ void dualArmFreeMotionController::updateDesiredGraspingPoints(bool no_dual_mds_m
 
 }
 
-
+//
 void dualArmFreeMotionController::getDesiredMotion( bool no_dual_mds_method,
                                                     bool isContact, 
                                                     bool isPlacing,
@@ -1620,7 +1622,7 @@ void dualArmFreeMotionController::getDesiredMotion( bool no_dual_mds_method,
                                                     Eigen::Matrix4f w_H_o, 
                                                     Eigen::Matrix4f &w_H_Do,
                                                     Eigen::Vector3f &xDo_placing,
-                                                    Eigen::Vector4f qDo_placing,
+                                                    Eigen::Vector4f &qDo_placing,
                                                     Eigen::Vector3f release_position,
                                                     Eigen::Vector4f release_orientation,
                                                     float height_via_point,
