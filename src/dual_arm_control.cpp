@@ -238,6 +238,16 @@ dual_arm_control::dual_arm_control(	ros::NodeHandle &n, double frequency, 	//std
 	// _winCounterAvgSpeedEE = 0;
 	_isSimulation = true;
 	_adaptationActive = false;
+
+	_updatePathEstim  = false;
+	_counter_monocycle = 0;
+	_counter_pickup 	 = 0;
+	_dxEE_dual_avg 	 = 0.f;
+	_dxEE_dual_avg_pcycle = 0.f;
+	_dxEE_dual_avg_0 = 0.f;
+	_Del_xEE_dual_avg 	 = 0.f;
+	_xEE_dual.setZero();
+	_xEE_dual_0.setZero(); 
 }
 //
 dual_arm_control::~dual_arm_control(){}
@@ -984,6 +994,49 @@ void dual_arm_control::computeCommands()
   if( (!_releaseAndretract) && (fmod(_cycle_count, 20)==0)){
 		_dual_PathLen_AvgSpeed = FreeMotionCtrlEstim.predictRobotTranslation( _w_H_ee, _w_H_gp,  _w_H_eeStandby, _w_H_o, _tossVar.release_position, _desVtoss, 0.05f, 0.100f, _initSpeedScaling);
 	}
+	// --------------------------------------------------------------------
+	// update tracking Factor
+	// --------------------------------------------------------------------
+	if(!_isPickupSet && !_releaseAndretract){
+	// dxEE_dual_ = 0.5f*(VEE[LEFT] + VEE[RIGHT]);
+
+
+	_dxEE_dual_avg += (0.5f*(_Vee[LEFT].head(3) + _Vee[RIGHT].head(3)).norm() - _dxEE_dual_avg_0)/(_counter_monocycle + 1);
+
+	_xEE_dual = 0.5f*(_w_H_ee[LEFT].block(0,3,3,1) + _w_H_ee[RIGHT].block(0,3,3,1));
+	_Del_xEE_dual_avg  += (_xEE_dual- _xEE_dual_0).norm();
+
+	//
+	_dxEE_dual_avg_0 = _dxEE_dual_avg;
+	_xEE_dual_0 		 = _xEE_dual;
+
+	_updatePathEstim = false;
+	_counter_monocycle ++;
+
+}
+
+
+float new_trackingFactor = 1.0f;
+if(_isPickupSet && !_updatePathEstim && _releaseAndretract){
+
+	_dxEE_dual_avg_pcycle += (_dxEE_dual_avg - _dxEE_dual_avg_pcycle)/(_counter_pickup + 1);
+	_dxEE_dual_avg_pcycle = _dxEE_dual_avg;
+
+
+	new_trackingFactor = min((_dxEE_dual_avg_pcycle/(_dual_PathLen_AvgSpeed(1)+1e-5)), 1.0);
+	_trackingFactor = _trackingFactor + (new_trackingFactor - _trackingFactor)/(_counter_pickup + 1);
+
+	_counter_monocycle = 0;
+	_counter_pickup ++;
+	_updatePathEstim = true;
+}
+
+
+
+// -------------------------------------------------------------------------------
+
+
+
 	//
 	Eigen::Vector2f Lp_Va_pred_bot = {_dual_PathLen_AvgSpeed(0), _trackingFactor *_dual_PathLen_AvgSpeed(1)}; 							// 0.70f 		0.30f:good //  
 	Eigen::Vector2f Lp_Va_pred_tgt = tossParamEstimator.estimateTarget_SimpPathLength_AverageSpeed(_xt, _xd_landing, _vt); 	//_movingAvgVelTarget); //
@@ -1099,6 +1152,9 @@ void dual_arm_control::computeCommands()
 			// _startlogging  = true;
 			_hasCaughtOnce = true;
 		}
+		//
+		_dxEE_dual_avg 		= 0.0f; //  _dual_PathLen_AvgSpeed(1); //
+		_Del_xEE_dual_avg = 0.0f;
 	}
 	else 
 	{
@@ -1281,6 +1337,16 @@ void dual_arm_control::computeCommands()
 	std::cout << " AAAA  TRACKING FACTOR AAAAA is  \t " << _trackingFactor << std::endl; 
 	std::cout << " AAAA  ADAPTATION STATUS AAAAA is  -----------> : \t " << _adaptationActive << std::endl; 
 	std::cout << " PPPPPPPPPPPPPPP _xDo_placing PPPPPPPPPP  is  -----------> : \t " << _xDo_placing.transpose() << std::endl; 
+	//-------------------------------------
+	
+
+	// -------------------------------------------------------------------------------
+	std::cout << " PPPPPPPPPPPPPPP _dual_PathLen PPPPPPPPPP  is  -----------> : \t " << _dual_PathLen_AvgSpeed(0) << std::endl; 
+	std::cout << " PPPPPPPPPPPPPPP _dual_Path_AvgSpeed(1) PPPPPPPPPP  is  -----------> : \t " << _dual_PathLen_AvgSpeed(1) << std::endl; 
+	std::cout << " PPPPPPPPPPPPPPP _Del_xEE_dual_avg PPPPPPPPPP  is  -----------> : \t " << _Del_xEE_dual_avg << std::endl; 
+	std::cout << " PPPPPPPPPPPPPPP _dxEE_dual_avg PPPPPPPPPP  is  -----------> : \t " << _dxEE_dual_avg_pcycle << std::endl;  
+	std::cout << " PPPPPPPPPPPPPPP _counter_pickup PPPPPPPPPP  is  -----------> : \t " << _counter_pickup << std::endl;
+
 	
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

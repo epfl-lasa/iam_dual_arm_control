@@ -371,6 +371,19 @@ class dual_arm_control
 		// int _winCounterAvgSpeedEE;
 		bool _adaptationActive = false;
 
+
+		// ------------------------------------------------------------------------
+		bool _updatePathEstim  = false;
+		int _counter_monocycle = 0;
+		int _counter_pickup 	 = 0;
+		float _dxEE_dual_avg 	 = 0.f;
+		float _dxEE_dual_avg_pcycle	 = 0.f;
+		float _dxEE_dual_avg_0 = 0.f;
+		float _Del_xEE_dual_avg 	 = 0.f;
+		Eigen::Vector3f _xEE_dual;
+		Eigen::Vector3f _xEE_dual_0;
+		// ------------------------------------------------------------------------
+
 		// target
 		std::deque<Eigen::Vector3f> _windowVelTarget;
 		Eigen::Vector3f _movingAvgVelTarget;
