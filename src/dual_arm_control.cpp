@@ -308,8 +308,10 @@ bool dual_arm_control::init()
 
 	// initialize the tossing DS
 	//---------------------------
-	float param_toolOffset_left;
-	float param_toolOffset_right;
+	float param_toolOffset_real_left;
+	float param_toolOffset_real_right;
+	float param_toolOffset_sim_left;
+	float param_toolOffset_sim_right;
 
 	float param_objectMass;
 	std::vector<float> param_objectDim;
@@ -351,8 +353,10 @@ bool dual_arm_control::init()
 	gotParam = gotParam && nh_.getParam("object/dimension", param_objectDim); 
 	gotParam = gotParam && nh_.getParam("object/graspOffset", param_graspOffset);
 
-	gotParam = gotParam && nh_.getParam("tool/offset2end_effector/left",  param_toolOffset_left);
-	gotParam = gotParam && nh_.getParam("tool/offset2end_effector/right", param_toolOffset_right);
+	gotParam = gotParam && nh_.getParam("tool/offset2end_effector/real/left",  param_toolOffset_real_left);
+	gotParam = gotParam && nh_.getParam("tool/offset2end_effector/real/right", param_toolOffset_real_right);
+	gotParam = gotParam && nh_.getParam("tool/offset2end_effector/sim/left",  param_toolOffset_sim_left);
+	gotParam = gotParam && nh_.getParam("tool/offset2end_effector/sim/right", param_toolOffset_sim_right);
 	gotParam = gotParam && nh_.getParam("desVimp", _desVimp);
 	gotParam = gotParam && nh_.getParam("desVreach", _desVreach);
 	gotParam = gotParam && nh_.getParam("tossing/desVtoss", _desVtoss);
@@ -415,8 +419,8 @@ bool dual_arm_control::init()
 	_objectDim 						  				= Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_objectDim.data(), param_objectDim.size());
 	Eigen::Vector3f graspOffset    	= Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_graspOffset.data(), param_graspOffset.size());
 
-	_toolOffsetFromEE[0]  			  		= param_toolOffset_left;
-	_toolOffsetFromEE[1]  			  		= param_toolOffset_right;
+	_toolOffsetFromEE[0]  			  		= _isSimulation ? param_toolOffset_sim_left :  param_toolOffset_real_left;
+	_toolOffsetFromEE[1]  			  		= _isSimulation ? param_toolOffset_sim_right :  param_toolOffset_real_right;
 	_tossVar.release_position      	  = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_releasePos.data(), param_releasePos.size());
 	_tossVar.release_orientation      = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_releaseOrient.data(), param_releaseOrient.size());
 	_tossVar.release_linear_velocity  = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_releaseLinVel_dir.data(), param_releaseLinVel_dir.size());

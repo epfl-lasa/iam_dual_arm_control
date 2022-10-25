@@ -9,7 +9,7 @@ passiveDS:
       right: "/iiwa_blue/control/lambda_Pos" #
 
 dual_system:
-  simulation: false
+  simulation: true
 
 # object
 object:
@@ -29,8 +29,12 @@ object:
 # End-effector tool
 tool:
   offset2end_effector:
-    left:  0.175 #  0.115   #
-    right: 0.200 #  0.115   #
+    real:
+      left:  0.175
+      right: 0.200
+    sim:
+      left:  0.115
+      right: 0.115
 
 #
 desVimp:   0.5
