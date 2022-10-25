@@ -216,10 +216,6 @@ class dual_arm_control
 		Eigen::Vector3f _xrbStandby[NB_ROBOTS];		    		// quaternion orientation of EE standby poses relatve to robots base (3x1)
 		Eigen::Vector4f _qrbStandby[NB_ROBOTS];		    		// quaternion orientation of EE standby poses relatve to robots base (4x1)
 
-
-
-		
-
 		Eigen::Vector3f _n[NB_ROBOTS];               			// Normal vector to surface object for each robot (3x1)
 		Vector6f        _V_gpo[NB_ROBOTS];
 
@@ -375,6 +371,18 @@ class dual_arm_control
 		// int _winCounterAvgSpeedEE;
 		bool _adaptationActive = false;
 
+		// ------------------------------------------------------------------------
+		bool _updatePathEstim  = false;
+		int _counter_monocycle = 0;
+		int _counter_pickup 	 = 0;
+		float _dxEE_dual_avg 	 = 0.f;
+		float _dxEE_dual_avg_pcycle	 = 0.f;
+		float _dxEE_dual_avg_0 = 0.f;
+		float _Del_xEE_dual_avg 	 = 0.f;
+		Eigen::Vector3f _xEE_dual;
+		Eigen::Vector3f _xEE_dual_0;
+		// ------------------------------------------------------------------------
+
 		// target
 		std::deque<Eigen::Vector3f> _windowVelTarget;
 		Eigen::Vector3f _movingAvgVelTarget;
@@ -451,6 +459,7 @@ class dual_arm_control
 		Eigen::Vector3f get_object_desired_direction(int task_type, Eigen::Vector3f object_pos);
 		void update_release_position();
 		void publish_conveyor_belt_cmds();
+		void set_2d_position_box_constraints(Eigen::Vector3f &position_vec, float limits[]);
 
 };
 
