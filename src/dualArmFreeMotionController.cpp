@@ -1076,8 +1076,19 @@ Vector6f dualArmFreeMotionController::compute_modulated_motion_dual(float activa
 
 
 //
-void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vector6f Vee[], Eigen::Matrix4f w_H_gp[],  Eigen::Matrix4f w_H_o, Eigen::Matrix4f w_H_Do, Vector6f Vd_o,
-                                                  Eigen::Matrix3f BasisQ[], Eigen::Vector3f VdImp[], bool isOrient3d, int taskType, Vector6f (&Vd_ee)[NB_ROBOTS], Eigen::Vector4f (&qd)[NB_ROBOTS], bool &release_flag)
+void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  
+                                                  Vector6f Vee[], 
+                                                  Eigen::Matrix4f w_H_gp[],  
+                                                  Eigen::Matrix4f w_H_o, 
+                                                  Eigen::Matrix4f w_H_Do, 
+                                                  Vector6f Vd_o,
+                                                  Eigen::Matrix3f BasisQ[], 
+                                                  Eigen::Vector3f VdImp[], 
+                                                  bool isOrient3d, 
+                                                  int taskType, 
+                                                  Vector6f (&Vd_ee)[NB_ROBOTS], 
+                                                  Eigen::Vector4f (&qd)[NB_ROBOTS], 
+                                                  bool &release_flag)
 {
   // States and desired states
   Eigen::Vector3f X[NB_ROBOTS],       // position of ee
@@ -1170,7 +1181,7 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
     // //
     Matrix6f A = Eigen::MatrixXf::Identity(6,6);
     A.block<3,3>(0,0) = -4.0f * this->gain_p_abs;
-    A.block<3,3>(3,3) = -4.0f * this->gain_p_rel;
+    A.block<3,3>(3,3) = -8.0f * this->gain_p_rel;
     Matrix6f A_prime  = _Tbi.inverse() * A * _Tbi;
     Matrix6f _Tbi_1_A = _Tbi.inverse() * A;
     //
@@ -1250,7 +1261,8 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
         activation = 1.0f;
 
         //
-        // this->constrained_ang_vel_correction(w_H_ee, w_H_gp, w_H_o, w_H_Do, Vd_ee_nom, true);
+        this->constrained_ang_vel_correction(w_H_ee, w_H_gp, w_H_o, w_H_Do, Vd_ee_nom, false);
+        // this->computeDesiredOrientation(1.0f, w_H_ee, w_H_gp, w_H_o, qd_nom, false);
       }
       break;
 
@@ -1520,7 +1532,8 @@ void dualArmFreeMotionController::constrained_ang_vel_correction(Eigen::Matrix4f
   // ---------------------------------
   // computing of desired ee velocity
   // ---------------------------------
-  Omega_object_d_ = -1.2f* jacMuTheta_o.inverse() * gain_o_abs * error_o;
+  // Omega_object_d_ = -1.2f* jacMuTheta_o.inverse() * gain_o_abs * error_o;
+  Omega_object_d_ = -0.5f * gain_o_abs * error_o;
   //
   for(int k=0; k<NB_ROBOTS; k++){
     //
@@ -1530,7 +1543,7 @@ void dualArmFreeMotionController::constrained_ang_vel_correction(Eigen::Matrix4f
                      tog(2),   0.0f,  -tog(0),
                     -tog(1), tog(0),     0.0f;
 
-    VEE[k].head(3) =  VEE[k].head(3) + 1.0f*skew_Mx_og * Omega_object_d_;  
+    VEE[k].head(3) =  VEE[k].head(3) - 1.0f*skew_Mx_og * Omega_object_d_;  
     VEE[k].tail(3) =  VEE[k].tail(3) + 1.0f * Omega_object_d_;  
 
     if(wIntegral){
@@ -1544,7 +1557,8 @@ void dualArmFreeMotionController::constrained_ang_vel_correction(Eigen::Matrix4f
     }
     VEE[k].tail(3) =  2.0*VEE[k].tail(3) + _integral_Vee_d[k];
 
-    // std::cout << " WWWWWWWWWWWWWWWWWWWWWWWWW Wo " << k << " is \t " << Omega_object_d_.transpose() << std::endl; 
+    std::cout << " WWWWWWWWWWWWWWWWWWWWWWWWW Wo " << k << " is \t " << Omega_object_d_.transpose() << std::endl; 
+    std::cout << " WWWWWWWWWWWWWWWWWWWWWWWWW Delta_V(Wo) " << k << " is \t " << (skew_Mx_og * Omega_object_d_).transpose() << std::endl; 
 
     VEE[k] = Utils<float>::SaturationTwist(_v_max, _w_max, VEE[k]);      
   }
