@@ -56,7 +56,7 @@ throwingDS::throwingDS(){
 	// ============================================================================================
 	// Gains
 	// ============================================================================================
-	float T_settling = 0.5f; // [Settling time in second]
+	float T_settling = 0.8f; // [Settling time in second]
 	float gn = pow((4.0f/T_settling),2.f);
 	// Stiffness
 	// ==========
@@ -65,9 +65,9 @@ throwingDS::throwingDS(){
 	ds_param_.Kp[1] << -gn,    0.00f,    0.00f, 0.00f, -gn,    0.00f, 0.00f, 0.00f, -gn;	// Toss
 	ds_param_.Kp[2] << -gn,    0.00f,    0.00f, 0.00f, -gn,    0.00f, 0.00f, 0.00f, -gn; // retract
 	// orientation
-	ds_param_.Ko[0] << -1.5f*gn, 0.00f, 0.00f, 0.00f, -1.5f*gn, 0.00f, 0.00f, 0.00f, -1.5f*gn;	// Reach
-	ds_param_.Ko[1] << -1.5f*gn, 0.00f, 0.00f, 0.00f, -1.5f*gn, 0.00f, 0.00f, 0.00f, -1.5f*gn;	// Toss
-	ds_param_.Ko[2] << -1.5f*gn, 0.00f, 0.00f, 0.00f, -1.5f*gn, 0.00f, 0.00f, 0.00f, -1.5f*gn;	// retract
+	ds_param_.Ko[0] << -1.0f*gn, 0.00f, 0.00f, 0.00f, -1.0f*gn, 0.00f, 0.00f, 0.00f, -1.0f*gn;	// Reach
+	ds_param_.Ko[1] << -1.0f*gn, 0.00f, 0.00f, 0.00f, -1.0f*gn, 0.00f, 0.00f, 0.00f, -1.0f*gn;	// Toss
+	ds_param_.Ko[2] << -1.0f*gn, 0.00f, 0.00f, 0.00f, -1.0f*gn, 0.00f, 0.00f, 0.00f, -1.0f*gn;	// retract
 
 	 if(ds_param_.is2ndOrder = false)
 	 { 
@@ -361,7 +361,8 @@ Eigen::Vector3f throwingDS::compute_angular_motion(float coupling_, Eigen::Matri
 		return jacMuTheta.inverse() * ( Do*jacMuTheta*Omega + Ko * Utils<float>::getOrientationErrorCur2Des(d_R_c_t));
 	}
 	else{
-		return jacMuTheta.inverse() * (Ko * Utils<float>::getOrientationErrorCur2Des(d_R_c_t));
+		// return jacMuTheta.inverse() * (Ko * Utils<float>::getOrientationErrorCur2Des(d_R_c_t));
+		return (Ko * Utils<float>::getOrientationErrorCur2Des(d_R_c_t));
 	}
 
 }
