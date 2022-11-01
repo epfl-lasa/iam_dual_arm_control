@@ -419,11 +419,13 @@ class dual_arm_control
 		/////////////////////
 		// SGF::SavitzkyGolayFilter _xo_filtered;    			// Filter used for the object's center position
 		std::unique_ptr<SGF::SavitzkyGolayFilter> _xo_filtered;
+		std::unique_ptr<SGF::SavitzkyGolayFilter> _qo_filtered;
 		std::unique_ptr<SGF::SavitzkyGolayFilter> _sgf_ddq_filtered_l;
 		std::unique_ptr<SGF::SavitzkyGolayFilter> _sgf_ddq_filtered_r;
 		// SGF::SavitzkyGolayFilter _x_filtered;    			// Filter used for the object's dimension vector
 		std::unique_ptr<SGF::SavitzkyGolayFilter> _xt_filtered; // target
 		KF_3DVeloFromPosEstimator 								_xo_KF_filtered; //
+		KF_3DVeloFromPosEstimator 								_wo_KF_filtered; //
 		KF_3DVeloFromPosEstimator 								_xt_KF_filtered; //
 
 		tossingTaskVariables _tossVar;
@@ -460,6 +462,7 @@ class dual_arm_control
 		void update_release_position();
 		void publish_conveyor_belt_cmds();
 		void set_2d_position_box_constraints(Eigen::Vector3f &position_vec, float limits[]);
+		void mirror_target2object_orientation(Eigen::Vector4f qt, Eigen::Vector4f &qo, Eigen::Vector3f ang_lim);
 
 };
 

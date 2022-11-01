@@ -15,7 +15,7 @@ dual_system:
 object:
   mass : 3 #2.5
   dimension:       [0.20, 0.20, 0.20] #[0.26, 0.26,  0.26] #[0.18, 0.19, 0.18] #[0.18, 0.19, 0.18] #[0.20, 0.30, 0.20] # 
-  graspOffset:     [0.00, 0.00, 0.00] #[-0.06, 0.00, 0.03] #[-0.02, 0.00, -0.015] #
+  graspOffset:     [-0.04, 0.00, 0.03] #[-0.06, 0.00, 0.03] #[-0.02, 0.00, -0.015] #
 
   cubicBox :       [0.26, 0.26, 0.26]
   coronaBottePack: [0.13, 0.19, 0.14] 
@@ -24,7 +24,6 @@ object:
   drGabsPack:      [0.13, 0.14, 0.15]
   smallOpenBox:    [0.16, 0.29, 0.14]
   optitrackBox:    [0.18, 0.19, 0.18]
-
 
 # End-effector tool
 tool:
@@ -42,8 +41,8 @@ desVreach: 0.85
 # tossing task parameters (user defined)
 tossing:
   desVtoss:           0.85
-  releasePos:         [0.70, 0.10, 0.35] #[0.70, 0.00, 0.60] [0.70, 0.00, 0.40]
-  releaseOrient:      [0.9914, 0, 0, 0.1305] #[1.00, 0.00, 0.00, 0.00]
+  releasePos:         [0.65, 0.05, 0.40] #[0.70, 0.00, 0.60] [0.70, 0.00, 0.40]
+  releaseOrient:      [0.9914, 0, 0, 0.1305] #[0.9659,  0,  0,  0.2588] #[1.00, 0.00, 0.00, 0.00]
   releaseLinVel_dir:  [1.00, 0.00, 0.50] # [1.00, 0.00, 1.00]
   releaseAngVel:      [0.00, 0.00, 0.00]
   restPos:            [0.50, 0.15, 0.30]
@@ -65,20 +64,20 @@ ds_relative_gains: [2.0, 2.0, 2.0, 1.0, 1.0, 1.0]
 
 # impact direction (angle in degree)
 impact_direction:
-  friction_angle: 20 #36
+  friction_angle: 30 #36
   max_friction_angle: 40
   impact_dir_preset: false
 
 # dual arm task
 dual_arm_task:
-  dualTaskSelector: 1
+  dualTaskSelector: 3
   old_dual_method: false
   modulated_reaching: false
   isNorm_impact_vel: false
   isQP_wrench_generation: true
   lifting: 
     position: [0.45, 0.00, 0.50] #[0.45, 0.00, 0.70]
-    orientation: [0.9659,  0,  0,  0.2588] #[0.9914, 0, 0, 0.1305] #[1.00, 0.00, 0.00, 0.00]
+    orientation: [0.9914, 0, 0, 0.1305] #[0.9659,  0,  0,  0.2588] #[1.00, 0.00, 0.00, 0.00] #
     increment_lift_pos: false
   placing: 
     position: [0.72, 0.00, 0.25] #[0.675, 0.0, 0.25]  [0.72, 0.0, 0.25]
@@ -86,6 +85,6 @@ dual_arm_task:
     height_via_point: 0.15
 # converyor-belt
 conveyor_belt:
-  control_mode: true
+  control_mode: false
   nominal_speed: 300
   magnitude_perturbation: 150
