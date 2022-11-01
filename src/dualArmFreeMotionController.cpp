@@ -47,7 +47,7 @@ dualArmFreeMotionController::dualArmFreeMotionController()
   a_release_      = 0.0f;
   release_flag_   = false;
   //
-  rho_          = 0.12;
+  rho_          = 0.15; // 0.12
   range_norm_   = 0.05;
   range_tang_   = 0.015;
 
@@ -111,7 +111,7 @@ bool dualArmFreeMotionController::init(Eigen::Matrix4f w_H_eeStandby[], Matrix6f
   // _w_max       = 2.0f;
   // _v_max = 2.0f;     // velocity limits
   // _w_max = 4.0f;     // velocity limits
-  _v_max      = 1.25f; //0.1
+  _v_max      = 1.1f; //0.1
   _w_max      = 3.0f;
 
   gain_p_abs = gain_abs_.topLeftCorner(3,3);
@@ -806,9 +806,8 @@ void dualArmFreeMotionController::computeCoordinatedMotion2(Eigen::Matrix4f w_H_
   Eigen::Matrix3f jacMuTheta_l = Utils<float>::getMuThetaJacobian(d_H_c_l.block<3,3>(0,0)) * w_H_ee[LEFT].block<3,3>(0,0).transpose(); // wrt. the world
   Eigen::Matrix3f jacMuTheta_r = Utils<float>::getMuThetaJacobian(d_H_c_r.block<3,3>(0,0)) * w_H_ee[RIGHT].block<3,3>(0,0).transpose(); // wrt. the world
 
-  Vd_ee[LEFT].tail(3)  = -3.0f* jacMuTheta_l.inverse() * gain_o_rel * error_ori_l;
-  Vd_ee[RIGHT].tail(3) = -3.0f* jacMuTheta_r.inverse() * gain_o_rel * error_ori_r;
-
+  Vd_ee[LEFT].tail(3)  = -6.0f* jacMuTheta_l.inverse() * gain_o_rel * error_ori_l;
+  Vd_ee[RIGHT].tail(3) = -6.0f* jacMuTheta_r.inverse() * gain_o_rel * error_ori_r;
 
   Vd_ee[LEFT]  = Utils<float>::SaturationTwist(_v_max, _w_max, Vd_ee[LEFT]);
   Vd_ee[RIGHT] = Utils<float>::SaturationTwist(_v_max, _w_max, Vd_ee[RIGHT]);
@@ -1181,7 +1180,7 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],
     // //
     Matrix6f A = Eigen::MatrixXf::Identity(6,6);
     A.block<3,3>(0,0) = -4.0f * this->gain_p_abs;
-    A.block<3,3>(3,3) = -8.0f * this->gain_p_rel;
+    A.block<3,3>(3,3) = -12.0f * this->gain_p_rel;
     Matrix6f A_prime  = _Tbi.inverse() * A * _Tbi;
     Matrix6f _Tbi_1_A = _Tbi.inverse() * A;
     //
@@ -1259,7 +1258,6 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],
         Amodul_ee_tang = _Tbi.inverse() * v_task_bi;  //
         //
         activation = 1.0f;
-
         //
         // this->constrained_ang_vel_correction(w_H_ee, w_H_gp, w_H_o, w_H_Do, Vd_ee_nom, false);
         // this->computeDesiredOrientation(1.0f, w_H_ee, w_H_gp, w_H_o, qd_nom, false);
@@ -1307,7 +1305,7 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],
         Vector6f Xdot_bi      = Eigen::VectorXf::Zero(6);
         Eigen::Vector3f X_rel = X[RIGHT] - X[LEFT];
 
-        Eigen::Vector3f w_o   = 0.0f*Vd_o.tail(3);
+        Eigen::Vector3f w_o   = 0.2f*Vd_o.tail(3);
         Xdot_bi.head(3)       = Vd_o.head(3);
         Xdot_bi.tail(3)       = w_o.cross(X_rel);
 
@@ -1319,6 +1317,22 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],
         Amodul_ee_tang = _Tbi.inverse() * v_task_bi;  //
         //
         activation = 1.0f;
+
+        // ------------------------------------
+        // Compensation due to object rotation
+        // ------------------------------------
+        for(int k=0; k<NB_ROBOTS; k++){
+          //
+          Eigen::Vector3f tog = w_H_o.block<3,1>(0,3) - w_H_gp[k].block<3,1>(0,3);
+          Eigen::Matrix3f skew_Mx_og; 
+          skew_Mx_og <<   0.0f,   -tog(2),   tog(1),
+                           tog(2),   0.0f,  -tog(0),
+                          -tog(1), tog(0),     0.0f;
+
+          DS_ee_nominal.segment(3*k,3) =  DS_ee_nominal.segment(3*k,3) - 0.2f*skew_Mx_og * Vd_o.tail(3);  
+          Vd_ee_nom[k].tail(3) =  Vd_ee_nom[k].tail(3) + 0.2f * Vd_o.tail(3);  
+        }
+
       }
       break;
 
@@ -1533,7 +1547,7 @@ void dualArmFreeMotionController::constrained_ang_vel_correction(Eigen::Matrix4f
   // computing of desired ee velocity
   // ---------------------------------
   // Omega_object_d_ = -1.2f* jacMuTheta_o.inverse() * gain_o_abs * error_o;
-  Omega_object_d_ = -0.5f * gain_o_abs * error_o;
+  Omega_object_d_ = -1.0f * gain_o_abs * error_o;
   //
   for(int k=0; k<NB_ROBOTS; k++){
     //
@@ -1543,7 +1557,7 @@ void dualArmFreeMotionController::constrained_ang_vel_correction(Eigen::Matrix4f
                      tog(2),   0.0f,  -tog(0),
                     -tog(1), tog(0),     0.0f;
 
-    VEE[k].head(3) =  VEE[k].head(3) - 1.0f*skew_Mx_og * Omega_object_d_;  
+    // VEE[k].head(3) =  VEE[k].head(3) - 1.0f*skew_Mx_og * Omega_object_d_;  
     VEE[k].tail(3) =  VEE[k].tail(3) + 1.0f * Omega_object_d_;  
 
     if(wIntegral){
