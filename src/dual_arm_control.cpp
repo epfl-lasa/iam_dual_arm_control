@@ -196,6 +196,7 @@ dual_arm_control::dual_arm_control(	ros::NodeHandle &n, double frequency, 	//std
 
 	_delta_pos.setZero();
 	_delta_ang.setZero();
+	_filt_delta_ang.setZero();
 	_delta_rel_pos.setZero();
 
 	_delta_oDx  = 0.0f;
@@ -394,6 +395,9 @@ bool dual_arm_control::init()
 
 	// conveyor belt
 	_desSpeed_conveyor_belt = _nominalSpeed_conveyor_belt;
+	//
+	Eigen::Matrix3f RDo_lifting = Utils<float>::quaternionToRotationMatrix(_qDo_lifting);
+	_filt_delta_ang = Utils<float>::getEulerAnglesXYZ_FixedFrame(RDo_lifting);
 
 	// ======================================================================================================
 	// ROS TOPICS
@@ -445,8 +449,8 @@ bool dual_arm_control::init()
 	// _pubDesiredTwist[LEFT] 		= nh_.advertise<geometry_msgs::Twist>("/dual_arm_control/robot_left/desired/ee_velocity", 1);  // /passive_control/iiwa1/des_twist
 	// _pubDesiredTwist[RIGHT] 	 	= nh_.advertise<geometry_msgs::Twist>("/dual_arm_control/robot_right/desired/ee_velocity", 1);
 	
-	_pubDesiredTwist[LEFT] 		  	= nh_.advertise<geometry_msgs::Twist>("/dual_arm_control/iiwa1/des_twist", 1);  //  "/dual_arm_control/robot_right/desired/ee_velocity"
-	_pubDesiredTwist[RIGHT] 	 		= nh_.advertise<geometry_msgs::Twist>("/dual_arm_control/iiwa_blue/des_twist", 1);
+	_pubDesiredTwist[LEFT] 		  	= nh_.advertise<geometry_msgs::Twist>("/passive_control/iiwa1/des_twist", 1);  //  "/dual_arm_control/robot_right/desired/ee_velocity"
+	_pubDesiredTwist[RIGHT] 	 		= nh_.advertise<geometry_msgs::Twist>("/passive_control/iiwa_blue/des_twist", 1);
 
 
 	_pubDistAttractorEe[LEFT] 		= nh_.advertise<std_msgs::Float64>("/dual_arm_control/iiwa1/error", 1);     						// "/passive_control/iiwa1/error"
@@ -464,8 +468,6 @@ bool dual_arm_control::init()
 
 	_pubConveyorBeltMode 					= nh_.advertise<std_msgs::Int32>("/conveyor_belt/desired_mode", 1); 
 	_pubConveyorBeltSpeed 				= nh_.advertise<std_msgs::Int32>("/conveyor_belt/desired_speed", 1); 
-
-
 
 
 	
@@ -1458,7 +1460,7 @@ void dual_arm_control::computeCommands()
 			// ----------------------------------------
 			
 			if(true){
-				this->mirror_target2object_orientation(_qt, qDesTask, ang_lim);
+				// this->mirror_target2object_orientation(_qt, qDesTask, ang_lim);
 			}
 			
 			// 
@@ -1538,7 +1540,7 @@ void dual_arm_control::computeCommands()
   	_desired_object_wrench.head(3) = Damp1*( 0.5f*(_Vee[LEFT].head(3) + _Vee[RIGHT].head(3)) - 0.5f*(_Vd_ee[LEFT].head(3) + _Vd_ee[RIGHT].head(3)) )
 																   - _objectMass * _gravity;
   }
-	_desired_object_wrench.tail(3) = -20.0f*(_wo - FreeMotionCtrl.Omega_object_d_); //(0.5f*(_Vd_ee[LEFT].tail(3) + _Vd_ee[RIGHT].tail(3)) - 0.0f*0.5f*(_Vee[LEFT].tail(3) + _Vee[RIGHT].tail(3)));
+	_desired_object_wrench.tail(3) = -15.0f*(_wo - FreeMotionCtrl.Omega_object_d_); //(0.5f*(_Vd_ee[LEFT].tail(3) + _Vd_ee[RIGHT].tail(3)) - 0.0f*0.5f*(_Vee[LEFT].tail(3) + _Vee[RIGHT].tail(3)));
  
   CooperativeCtrl.getAppliedWrenches(_goHome, _contactState, _w_H_o, _w_H_ee, _w_H_gp, _desired_object_wrench, _objectMass, _qp_wrench_generation, isForceDetected);
   // CooperativeCtrl.getAppliedWrenches(_goHome, _contactState, _w_H_o, _w_H_ee, _w_H_Dgp, _desired_object_wrench, _objectMass, _qp_wrench_generation, isForceDetected);
@@ -1983,21 +1985,20 @@ void dual_arm_control::Keyboard_reference_object_control()   // control of attra
 		_xDo_lifting(1) += _delta_pos(1);
 		_xDo_lifting(2) += _delta_pos(2);
 
-		Eigen::Matrix3f RDo_lifting = Utils<float>::quaternionToRotationMatrix(_qDo_lifting);
-		Eigen::Vector3f eulerAng_lift = Utils<float>::getEulerAnglesXYZ_FixedFrame(RDo_lifting);
-
-		eulerAng_lift += _delta_ang;
-		RDo_lifting = Utils<float>::eulerAnglesToRotationMatrix(	eulerAng_lift(2), eulerAng_lift(1), eulerAng_lift(0));
-
-		_qDo_lifting = Utils<float>::rotationMatrixToQuaternion(RDo_lifting);
-
+		// Eigen::Matrix3f RDo_lifting = Utils<float>::quaternionToRotationMatrix(_qDo_lifting);
+		// Eigen::Vector3f eulerAng_lift = Utils<float>::getEulerAnglesXYZ_FixedFrame(RDo_lifting);
+		// eulerAng_lift += _delta_ang;
+		// RDo_lifting  = Utils<float>::eulerAnglesToRotationMatrix(	eulerAng_lift(2), eulerAng_lift(1), eulerAng_lift(0));
+		// _qDo_lifting = Utils<float>::rotationMatrixToQuaternion(RDo_lifting);
 		//
-		std::cout << "AAAAAAAAAAAAAAAAAA ROTATION ANGLE EULER XYZ \t" << eulerAng_lift.transpose() << std::endl;
-
+		_filt_delta_ang = 0.95*_filt_delta_ang + 0.05*_delta_ang;
+		Eigen::Matrix3f RDo_lifting  = Utils<float>::eulerAnglesToRotationMatrix(	_filt_delta_ang(2), _filt_delta_ang(1), _filt_delta_ang(0));
+		_qDo_lifting = Utils<float>::rotationMatrixToQuaternion(RDo_lifting);
+		//
+		std::cout << "AAAAAAAAAAAAAAAAAA ROTATION ANGLE EULER XYZ \t" << _filt_delta_ang.transpose() << std::endl;
 		//
     _delta_pos.setZero(); 
-    _delta_ang.setZero();
-
+    // _delta_ang.setZero();
 }
 
 void dual_arm_control::mirror_target2object_orientation(Eigen::Vector4f qt, Eigen::Vector4f &qo, Eigen::Vector3f ang_lim){

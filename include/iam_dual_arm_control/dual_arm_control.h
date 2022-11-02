@@ -221,6 +221,7 @@ class dual_arm_control
 
 		Eigen::Vector3f _delta_pos; 											// variation of object position
 		Eigen::Vector3f _delta_ang; 											// variation of object orientation euler angles
+		Eigen::Vector3f _filt_delta_ang;
 		bool 						_objCtrlKey;
 
 		//---------------------------------------------------------------------------------
