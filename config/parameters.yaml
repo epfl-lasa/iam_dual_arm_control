@@ -14,8 +14,8 @@ dual_system:
 # object
 object:
   mass : 3 #2.5
-  dimension:       [0.26, 0.26,  0.26] #[0.20, 0.20, 0.20] #[0.18, 0.19, 0.18] #[0.18, 0.19, 0.18] #[0.20, 0.30, 0.20] # 
-  graspOffset:     [-0.04, 0.00, 0.00] #[-0.06, 0.00, 0.03] #[-0.02, 0.00, -0.015] #
+  dimension:       [0.26, 0.26,  0.26] #[0.16, 0.29, 0.14] # [0.20, 0.20, 0.20] #[0.18, 0.19, 0.18] #[0.18, 0.19, 0.18] #
+  graspOffset:     [-0.04, 0.00, -0.02] #[-0.06, 0.00, 0.03] #[-0.02, 0.00, -0.015] #
 
   cubicBox :       [0.26, 0.26, 0.26]
   coronaBottePack: [0.13, 0.19, 0.14] 
@@ -24,13 +24,14 @@ object:
   drGabsPack:      [0.13, 0.14, 0.15]
   smallOpenBox:    [0.16, 0.29, 0.14]
   optitrackBox:    [0.18, 0.19, 0.18]
+  mikeFruitBox:    [0.16, 0.29, 0.14]
 
 # End-effector tool
 tool:
   offset2end_effector:
     real:
-      left:  0.175
-      right: 0.200
+      left:  0.175 #0.175
+      right: 0.195 #0.200
     sim:
       left:  0.115
       right: 0.115
@@ -41,7 +42,7 @@ desVreach: 0.85
 # tossing task parameters (user defined)
 tossing:
   desVtoss:           0.85
-  releasePos:         [0.68, 0.00, 0.35] #[0.70, 0.00, 0.60] [0.70, 0.00, 0.40]
+  releasePos:         [0.70, 0.00, 0.37] #[0.70, 0.00, 0.60] [0.70, 0.00, 0.40]
   releaseOrient:      [1.00, 0.00, 0.00, 0.00] #[0.9914, 0, 0, 0.1305] #[0.9659,  0,  0,  0.2588] #
   releaseLinVel_dir:  [1.00, 0.00, 0.50] # [1.00, 0.00, 1.00]
   releaseAngVel:      [0.00, 0.00, 0.00]
@@ -72,7 +73,7 @@ impact_direction:
 dual_arm_task:
   dualTaskSelector: 3
   old_dual_method: false
-  modulated_reaching: false
+  modulated_reaching: true
   isNorm_impact_vel: false
   isQP_wrench_generation: true
   lifting: 
@@ -85,6 +86,6 @@ dual_arm_task:
     height_via_point: 0.15
 # converyor-belt
 conveyor_belt:
-  control_mode: false
+  control_mode: true
   nominal_speed: 300
   magnitude_perturbation: 150

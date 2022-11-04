@@ -464,7 +464,7 @@ class dual_arm_control
 		void publish_conveyor_belt_cmds();
 		void set_2d_position_box_constraints(Eigen::Vector3f &position_vec, float limits[]);
 		void mirror_target2object_orientation(Eigen::Vector4f qt, Eigen::Vector4f &qo, Eigen::Vector3f ang_lim);
-
+		
 };
 
 #endif // DUAL_ARM_CONTROL_H

@@ -227,6 +227,10 @@ class dualArmFreeMotionController
 						                                  float tolerance_dist2contact,
 						                                  float dt,
 						                                  float speedScaling);
+
+		Eigen::Vector3f boost_ang_velocity(const Eigen::Vector3f& tmp_omega, float maxDq, float oriGainMx_);
+		Eigen::Vector3f compute_desired_angular_velocity(Eigen::Vector4f quat, Eigen::Vector4f quat_d, Eigen::Matrix3f gain_o);
+
 		};
 
 #endif // dualArmFreeMotionController_H

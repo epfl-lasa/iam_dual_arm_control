@@ -107,8 +107,8 @@ bool dualArmFreeMotionController::init(Eigen::Matrix4f w_H_eeStandby[], Matrix6f
   memcpy(_w_H_eeStandby, &w_H_eeStandby[0], NB_ROBOTS * sizeof * w_H_eeStandby);
   //
   reachable_p = 1.0f;
-  // _v_max       = 0.7f;
-  // _w_max       = 2.0f;
+  // _v_max = 0.7f;
+  // _w_max = 2.0f;
   // _v_max = 2.0f;     // velocity limits
   // _w_max = 4.0f;     // velocity limits
   _v_max      = 1.1f; //0.1
@@ -806,9 +806,24 @@ void dualArmFreeMotionController::computeCoordinatedMotion2(Eigen::Matrix4f w_H_
   Eigen::Matrix3f jacMuTheta_l = Utils<float>::getMuThetaJacobian(d_H_c_l.block<3,3>(0,0)) * w_H_ee[LEFT].block<3,3>(0,0).transpose(); // wrt. the world
   Eigen::Matrix3f jacMuTheta_r = Utils<float>::getMuThetaJacobian(d_H_c_r.block<3,3>(0,0)) * w_H_ee[RIGHT].block<3,3>(0,0).transpose(); // wrt. the world
 
-  Vd_ee[LEFT].tail(3)  = -6.0f* jacMuTheta_l.inverse() * gain_o_rel * error_ori_l;
-  Vd_ee[RIGHT].tail(3) = -6.0f* jacMuTheta_r.inverse() * gain_o_rel * error_ori_r;
+  // Vd_ee[LEFT].tail(3)  = -6.0f* jacMuTheta_l.inverse() * gain_o_rel * error_ori_l;
+  // Vd_ee[RIGHT].tail(3) = -6.0f* jacMuTheta_r.inverse() * gain_o_rel * error_ori_r;
 
+  Eigen::Vector3f Omega_left  = -6.0f* jacMuTheta_l.inverse() * gain_o_rel * error_ori_l;
+  Eigen::Vector3f Omega_right = -6.0f* jacMuTheta_r.inverse() * gain_o_rel * error_ori_r;
+
+  Vd_ee[LEFT].tail(3)  = this->boost_ang_velocity(Omega_left, 0.2f, 0.1f);
+  Vd_ee[RIGHT].tail(3) = this->boost_ang_velocity(Omega_right, 0.2f, 0.1f);
+
+  // Eigen::Vector4f quat_l   = Utils<float>::rotationMatrixToQuaternion(w_H_ee[LEFT].block(0,0,3,3));
+  // Eigen::Vector4f quat_d_l = Utils<float>::rotationMatrixToQuaternion(w_H_dgp_l.block(0,0,3,3));
+  // Eigen::Vector4f quat_r   = Utils<float>::rotationMatrixToQuaternion(w_H_ee[RIGHT].block(0,0,3,3));
+  // Eigen::Vector4f quat_d_r = Utils<float>::rotationMatrixToQuaternion(w_H_dgp_r.block(0,0,3,3));
+
+  // Vd_ee[LEFT].tail(3)  = this->compute_desired_angular_velocity(quat_l, quat_d_l, -6.0*gain_o_rel);
+  // Vd_ee[RIGHT].tail(3) = this->compute_desired_angular_velocity(quat_r, quat_d_r, -6.0*gain_o_rel);
+
+  
   Vd_ee[LEFT]  = Utils<float>::SaturationTwist(_v_max, _w_max, Vd_ee[LEFT]);
   Vd_ee[RIGHT] = Utils<float>::SaturationTwist(_v_max, _w_max, Vd_ee[RIGHT]);
 
@@ -1547,7 +1562,7 @@ void dualArmFreeMotionController::constrained_ang_vel_correction(Eigen::Matrix4f
   // computing of desired ee velocity
   // ---------------------------------
   // Omega_object_d_ = -1.2f* jacMuTheta_o.inverse() * gain_o_abs * error_o;
-  Omega_object_d_ = -1.0f * gain_o_abs * error_o;
+  Omega_object_d_ = -0.6f * gain_o_abs * error_o;
   //
   for(int k=0; k<NB_ROBOTS; k++){
     //
@@ -2109,4 +2124,45 @@ Eigen::Vector2f dualArmFreeMotionController::predictRobotTranslation(Eigen::Matr
 
 
   return Lp_dx_avg;
+}
+
+Eigen::Vector3f dualArmFreeMotionController::boost_ang_velocity(const Eigen::Vector3f& tmp_omega, float maxDq, float oriGainMx_){
+  // ========================================================================================
+   Eigen::Vector3f tmp_angular_vel = tmp_omega;
+  // if (tmp_angular_vel.norm() > maxDq)
+  //       tmp_angular_vel = maxDq * tmp_angular_vel.normalized();
+
+    // float theta_gq = (-.5/(4*maxDq*maxDq)) * tmp_angular_vel.transpose() * tmp_angular_vel;
+
+   float theta_gq = (-.5/(4)) * tmp_angular_vel.transpose() * tmp_angular_vel;
+    Eigen::Vector3f des_ang_vel   = 2 * (1+std::exp(theta_gq)) * oriGainMx_ * tmp_angular_vel;
+    // Eigen::Vector3f des_ang_vel   = 2 * cp_ap2 * oriGainMx_ * tmp_angular_vel;
+    //
+    return des_ang_vel;
+  // ========================================================================================
+}
+
+Eigen::Vector3f dualArmFreeMotionController::compute_desired_angular_velocity(Eigen::Vector4f quat, 
+                                                                              Eigen::Vector4f quat_d, 
+                                                                              Eigen::Matrix3f gain_o)
+{
+  //  
+  Eigen::Vector4f dqd = Utils<float>::slerpQuaternion(quat, quat_d, 0.5);  
+  Eigen::Vector4f deltaQ = dqd -  quat;
+
+  Eigen::Vector4f qconj = quat;
+  qconj.segment(1,3) = -1 * qconj.segment(1,3);
+  Eigen::Vector4f temp_angVel = Utils<float>::quaternionProduct(deltaQ, qconj);
+
+  Eigen::Vector3f tmp_angular_vel = temp_angVel.segment(1,3);
+  float maxDq = 0.2;
+  if (tmp_angular_vel.norm() > maxDq)
+      tmp_angular_vel = maxDq * tmp_angular_vel.normalized();
+
+  float theta_gq = (-.5/(4*maxDq*maxDq)) * tmp_angular_vel.transpose() * tmp_angular_vel;
+
+  Eigen::Vector3f des_ang_vel   = 2 * (1+std::exp(theta_gq)) * gain_o* tmp_angular_vel;
+  //
+  return des_ang_vel;
+
 }

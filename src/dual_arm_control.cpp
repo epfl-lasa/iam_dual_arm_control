@@ -1282,20 +1282,20 @@ void dual_arm_control::computeCommands()
 		_updatePathEstim = false;
 		_counter_monocycle ++;
 	}
-	//
-	float new_trackingFactor = 1.0f;
-	if(_isPickupSet && !_updatePathEstim && _releaseAndretract){
-		//
-		_dxEE_dual_avg_pcycle += (_dxEE_dual_avg - _dxEE_dual_avg_pcycle)/(_counter_pickup + 1);
-		_dxEE_dual_avg_pcycle  = _dxEE_dual_avg;
-		//
-		new_trackingFactor = min((_dxEE_dual_avg_pcycle/(_dual_PathLen_AvgSpeed(1)+1e-5)), 1.0);
-		_trackingFactor 	 = _trackingFactor + (new_trackingFactor - _trackingFactor)/(_counter_pickup + 1);
-		//
-		_counter_monocycle = 0;
-		_counter_pickup ++;
-		_updatePathEstim = true;
-	}
+	// //
+	// float new_trackingFactor = 1.0f;
+	// if(_isPickupSet && !_updatePathEstim && _releaseAndretract){
+	// 	//
+	// 	_dxEE_dual_avg_pcycle += (_dxEE_dual_avg - _dxEE_dual_avg_pcycle)/(_counter_pickup + 1);
+	// 	_dxEE_dual_avg_pcycle  = _dxEE_dual_avg;
+	// 	//
+	// 	new_trackingFactor = min((_dxEE_dual_avg_pcycle/(_dual_PathLen_AvgSpeed(1)+1e-5)), 1.0);
+	// 	_trackingFactor 	 = _trackingFactor + (new_trackingFactor - _trackingFactor)/(_counter_pickup + 1);
+	// 	//
+	// 	_counter_monocycle = 0;
+	// 	_counter_pickup ++;
+	// 	_updatePathEstim = true;
+	// }
 	// -------------------------------------------------------------------------------------------------------------------------------------------------
 	//
 	Eigen::Vector2f Lp_Va_pred_bot = {_dual_PathLen_AvgSpeed(0), _trackingFactor *_dual_PathLen_AvgSpeed(1)}; 							// 0.70f 		0.30f:good //  
@@ -1505,8 +1505,23 @@ void dual_arm_control::computeCommands()
 		{
 			FreeMotionCtrl.reachable_p = ( _w_H_ee[LEFT](0,3) >= 0.72f ||  _w_H_ee[RIGHT](0,3) >= 0.72f ) ? 0.0f : 1.0f;
 
-			FreeMotionCtrl.dual_arm_motion(_w_H_ee,  _Vee, _w_H_gp,  _w_H_o, _w_H_Do, _Vd_o, _BasisQ, _VdImpact, false, 0, _Vd_ee, _qd, _release_flag);    // 0: reach
-			
+			if(false || _old_dual_method){
+				FreeMotionCtrl.computeCoordinatedMotion2(_w_H_ee, _w_H_gp, _w_H_o, _Vd_ee, _qd, false);
+				// FreeMotionCtrl.computeCoordinatedMotion3(_w_H_ee, _w_H_gp, _w_H_o, _Vo, _x_intercept, _Vd_ee, _qd, false);
+				//
+				Eigen::Vector3f error_p_abs     = _w_H_o.block(0,3,3,1) - 0.5f*( _w_H_ee[LEFT].block(0,3,3,1) +  _w_H_ee[RIGHT].block(0,3,3,1));
+				Eigen::Vector3f o_error_pos_abs = _w_H_o.block<3,3>(0,0).transpose() * error_p_abs;
+				Eigen::Vector3f o_error_pos_abs_paral = Eigen::Vector3f(o_error_pos_abs(0), 0.0f, o_error_pos_abs(2));
+				float cp_ap = Utils<float>::computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.17f, 1.0f, true);  // 50.0f, 0.05f, 2.8f
+				// create impact in the normal direction
+				// _Vd_ee[LEFT].head(3)  = _Vd_ee[LEFT].head(3)  + _n[LEFT]  * cp_ap * _desVimp; //0.05f; //
+				// _Vd_ee[RIGHT].head(3) = _Vd_ee[RIGHT].head(3) + _n[RIGHT] * cp_ap * _desVimp; //0.05f; //
+				_Vd_ee[LEFT].head(3)  = _Vd_ee[LEFT].head(3)  + _dirImp[LEFT]  * cp_ap * _desVimp; //0.05f; //
+				_Vd_ee[RIGHT].head(3) = _Vd_ee[RIGHT].head(3) + _dirImp[RIGHT] * cp_ap * _desVimp; //0.05f; //
+			}
+			else{
+						FreeMotionCtrl.dual_arm_motion(_w_H_ee,  _Vee, _w_H_gp,  _w_H_o, _w_H_Do, _Vd_o, _BasisQ, _VdImpact, false, 0, _Vd_ee, _qd, _release_flag);    // 0: reach
+			}			
 			dsThrowing._refVtoss = _desVimp;
 			_Vd_o.setZero();												// for data logging
 			//
