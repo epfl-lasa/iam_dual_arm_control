@@ -405,10 +405,8 @@ class dual_arm_control
 		void targetPoseCallback(const geometry_msgs::Pose::ConstPtr& msg);
 		void updateBasePoseCallback(const geometry_msgs::Pose::ConstPtr& msg , int k);
 		void updateEEPoseCallback(const geometry_msgs::Pose::ConstPtr& msg , int k);
-		void updateRobotWrench(const geometry_msgs::WrenchStamped::ConstPtr& msg, int k);
-		void updateRobotWrenchLeft(const geometry_msgs::WrenchStamped::ConstPtr& msg);
-		void updateRobotWrenchRight(const geometry_msgs::WrenchStamped::ConstPtr& msg);
 		void updateEETwistCallback(const geometry_msgs::Twist::ConstPtr& msg, int k);
+		void updateRobotWrench(const geometry_msgs::WrenchStamped::ConstPtr& msg, int k);
 		void updateContactState();
 		void updateRobotStatesLeft(const sensor_msgs::JointState::ConstPtr &msg);
 		void updateRobotStatesRight(const sensor_msgs::JointState::ConstPtr &msg);

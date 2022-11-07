@@ -230,8 +230,10 @@ class dualArmFreeMotionController
 
 		Eigen::Vector3f boost_ang_velocity(const Eigen::Vector3f& tmp_omega, float maxDq, float oriGainMx_);
 		Eigen::Vector3f compute_desired_angular_velocity(Eigen::Vector4f quat, Eigen::Vector4f quat_d, Eigen::Matrix3f gain_o);
+		Eigen::MatrixXf get_bimanual_grasp_mx(const Eigen::Matrix4f &w_H_o, Eigen::Matrix4f w_H_gp[]);
+		Vector6f compute_desired_task_twist( Eigen::Matrix4f w_H_c, Eigen::Matrix4f w_H_d);
 
-		};
+};
 
 #endif // dualArmFreeMotionController_H
 

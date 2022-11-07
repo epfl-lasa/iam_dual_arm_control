@@ -979,229 +979,7 @@ void dual_arm_control::updatePoses()
 	std::cout << "[dual_arm_control]:  NNNNNNNNNNEEEEW TOSS DIR IS : \t" << (_tossVar.release_position -_x_pickup).normalized().transpose() << std::endl;
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// //
-// void dual_arm_control::computeCommands()
-// {
-// 	// Update contact state
-//   updateContactState();
-// 	//
-// 	float y_2_go = _xd_landing(1) - _vt(1) * (_xd_landing(0) - _x_pickup(0))/(0.25f*_desVtoss); //
-// 	// float y_2_go = _x_intercept(1) - _vo(1) * (_x_intercept(0) - 0.5f*(_xrbStandby[LEFT](0) + _xrbStandby[RIGHT](0)) )/(0.28f*0.80f);
 
-// 	// _x_intercept << _xt(0), _xd_landing(1), _xt(2);
-// 	_xd_landing  << _xt(0), _xd_landing(1), _xt(2);
-
-// 	Eigen::Vector3f XEE_Obj = 0.5f*( _w_H_ee[LEFT].block(0,3,3,1) +  _w_H_ee[RIGHT].block(0,3,3,1)) - _w_H_o.block(0,3,3,1);
-// 	Eigen::Vector3f XObj_Xrelease = _w_H_o.block(0,3,3,1) - _tossVar.release_position;
-
-// 	_dual_PathLen_AvgSpeed(0) = XEE_Obj.norm() + XObj_Xrelease.norm();
-// 	_dual_PathLen_AvgSpeed(1) = _desVtoss;
-
-// 	Eigen::Vector2f Lp_Va_pred_bot = _dual_PathLen_AvgSpeed;
-// 	Eigen::Vector2f Lp_Va_pred_tgt = tossParamEstimator.estimateTarget_SimpPathLength_AverageSpeed(_xt, _xd_landing, _vt);
-// 	float flytime_obj = 0.200f;
-// 	Eigen::Vector3f _xt_state2go 		 = tossParamEstimator.estimate_target_state_to_go(_xt, _vt, _xd_landing, Lp_Va_pred_bot, Lp_Va_pred_tgt, flytime_obj);
-
-// 	Eigen::Vector3f xt_bar 		= _xt - _xd_landing;
-// 	Eigen::Vector3f xt2go_bar = _xt_state2go - _xd_landing;
-
-// 	if((xt_bar.dot(xt2go_bar) > 0) && (xt_bar.norm() - xt2go_bar.norm())){
-// 		// start motion
-// 	}
-// 	// computation of speed adaptation term: beta
-// 	float beta = 1.0f;
-// 	// float beta_max = min(2.0f, _v_max/(0.5*(_Vd_ee[LEFT].head(3) + _Vd_ee[RIGHT].head(3)).norm()) );
-// 	float beta_max = min( 2.0f, min((_v_max/_Vd_ee[LEFT].head(3).norm()), (_v_max/_Vd_ee[RIGHT].head(3).norm())) );
-
-// 	if((xt_bar.dot(xt2go_bar) > 0) && (xt_bar.norm() - xt2go_bar.norm())){
-// 		beta = (Lp_Va_pred_tgt(1)/(Lp_Va_pred_bot(1) +1e-6)) * (Lp_Va_pred_bot(0)/(Lp_Va_pred_tgt(0) +1e-6));
-// 		if(beta >=beta_max){
-// 			beta = beta_max;
-// 		}
-// 	}	
-	
-
-
-// 	if(_goHome)
-// 	{
-// 		FreeMotionCtrl.computeAsyncMotion(_w_H_ee, _w_H_eeStandby, _w_H_o, _Vd_ee, _qd, true);		
-// 		_Vd_o  = dsThrowing.apply(_xo, _qo, _vo, Eigen::Vector3f(0.0f, 0.0f, 0.0f), 1);  							// 	Function to call in a loop
-// 		Eigen::Vector3f obj_dir = this->get_object_desired_direction(_dualTaskSelector, _w_H_o.block(0,3,3,1));
-
-// 		for(int i=0; i<NB_ROBOTS; i++){
-// 			_dirImp[i]  		 	= this->get_impact_direction(_Vd_o.head(3), _n[i], _friction_angle);			//  impact direction
-// 			_VdImpact[LEFT]   = _desVimp * _dirImp[LEFT]; 																							//	impact velocity [LEFT];
-// 			_VdImpact[RIGHT]  = _desVimp * _dirImp[RIGHT]; 																							//	impact velocity [RIGHT];
-// 			_BasisQ[i] 				= Utils<float>::create3dOrthonormalMatrixFromVector(_dirImp[i]);					//  Orthogonal Basis of Modulated Dual-arm DS
-// 		}
-// 		this->reset_variables();
-
-// 		// // float y_2_go = _xd_landing(1) - _vt(1) * (_xd_landing(0) - _x_pickup(0))/(0.5f*_desVtoss);
-// 		// // if(fabs(_xt(1)-1.55f) < 0.02f) //(fabs(_xt(1)-y_2_go) < 0.05f){
-// 		// // if(fabs(_xo(0)-1.0f) < 0.02f)//(fabs(_xt(0)-1.55f) < 0.02f) //(fabs(_xt(1)-y_2_go) < 0.05f){
-// 		// if((_initPoseCount > 50) && (fabs(_xt(1)-y_2_go) < 0.02f)) // 0.80   // tossing
-// 		// // if((_initPoseCount > 50) && (fabs(_xo(1)-y_2_go) < 0.02f)) // 0.80   // catching
-// 		// {
-// 		// 	_goHome = false;
-// 		// 	_startlogging  = true;
-// 		// }
-
-// 		if((_initPoseCount > 50) && (xt_bar.dot(xt2go_bar) > 0) && (xt_bar.norm() - xt2go_bar.norm())) // 0.80   // tossing
-// 		{
-// 			// _goHome = false;
-// 		}
-
-// 		std::cout << "[dual_arm_control]: DIST TO TOSS : \t"  << _xt_state2go << std::endl;
-
-// 	}
-// 	else 
-// 	{
-// 		////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// 		if(_releaseAndretract) //  release_and_retract || release
-// 		////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// 		{
-// 			FreeMotionCtrl.computeReleaseAndRetractMotion(_w_H_ee, _w_H_Dgp,  _w_H_o, _Vd_ee, _qd, true);
-// 			_isThrowing 	= false;
-// 			_isPlacing 		= false;
-// 			_isPickupSet 	= false;
-// 			_nu_Wr0 = _nu_Wr1 	= 0.0f;
-// 			dsThrowing.reset_release_flag();
-// 		}
-// 		////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// 		else // reaching and constrained motion
-// 		////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// 		{
-// 			bool no_dual_mds_method = _old_dual_method;
-//       bool isContact          = true && _sensedContact && CooperativeCtrl._ContactConfidence == 1.0f;
-//       bool isPlacing          = _isPlacing || (_dualTaskSelector == PICK_AND_PLACE);
-//       bool isThrowing         = _isThrowing || (_dualTaskSelector == TOSSING);
-//       bool isClose2Release    = (dsThrowing.a_tangent_> 0.95f);
-//       //
-//       bool isPlacingCommand = (_release_flag) || ((_w_H_o.block<3,1>(0,3)-_xDo_placing).norm()<=0.05); // 0.07
-//       bool isTossingCommand = (_release_flag) || ((_w_H_o.block<3,1>(0,3)-_tossVar.release_position).norm()<=0.035);
-
-//       if((isPlacing && isPlacingCommand) || (isThrowing && isTossingCommand)){
-//         _releaseAndretract = true;
-//       }
-
-//       if(isContact){
-//         _Vd_o  = dsThrowing.apply(_xo, _qo, _vo, Eigen::Vector3f(0.0f, 0.0f, 0.0f), 1);  // Function to call in a loop
-//         _releaseAndretract = dsThrowing.get_release_flag();
-//       }
-//       else
-//       {
-//     		dsThrowing._refVtoss = _desVimp;
-//         _Vd_o.setZero();  // for data logging
-//       }
-//       // ---------------------------------------------------------------
-//       FreeMotionCtrl.getDesiredMotion(no_dual_mds_method,
-// 	                                    isContact, 
-// 	                                    isPlacing,
-// 	                                    isThrowing,
-// 	                                    isClose2Release,
-// 	                                    _dualTaskSelector,
-// 	                                    _w_H_ee, 
-// 	                                    _xgp_o,
-// 	                                    _qgp_o,
-// 	                                    _o_H_ee,
-// 	                                    _w_H_o, 
-// 	                                    _w_H_Do,
-// 	                                    _xDo_placing,
-// 	                                    _qDo_placing,
-// 	                                    _tossVar.release_position,
-// 	                                    _tossVar.release_orientation,
-// 	                                    _height_via_point,
-// 	                                    _Vee,
-// 	                                    _Vd_o,
-// 	                                    _BasisQ,
-// 	                                    _VdImpact,
-// 	                                    _w_H_Dgp,
-// 	                                    _Vd_ee, 
-// 	                                    _qd, 
-// 	                                    _release_flag);
-//       // ----------------------------------------------------------------
-      
-		
-// 		} // reaching and constrained motion
-// 		////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// 		// compute the object's grasp points velocity
-// 		getGraspPointsVelocity();
-// 	  //
-// 	  // _desired_object_wrench.head(3) = -40.0f * (_w_H_o.block(0,3,3,1) - _w_H_Do.block(0,3,3,1)) - _objectMass * _gravity;
-// 		_desired_object_wrench.head(3) = 0.5f*(_d1[LEFT]+_d1[RIGHT])* 0.0f* (0.5f*(_Vd_ee[LEFT].head(3) + _Vd_ee[RIGHT].head(3)))// - 0.5f*(_Vee[LEFT].head(3) + _Vee[RIGHT].head(3))) 
-// 									   - 0.f*std::sqrt(0.5f*(_d1[LEFT]+_d1[RIGHT]) * 1.0f*_gain_abs(0)) * 0.5f*(_Vee[LEFT].head(3) + _Vee[RIGHT].head(3))
-// 									   - _objectMass * _gravity;
-// 		_desired_object_wrench.tail(3) = 0.0f*FreeMotionCtrl.Omega_object_d_; //(0.5f*(_Vd_ee[LEFT].tail(3) + _Vd_ee[RIGHT].tail(3)) - 0.0f*0.5f*(_Vee[LEFT].tail(3) + _Vee[RIGHT].tail(3)));
-
-// 	  bool isForceDetected = (_normalForceAverage[LEFT] > _forceThreshold || _normalForceAverage[RIGHT] > _forceThreshold);
-// 	  CooperativeCtrl.getAppliedWrenches(_goHome, _contactState, _w_H_o, _w_H_ee, _w_H_gp, _desired_object_wrench, _objectMass, _qp_wrench_generation, isForceDetected);
-// 	  // applied force in velocity space
-// 	  for(int i=0; i<NB_ROBOTS; i++){
-// 	  	_fxc[i] = 1.0f/_d1[i] * CooperativeCtrl._f_applied[i].head(3);
-// 	  }
-// 	}
-// 	// compute the velocity to avoid EE collision
-// 	FreeMotionCtrl.compute_EE_avoidance_velocity(_w_H_ee, _VEE_oa);
-
-//   // Extract linear velocity commands and desired axis angle command
-// 	prepareCommands(_Vd_ee, _qd, _V_gpo);
-
-	
-
-// 	if((fmod(_cycle_count, 20)==0)){
-// 		// _dual_PathLen_AvgSpeed = FreeMotionCtrlEstim.estimateRobot_PathLength_AverageSpeed(dsThrowingEstim,
-// 		// 												                                                        _old_dual_method, //no_dual_mds_method, 
-// 		// 												                                                        (_isPlacing || (_dualTaskSelector == PICK_AND_PLACE)), 	//isPlacing, 
-// 		// 												                                                        (_isThrowing || (_dualTaskSelector == TOSSING)), 				//isThrowing, 
-// 		// 												                                                        _dualTaskSelector, 
-// 		// 												                                                        0.200f, // dt,
-// 		// 												                                                        _desVimp,
-// 		// 												                                                        0.035f, //tolerance_dist2contact,
-// 		// 												                                                        _height_via_point,
-// 		// 												                                                        _xDo_placing,
-// 		// 												                                                        _qDo_placing,
-// 		// 												                                                        _tossVar.release_position,
-// 		// 												                                  											_tossVar.release_orientation,
-// 		// 												                                                        _xgp_o,
-// 		// 												                                  											_qgp_o,
-// 		// 												                                                        _VdImpact,
-// 		// 												                                                        _BasisQ, 
-// 		// 												                                                        _w_H_Do,
-// 		// 												                                                        _w_H_o,
-// 		// 												                                                        _w_H_Dgp,
-// 		// 												                                                        _w_H_ee);
-// 	}
-	
-
-// 	// std::cout << "[dual_arm_control]: _w_H_o: \n" << _w_H_o << std::endl; 
-// 	// std::cout << "[dual_arm_control]: _w_H_Do: \n" <<  _w_H_Do << std::endl;
-// 	std::cout << "[dual_arm_control]: STATE 2 GO : \t"  << y_2_go << std::endl; 
-// 	std::cout << "[dual_arm_control]: 3D STATE 2 GO : \t"  << _xt_state2go.transpose() << std::endl;
-// 	std::cout << "[dual_arm_control]:  ------------- _sensedContact: \t" << _sensedContact << std::endl;
-// 	std::cout << "[dual_arm_control]: _Vd_ee[LEFT]:  \t" << _Vd_ee[LEFT].transpose() << std::endl;
-// 	std::cout << "[dual_arm_control]: _Vd_ee[RIGHT]: \t" << _Vd_ee[RIGHT].transpose() << std::endl;
-// 	std::cout << " vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv " <<  std::endl;
-// 	std::cout << "[dual_arm_control]: _vd[LEFT]:  \t" << _vd[LEFT].transpose() << std::endl;
-// 	std::cout << "[dual_arm_control]: _vd[RIGHT]: \t" << _vd[RIGHT].transpose() << std::endl;
-// 	std::cout << " ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ " <<  std::endl;
-// 	std::cout << " COMPUTED HAND WRENCH _fxc  LEFT \t " << _fxc[LEFT].transpose() << std::endl;
-// 	std::cout << " COMPUTED HAND WRENCH _fxc RIGHT \t " << _fxc[RIGHT].transpose() << std::endl; 
-// 	// std::cout << " [dual_arm_control]: _dirImp[LEFT] \t " << _dirImp[LEFT].transpose()   << " normal LEFT  \t " << _n[LEFT].transpose()<< std::endl;
-// 	// std::cout << " [dual_arm_control]: _dirImp[RIGHT] \t " << _dirImp[RIGHT].transpose() << " normal RIGHT \t " << _n[RIGHT].transpose()<< std::endl;
-// 	std::cout << " EEEE----------- EEEPPP   _desVtoss IIIIIIII ----------- ONNNNNNNN \t " << _desVtoss << std::endl; 
-// 	std::cout << " EEEE----------- EEEPPP   _desVimp  IIIIIIII ----------- ONNNNNNNN \t " <<  _desVimp <<  std::endl; 
-// 	// std::cout << " EEEE---- RELEASE POSITION  IIIIIIII ----------- ONNNNNNNN \t " <<  _tossVar.release_position.transpose() <<  std::endl;
-// 	// std::cout << " EEEE---- RELEASE POSITION  SPHERICAL  -- r: \t " <<  release_pos.r ;
-// 	// std::cout << " theta: \t " <<  180.f/M_PI * release_pos.theta;
-// 	// std::cout << " phi: \t " <<  180.f/M_PI * release_pos.phi <<  std::endl;
-// 	// std::cout << " EEEE- POSITION PLACING is  \t " << _xDo_placing.transpose() << std::endl; 
-// 	// std::cout << " EEEE- POSITION LIFTING is  \t " << _xDo_lifting.transpose() << std::endl; 
-// 	std::cout << " EEEE- OBJECT MASS is  \t " << _objectMass << std::endl; 
-// 	std::cout << " PPPPPPPPPPPPPPPPPP PATHLENGH- AVERAGESPEED is  \t " << _dual_PathLen_AvgSpeed.transpose() << std::endl; 
-	
-// }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void dual_arm_control::computeCommands()
 {
@@ -1386,9 +1164,9 @@ void dual_arm_control::computeCommands()
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-	// ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	if(_goHome)
-	// ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	{
 		FreeMotionCtrl.computeAsyncMotion(_w_H_ee, _w_H_eeStandby, _w_H_o, _Vd_ee, _qd, true);		
 		_Vd_o  = dsThrowing.apply(_xo, _qo, _vo, Eigen::Vector3f(0.0f, 0.0f, 0.0f), 1);  												// 	Function to call in a loop
@@ -1417,9 +1195,9 @@ void dual_arm_control::computeCommands()
 			// _startlogging  = true;
 		}
 	}
-	// ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	else // Unconstraint and Constraint Motion Phase
-	// ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	{
 		//===================================================================================================================
 		if(_releaseAndretract) //  release_and_retract || release
@@ -1460,7 +1238,7 @@ void dual_arm_control::computeCommands()
 			// ----------------------------------------
 			
 			if(true){
-				// this->mirror_target2object_orientation(_qt, qDesTask, ang_lim);
+				this->mirror_target2object_orientation(_qt, qDesTask, ang_lim);
 			}
 			
 			// 
@@ -1528,7 +1306,6 @@ void dual_arm_control::computeCommands()
 			if(FreeMotionCtrl.a_proximity_ >= 0.2f){
 				beta_vel_mod_unfilt = 1.0;
 			}
-
 		}
 
 	}
@@ -1572,7 +1349,7 @@ void dual_arm_control::computeCommands()
 	// ---------------------------------------------------------------
 	prepareCommands(_Vd_ee, _qd, _V_gpo);
 
-	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	// control of conveyor belt speed
 	float omega_pert = 2.f*M_PI/1;
@@ -1639,287 +1416,9 @@ void dual_arm_control::computeCommands()
 	// std::cout << " AAAAAAAAAAAAAAAAA AVERAGE SPEED END_EFFECTOR AAAAAAAAAAAAAAAAA is  \t " << _movingAvgSpeedEE << std::endl;  
 
 }
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
-void dual_arm_control::publish_commands()
-{
-	//
-	geometry_msgs::Pose vel_quat[NB_ROBOTS];
-	//
-	for(int k=0; k<NB_ROBOTS; k++)
-	{
-		_pubVelo[k].data.clear();
-		_pubVelo[k].data.push_back(_aad[k](0));		// axis angle pose_x	
-		_pubVelo[k].data.push_back(_aad[k](1));		// axis angle pose_y
-		_pubVelo[k].data.push_back(_aad[k](2));		// axis angle pose_z
-		_pubVelo[k].data.push_back(_vd[k](0));		// linear velocity v_x
-		_pubVelo[k].data.push_back(_vd[k](1));		// linear velocity v_y
-		_pubVelo[k].data.push_back(_vd[k](2));		// linear velocity v_z
-	  	// desired velocity
-		vel_quat[k].position.x		= _vd[k](0);
-		vel_quat[k].position.y		= _vd[k](1);
-		vel_quat[k].position.z		= _vd[k](2);
-		// desired pose
-		vel_quat[k].orientation.w	= _qd[k](0);
-		vel_quat[k].orientation.x	= _qd[k](1);
-		vel_quat[k].orientation.y	= _qd[k](2);
-		vel_quat[k].orientation.z	= _qd[k](3);
-	}
-	//
-	_pub_ts_commands[LEFT].publish(_pubVelo[LEFT]);
-	_pub_ts_commands[RIGHT].publish(_pubVelo[RIGHT]);
-
-	_pubDesiredVel_Quat[LEFT].publish(vel_quat[LEFT]);
-	_pubDesiredVel_Quat[RIGHT].publish(vel_quat[RIGHT]);
-}
-
-// current_object_pose_world_callback
-// -------------------------------------
-void dual_arm_control::objectPoseCallback(const geometry_msgs::Pose::ConstPtr& msg)
-{
-	// _xo << msg->position.x, 	msg->position.y, 	msg->position.z;
-	Eigen::Vector3f xom, t_xo_xom; // _objectDim
-	if(!_isSimulation){
-		t_xo_xom << 0.0f, 0.0f, -_objectDim(2)/2.0f;
-	}
-	else{
-		t_xo_xom << 0.0f, 0.0f, 0.0f;
-	}
-
-	xom << msg->position.x, 	msg->position.y, 	msg->position.z;
-	_qo << msg->orientation.w, 	msg->orientation.x, msg->orientation.y, msg->orientation.z;
-	// _w_H_o = Utils<float>::pose2HomoMx(_xo, _qo);
-	Eigen::Matrix3f w_R_o = Utils<float>::quaternionToRotationMatrix(_qo);
-	_xo = xom + w_R_o*t_xo_xom;
-
-	// filtered object position
-	SGF::Vec temp(3), temp_o(4);
- _xo_filtered->AddData(_xo);
- _xo_filtered->GetOutput(0,temp);
- _xo = temp;
- _xo_filtered->GetOutput(1,temp);
- _vo = temp;	
-	_w_H_o = Utils<float>::pose2HomoMx(_xo, _qo);
-	//
-	_qo_filtered->AddData(_qo);
-	_qo_filtered->GetOutput(1,temp_o);
-	Eigen::Vector4f qo_dot = temp_o;
-	//
-	Eigen::MatrixXf wQ_map(3,4);
-	wQ_map << -_qo(1), -_qo(0), -_qo(3),  _qo(2),
-						-_qo(2),  _qo(3),  _qo(0), -_qo(1),
-						-_qo(3), -_qo(2),  _qo(1),  _qo(0);
-	_wo = wQ_map*qo_dot;
-
-	_Vo.head(3) = _vo;
-	_Vo.tail(3) = _wo;
-}
-
-void dual_arm_control::targetPoseCallback(const geometry_msgs::Pose::ConstPtr& msg)
-{
-	_xt << msg->position.x, 	msg->position.y, 	msg->position.z;
-	_qt << msg->orientation.w, 	msg->orientation.x, msg->orientation.y, msg->orientation.z;
-
-	// filtered object position
-	SGF::Vec temp(3);
-  _xt_filtered->AddData(_xt);
-  _xt_filtered->GetOutput(0,temp);
-  _xt = temp;
-  _xt_filtered->GetOutput(1,temp);
-  _vt = temp;	
-  _xt_KF_filtered.update(_vt);
-	_vt = _xt_KF_filtered.get_estimate_position();
-}
-
-void dual_arm_control::updateBasePoseCallback(const geometry_msgs::Pose::ConstPtr& msg, int k)
-{
-	Eigen::Vector4f q;
-	_w_H_rb[k].block(0,3,3,1) << msg->position.x, 	msg->position.y, 	msg->position.z;
-	q << msg->orientation.w, 	msg->orientation.x, msg->orientation.y, msg->orientation.z;
-	_w_H_rb[k].block(0,0,3,3) = Utils<float>::quaternionToRotationMatrix(q);
-}
-
-void dual_arm_control::updateEEPoseCallback(const geometry_msgs::Pose::ConstPtr& msg, int k)
-{
-	// Update end effecotr pose (position+orientation)
-	_x[k] << 	msg->position.x,	msg->position.y, 	msg->position.z;														// position
-	_q[k] << 	msg->orientation.w, msg->orientation.x, msg->orientation.y, msg->orientation.z;	// orientation
-	//
-	_wRb[k] = Utils<float>::quaternionToRotationMatrix(_q[k]);
-	_x[k]   = _x[k]+_toolOffsetFromEE[k]*_wRb[k].col(2);
-
-	// update velocity Twist transformation from EE to tcp
-	Eigen::Vector3f tcp = _toolOffsetFromEE[k]*_wRb[k].col(2);
-	Eigen::Matrix3f skew_Mx_tcp; 
-	skew_Mx_tcp <<   0.0f,   -tcp(2),     tcp(1),
-	               tcp(2),      0.0f,    -tcp(0),
-	              -tcp(1),    tcp(0),       0.0f;
-
-	_tcp_W_EE[k].block(0,3,3,3) = skew_Mx_tcp;
-}
-
-void dual_arm_control::updateEETwistCallback(const geometry_msgs::Twist::ConstPtr& msg, int k)
-{
-  _v[k] << msg->linear.x, msg->linear.y, msg->linear.z;
-  _w[k] << msg->angular.x, msg->angular.y, msg->angular.z;
-	_Vee[k].head(3)  = _v[k];
-	_Vee[k].tail(3)  = _w[k];
-	_Vee[k] = _tcp_W_EE[k] * _Vee[k];
-}
-
-void dual_arm_control::updateRobotWrench(const geometry_msgs::WrenchStamped::ConstPtr& msg, int k)
-{
-	Eigen::Matrix<float,6,1> raw;
-	raw(0) = msg->wrench.force.x;
-	raw(1) = msg->wrench.force.y;
-	raw(2) = msg->wrench.force.z;
-	raw(3) = msg->wrench.torque.x;
-	raw(4) = msg->wrench.torque.y;
-	raw(5) = msg->wrench.torque.z;
-
-  // _wrench[k] = raw -_wrenchBias[k];
-  // _filteredWrench[k] = _filteredForceGain*_filteredWrench[k]+(1.0f-_filteredForceGain)*_wrench[k];
-  // if(!_wrenchBiasOK[k] && _firstRobotPose[k])
-  if(!_wrenchBiasOK[k])
-  {
-    Eigen::Vector3f loadForce = _wRb[k].transpose()*_toolMass*_gravity;
-    _wrenchBias[k].segment(0,3) -= loadForce;
-    _wrenchBias[k].segment(3,3) -= _toolComPositionFromSensor.cross(loadForce);
-    _wrenchBias[k] += raw; 
-    _wrenchCount[k]++;
-    if(_wrenchCount[k]==NB_FT_SENSOR_SAMPLES)
-    {
-      _wrenchBias[k] /= NB_FT_SENSOR_SAMPLES;
-      _wrenchBiasOK[k] = true;
-      std::cerr << "[dual_arm_control]: Bias " << k << ": " <<_wrenchBias[k].transpose() << std::endl;
-    }
-  }
-
-  // if(_wrenchBiasOK[k] && _firstRobotPose[k])
-  if(_wrenchBiasOK[k])
-  // if(true)
-  {
-    _wrench[k] = raw -_wrenchBias[k];
-    Eigen::Vector3f loadForce = _wRb[k].transpose()*_toolMass*_gravity;
-    _wrench[k].segment(0,3) -= loadForce;
-    _wrench[k].segment(3,3) -= _toolComPositionFromSensor.cross(loadForce);
-    _wrench[k].head(3) = _wRb[k] * _wrench[k].head(3);
-		_wrench[k].tail(3) = _wRb[k] * _wrench[k].tail(3);
-    _filteredWrench[k] = _filteredForceGain*_filteredWrench[k]+(1.0f-_filteredForceGain)*_wrench[k];
-    //
-    _normalForce[k] = fabs((_filteredWrench[k].segment(0,3)).dot(_n[k]));
-  }
-}
-
-void dual_arm_control::updateRobotWrenchLeft(const geometry_msgs::WrenchStamped::ConstPtr& msg)
-{
-	Eigen::Matrix<float,6,1> raw;
-	raw(0) = msg->wrench.force.x;
-	raw(1) = msg->wrench.force.y;
-	raw(2) = msg->wrench.force.z;
-	raw(3) = msg->wrench.torque.x;
-	raw(4) = msg->wrench.torque.y;
-	raw(5) = msg->wrench.torque.z;
-
-	_wrench[LEFT] = raw -_wrenchBias[LEFT];
-	_wrench[LEFT].head(3) = _wRb[LEFT] * _wrench[LEFT].head(3);
-	_wrench[LEFT].tail(3) = _wRb[LEFT] * _wrench[LEFT].tail(3);
-	_filteredWrench[LEFT] = _filteredForceGain*_filteredWrench[LEFT]+(1.0f-_filteredForceGain)*_wrench[LEFT];
-	// _filteredWrench[LEFT] = raw;
-	 _normalForce[LEFT] = fabs((_filteredWrench[LEFT].segment(0,3)).dot(_n[LEFT]));
-}
-
-void dual_arm_control::updateRobotWrenchRight(const geometry_msgs::WrenchStamped::ConstPtr& msg)
-{
-	Eigen::Matrix<float,6,1> raw;
-	raw(0) = msg->wrench.force.x;
-	raw(1) = msg->wrench.force.y;
-	raw(2) = msg->wrench.force.z;
-	raw(3) = msg->wrench.torque.x;
-	raw(4) = msg->wrench.torque.y;
-	raw(5) = msg->wrench.torque.z;
-
-	_wrench[RIGHT] = raw -_wrenchBias[RIGHT];
-	_wrench[RIGHT].head(3) = _wRb[RIGHT] * _wrench[RIGHT].head(3);
-	_wrench[RIGHT].tail(3) = _wRb[RIGHT] * _wrench[RIGHT].tail(3);
-	_filteredWrench[RIGHT] = _filteredForceGain*_filteredWrench[RIGHT]+(1.0f-_filteredForceGain)*_wrench[RIGHT];
-	// _filteredWrench[RIGHT] = raw;
-	 _normalForce[RIGHT] = fabs((_filteredWrench[RIGHT].segment(0,3)).dot(_n[RIGHT]));
-}
-
-void dual_arm_control::updateRobotStatesLeft(const sensor_msgs::JointState::ConstPtr &msg) 
-{
-	for(int i=0; i<_nb_joints[LEFT]; i++){
-		_joints_positions[LEFT](i)	= (float) msg->position[i];
-		_joints_velocities[LEFT](i)	= (float) msg->velocity[i];
-		_joints_torques[LEFT](i)		= (float) msg->effort[i];
-	}
-	//
-	SGF::Vec temp_acc(_nb_joints[LEFT]);
-	_sgf_ddq_filtered_l->AddData(_joints_velocities[LEFT]);
-  _sgf_ddq_filtered_l->GetOutput(1,temp_acc);
- 	_joints_accelerations[LEFT]	= temp_acc.cast<float>();	
-
-}
-
-void dual_arm_control::updateRobotStatesRight(const sensor_msgs::JointState::ConstPtr &msg) 
-{
-	//
-	for(int i=0; i<_nb_joints[RIGHT]; i++){
-		_joints_positions[RIGHT](i)		= (float)msg->position[i];
-		_joints_velocities[RIGHT](i)	= (float)msg->velocity[i];
-		_joints_torques[RIGHT](i)			= (float)msg->effort[i];
-	}
-	//
-	SGF::Vec temp_acc(_nb_joints[RIGHT]);
-	_sgf_ddq_filtered_r->AddData(_joints_velocities[RIGHT]);
-  _sgf_ddq_filtered_r->GetOutput(1,temp_acc);
- 	_joints_accelerations[RIGHT]	= temp_acc.cast<float>();		
-}
-
-void dual_arm_control::updateContactState()
-{
-  for(int k = 0; k < NB_ROBOTS; k++){
-    if(_normalForceWindow[k].size()<MOVING_FORCE_WINDOW_SIZE){
-      _normalForceWindow[k].push_back(_normalForce[k]);
-      _normalForceAverage[k] = 0.0f;
-    }
-    else{
-      _normalForceWindow[k].pop_front();
-      _normalForceWindow[k].push_back(_normalForce[k]);
-      _normalForceAverage[k] = 0.0f;
-      for(int m = 0; m < MOVING_FORCE_WINDOW_SIZE; m++){
-        _normalForceAverage[k]+=_normalForceWindow[k][m];
-      }
-      _normalForceAverage[k] /= MOVING_FORCE_WINDOW_SIZE;
-    }
-  }
-  // if(_normalForceAverage[LEFT] > 2.0f && _normalForceAverage[RIGHT] > 2.0f &&  _eoD < 0.05f && _eoC < 0.1f)
-  // if (_normalForceAverage[LEFT] > _forceThreshold || _normalForceAverage[RIGHT] > _forceThreshold && (CooperativeCtrl._ContactConfidence == 1.0f)) 
-  if ((_normalForceAverage[LEFT] > 2.0f || _normalForceAverage[RIGHT] > 2.0f) && _eoD < 0.065f && (_eoC < 0.065f || CooperativeCtrl._ContactConfidence == 1.0f))
-  {
-    _contactState = CONTACT;
-    _c = 1.0f;
-  }
-  // else if(!(_normalForceAverage[LEFT] > 2.5f && _normalForceAverage[RIGHT] > 2.5f) && _eoD < 0.05f && _eoC < 0.1f)
-  else if(!(_normalForceAverage[LEFT] > 2.0f && _normalForceAverage[RIGHT] > 2.0f) && _eoD < 0.05f && _eoC < 0.05f){
-    _contactState = CLOSE_TO_CONTACT;
-    _c = 0.0f;
-  }
-  else{
-    _contactState = NO_CONTACT;
-    _c = 0.0f;
-  }
-  // check contact
-  _sensedContact = ((fabs(_normalForce[LEFT]) >= _forceThreshold) || (fabs(_normalForce[RIGHT]) >= _forceThreshold)) && (_c == 1.0f);
-  // _sensedContact = (fabs(_normalForce[LEFT]) >= _forceThreshold) && (fabs(_normalForce[RIGHT]) >= _forceThreshold) && (_c == 1.0f);
-
-  std::cerr << "[dual_arm_control]: contact state: " << (int) _contactState << " c: " << _c << std::endl;
-  std::cerr << "[dual_arm_control]: _normalForceAverage[LEFT]: " << _normalForceAverage[LEFT] << std::endl;
-  std::cerr << "[dual_arm_control]: _normalForceAverage[RIGHT]: " << _normalForceAverage[RIGHT] << std::endl;
-}
-
-
 void dual_arm_control::prepareCommands(Vector6f Vd_ee[], Eigen::Vector4f qd[], Vector6f V_gpo[])
 {
 	Eigen::Matrix<float,3,1> axis_d[NB_ROBOTS];	float angle_d[NB_ROBOTS];
@@ -1964,14 +1463,13 @@ void dual_arm_control::prepareCommands(Vector6f Vd_ee[], Eigen::Vector4f qd[], V
 			_qd[LEFT]  = _q[LEFT];
 			_qd[RIGHT] = _q[RIGHT];
 		}
-
 	  // set the command to send
 	  for(int i=0; i<NB_ROBOTS; i++){
 	  	_vd[i] = _applyVelo *_vd[i] + _nu_Wr0 * _fxc[i];
 	  }
 }
 
-
+//
 void dual_arm_control::getGraspPointsVelocity()    // in object struct or object
 {
   //velocity of grasp points on the object
@@ -1993,32 +1491,32 @@ void dual_arm_control::getGraspPointsVelocity()    // in object struct or object
 
 void dual_arm_control::Keyboard_reference_object_control()   // control of attractor position through keyboad
 {
-    // _w_H_Do(0,3) += _delta_pos(0);
-    // _w_H_Do(1,3) += _delta_pos(1);
-    // _w_H_Do(2,3) += _delta_pos(2);
-		_xDo_lifting(0) += _delta_pos(0);
-		_xDo_lifting(1) += _delta_pos(1);
-		_xDo_lifting(2) += _delta_pos(2);
+  // _w_H_Do(0,3) += _delta_pos(0);
+  // _w_H_Do(1,3) += _delta_pos(1);
+  // _w_H_Do(2,3) += _delta_pos(2);
+	_xDo_lifting(0) += _delta_pos(0);
+	_xDo_lifting(1) += _delta_pos(1);
+	_xDo_lifting(2) += _delta_pos(2);
 
-		// Eigen::Matrix3f RDo_lifting = Utils<float>::quaternionToRotationMatrix(_qDo_lifting);
-		// Eigen::Vector3f eulerAng_lift = Utils<float>::getEulerAnglesXYZ_FixedFrame(RDo_lifting);
-		// eulerAng_lift += _delta_ang;
-		// RDo_lifting  = Utils<float>::eulerAnglesToRotationMatrix(	eulerAng_lift(2), eulerAng_lift(1), eulerAng_lift(0));
-		// _qDo_lifting = Utils<float>::rotationMatrixToQuaternion(RDo_lifting);
-		//
-		_filt_delta_ang = 0.95*_filt_delta_ang + 0.05*_delta_ang;
-		Eigen::Matrix3f RDo_lifting  = Utils<float>::eulerAnglesToRotationMatrix(	_filt_delta_ang(2), _filt_delta_ang(1), _filt_delta_ang(0));
-		_qDo_lifting = Utils<float>::rotationMatrixToQuaternion(RDo_lifting);
-		//
-		std::cout << "AAAAAAAAAAAAAAAAAA ROTATION ANGLE EULER XYZ \t" << _filt_delta_ang.transpose() << std::endl;
-		//
-    _delta_pos.setZero(); 
-    // _delta_ang.setZero();
+	// Eigen::Matrix3f RDo_lifting = Utils<float>::quaternionToRotationMatrix(_qDo_lifting);
+	// Eigen::Vector3f eulerAng_lift = Utils<float>::getEulerAnglesXYZ_FixedFrame(RDo_lifting);
+	// eulerAng_lift += _delta_ang;
+	// RDo_lifting  = Utils<float>::eulerAnglesToRotationMatrix(	eulerAng_lift(2), eulerAng_lift(1), eulerAng_lift(0));
+	// _qDo_lifting = Utils<float>::rotationMatrixToQuaternion(RDo_lifting);
+	//
+	_filt_delta_ang = 0.95*_filt_delta_ang + 0.05*_delta_ang;
+	Eigen::Matrix3f RDo_lifting  = Utils<float>::eulerAnglesToRotationMatrix(	_filt_delta_ang(2), _filt_delta_ang(1), _filt_delta_ang(0));
+	_qDo_lifting = Utils<float>::rotationMatrixToQuaternion(RDo_lifting);
+	//
+	std::cout << "AAAAAAAAAAAAAAAAAA ROTATION ANGLE EULER XYZ \t" << _filt_delta_ang.transpose() << std::endl;
+	//
+  _delta_pos.setZero(); 
+  // _delta_ang.setZero();
 }
 
-void dual_arm_control::mirror_target2object_orientation(Eigen::Vector4f qt, Eigen::Vector4f &qo, Eigen::Vector3f ang_lim){
+void dual_arm_control::mirror_target2object_orientation(Eigen::Vector4f qt, Eigen::Vector4f &qo, Eigen::Vector3f ang_lim)
+{
 	Eigen::Vector3f eAng_t = Utils<float>::getEulerAnglesXYZ_FixedFrame(Utils<float>::quaternionToRotationMatrix(qt));
-
 	Eigen::Vector3f eAng_o = Utils<float>::getEulerAnglesXYZ_FixedFrame(Utils<float>::quaternionToRotationMatrix(qo));
 
 	if(eAng_t(2) >= ang_lim(2)){
@@ -2029,7 +1527,6 @@ void dual_arm_control::mirror_target2object_orientation(Eigen::Vector4f qt, Eige
 	}
 	
 	qo = Utils<float>::rotationMatrixToQuaternion( Utils<float>::eulerAnglesToRotationMatrix(eAng_t(2), eAng_o(1), eAng_o(0)) );
-
 }
 
 // //
@@ -2136,6 +1633,254 @@ void dual_arm_control::set_2d_position_box_constraints(Eigen::Vector3f &position
   if(position_vec(1)<limits[2]) position_vec(1) = limits[2]; 	// y_min
   if(position_vec(1)>limits[3]) position_vec(1) = limits[3];	// y_max
 }
+// ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+// ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Callback functions
+// ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// current_object_pose_world_callback
+// -------------------------------------
+void dual_arm_control::objectPoseCallback(const geometry_msgs::Pose::ConstPtr& msg)
+{
+	// _xo << msg->position.x, 	msg->position.y, 	msg->position.z;
+	Eigen::Vector3f xom, t_xo_xom; // _objectDim
+	if(!_isSimulation){
+		t_xo_xom << 0.0f, 0.0f, -_objectDim(2)/2.0f;
+	}
+	else{
+		t_xo_xom << 0.0f, 0.0f, 0.0f;
+	}
+	xom << msg->position.x, 	msg->position.y, 	msg->position.z;
+	_qo << msg->orientation.w, 	msg->orientation.x, msg->orientation.y, msg->orientation.z;
+	// _w_H_o = Utils<float>::pose2HomoMx(_xo, _qo);
+	Eigen::Matrix3f w_R_o = Utils<float>::quaternionToRotationMatrix(_qo);
+	_xo = xom + w_R_o*t_xo_xom;
+
+	// filtered object position
+	SGF::Vec temp(3), temp_o(4);
+ _xo_filtered->AddData(_xo);
+ _xo_filtered->GetOutput(0,temp);
+ _xo = temp;
+ _xo_filtered->GetOutput(1,temp);
+ _vo = temp;	
+	_w_H_o = Utils<float>::pose2HomoMx(_xo, _qo);
+	//
+	_qo_filtered->AddData(_qo);
+	_qo_filtered->GetOutput(1,temp_o);
+	Eigen::Vector4f qo_dot = temp_o;
+	//
+	Eigen::MatrixXf wQ_map(3,4);
+	wQ_map << -_qo(1), -_qo(0), -_qo(3),  _qo(2),
+						-_qo(2),  _qo(3),  _qo(0), -_qo(1),
+						-_qo(3), -_qo(2),  _qo(1),  _qo(0);
+	_wo = wQ_map*qo_dot;
+
+	_Vo.head(3) = _vo;
+	_Vo.tail(3) = _wo;
+}
+
+void dual_arm_control::targetPoseCallback(const geometry_msgs::Pose::ConstPtr& msg)
+{
+	_xt << msg->position.x, 	msg->position.y, 	msg->position.z;
+	_qt << msg->orientation.w, 	msg->orientation.x, msg->orientation.y, msg->orientation.z;
+	// filtered object position
+	SGF::Vec temp(3);
+  _xt_filtered->AddData(_xt);
+  _xt_filtered->GetOutput(0,temp);
+  _xt = temp;
+  _xt_filtered->GetOutput(1,temp);
+  _vt = temp;	
+  _xt_KF_filtered.update(_vt);
+	_vt = _xt_KF_filtered.get_estimate_position();
+}
+
+void dual_arm_control::updateBasePoseCallback(const geometry_msgs::Pose::ConstPtr& msg, int k)
+{
+	Eigen::Vector4f q;
+	_w_H_rb[k].block(0,3,3,1) << msg->position.x, 	msg->position.y, 	msg->position.z;
+	q << msg->orientation.w, 	msg->orientation.x, msg->orientation.y, msg->orientation.z;
+	_w_H_rb[k].block(0,0,3,3) = Utils<float>::quaternionToRotationMatrix(q);
+}
+
+void dual_arm_control::updateEEPoseCallback(const geometry_msgs::Pose::ConstPtr& msg, int k)
+{
+	// Update end effecotr pose (position+orientation)
+	_x[k] << 	msg->position.x,	msg->position.y, 	msg->position.z;														// position
+	_q[k] << 	msg->orientation.w, msg->orientation.x, msg->orientation.y, msg->orientation.z;	// orientation
+	//
+	_wRb[k] = Utils<float>::quaternionToRotationMatrix(_q[k]);
+	_x[k]   = _x[k]+_toolOffsetFromEE[k]*_wRb[k].col(2);
+
+	// update velocity Twist transformation from EE to tcp
+	Eigen::Vector3f tcp = _toolOffsetFromEE[k]*_wRb[k].col(2);
+	Eigen::Matrix3f skew_Mx_tcp; 
+	skew_Mx_tcp <<   0.0f,   -tcp(2),     tcp(1),
+	               tcp(2),      0.0f,    -tcp(0),
+	              -tcp(1),    tcp(0),       0.0f;
+
+	_tcp_W_EE[k].block(0,3,3,3) = skew_Mx_tcp;
+}
+
+void dual_arm_control::updateEETwistCallback(const geometry_msgs::Twist::ConstPtr& msg, int k)
+{
+  _v[k] << msg->linear.x, msg->linear.y, msg->linear.z;
+  _w[k] << msg->angular.x, msg->angular.y, msg->angular.z;
+	_Vee[k].head(3)  = _v[k];
+	_Vee[k].tail(3)  = _w[k];
+	_Vee[k] = _tcp_W_EE[k] * _Vee[k];
+}
+
+void dual_arm_control::updateRobotWrench(const geometry_msgs::WrenchStamped::ConstPtr& msg, int k)
+{
+	Eigen::Matrix<float,6,1> raw;
+	raw(0) = msg->wrench.force.x;
+	raw(1) = msg->wrench.force.y;
+	raw(2) = msg->wrench.force.z;
+	raw(3) = msg->wrench.torque.x;
+	raw(4) = msg->wrench.torque.y;
+	raw(5) = msg->wrench.torque.z;
+
+  // _wrench[k] = raw -_wrenchBias[k];
+  // _filteredWrench[k] = _filteredForceGain*_filteredWrench[k]+(1.0f-_filteredForceGain)*_wrench[k];
+  // if(!_wrenchBiasOK[k] && _firstRobotPose[k])
+  if(!_wrenchBiasOK[k])
+  {
+    Eigen::Vector3f loadForce = _wRb[k].transpose()*_toolMass*_gravity;
+    _wrenchBias[k].segment(0,3) -= loadForce;
+    _wrenchBias[k].segment(3,3) -= _toolComPositionFromSensor.cross(loadForce);
+    _wrenchBias[k] += raw; 
+    _wrenchCount[k]++;
+    if(_wrenchCount[k]==NB_FT_SENSOR_SAMPLES)
+    {
+      _wrenchBias[k] /= NB_FT_SENSOR_SAMPLES;
+      _wrenchBiasOK[k] = true;
+      std::cerr << "[dual_arm_control]: Bias " << k << ": " <<_wrenchBias[k].transpose() << std::endl;
+    }
+  }
+
+  // if(_wrenchBiasOK[k] && _firstRobotPose[k])
+  if(_wrenchBiasOK[k])
+  // if(true)
+  {
+    _wrench[k] = raw -_wrenchBias[k];
+    Eigen::Vector3f loadForce = _wRb[k].transpose()*_toolMass*_gravity;
+    _wrench[k].segment(0,3) -= loadForce;
+    _wrench[k].segment(3,3) -= _toolComPositionFromSensor.cross(loadForce);
+    _wrench[k].head(3) = _wRb[k] * _wrench[k].head(3);
+		_wrench[k].tail(3) = _wRb[k] * _wrench[k].tail(3);
+    _filteredWrench[k] = _filteredForceGain*_filteredWrench[k]+(1.0f-_filteredForceGain)*_wrench[k];
+    //
+    _normalForce[k] = fabs((_filteredWrench[k].segment(0,3)).dot(_n[k]));
+  }
+}
+
+void dual_arm_control::updateRobotStatesLeft(const sensor_msgs::JointState::ConstPtr &msg) 
+{
+	for(int i=0; i<_nb_joints[LEFT]; i++){
+		_joints_positions[LEFT](i)	= (float) msg->position[i];
+		_joints_velocities[LEFT](i)	= (float) msg->velocity[i];
+		_joints_torques[LEFT](i)		= (float) msg->effort[i];
+	}
+	//
+	SGF::Vec temp_acc(_nb_joints[LEFT]);
+	_sgf_ddq_filtered_l->AddData(_joints_velocities[LEFT]);
+  _sgf_ddq_filtered_l->GetOutput(1,temp_acc);
+ 	_joints_accelerations[LEFT]	= temp_acc.cast<float>();	
+}
+
+void dual_arm_control::updateRobotStatesRight(const sensor_msgs::JointState::ConstPtr &msg) 
+{
+	//
+	for(int i=0; i<_nb_joints[RIGHT]; i++){
+		_joints_positions[RIGHT](i)		= (float)msg->position[i];
+		_joints_velocities[RIGHT](i)	= (float)msg->velocity[i];
+		_joints_torques[RIGHT](i)			= (float)msg->effort[i];
+	}
+	//
+	SGF::Vec temp_acc(_nb_joints[RIGHT]);
+	_sgf_ddq_filtered_r->AddData(_joints_velocities[RIGHT]);
+  _sgf_ddq_filtered_r->GetOutput(1,temp_acc);
+ 	_joints_accelerations[RIGHT]	= temp_acc.cast<float>();		
+}
+
+void dual_arm_control::updateContactState()
+{
+  for(int k = 0; k < NB_ROBOTS; k++){
+    if(_normalForceWindow[k].size()<MOVING_FORCE_WINDOW_SIZE){
+      _normalForceWindow[k].push_back(_normalForce[k]);
+      _normalForceAverage[k] = 0.0f;
+    }
+    else{
+      _normalForceWindow[k].pop_front();
+      _normalForceWindow[k].push_back(_normalForce[k]);
+      _normalForceAverage[k] = 0.0f;
+      for(int m = 0; m < MOVING_FORCE_WINDOW_SIZE; m++){
+        _normalForceAverage[k]+=_normalForceWindow[k][m];
+      }
+      _normalForceAverage[k] /= MOVING_FORCE_WINDOW_SIZE;
+    }
+  }
+  // if(_normalForceAverage[LEFT] > 2.0f && _normalForceAverage[RIGHT] > 2.0f &&  _eoD < 0.05f && _eoC < 0.1f)
+  // if (_normalForceAverage[LEFT] > _forceThreshold || _normalForceAverage[RIGHT] > _forceThreshold && (CooperativeCtrl._ContactConfidence == 1.0f)) 
+  if ((_normalForceAverage[LEFT] > 2.0f || _normalForceAverage[RIGHT] > 2.0f) && _eoD < 0.065f && (_eoC < 0.065f || CooperativeCtrl._ContactConfidence == 1.0f))
+  {
+    _contactState = CONTACT;
+    _c = 1.0f;
+  }
+  // else if(!(_normalForceAverage[LEFT] > 2.5f && _normalForceAverage[RIGHT] > 2.5f) && _eoD < 0.05f && _eoC < 0.1f)
+  else if(!(_normalForceAverage[LEFT] > 2.0f && _normalForceAverage[RIGHT] > 2.0f) && _eoD < 0.05f && _eoC < 0.05f){
+    _contactState = CLOSE_TO_CONTACT;
+    _c = 0.0f;
+  }
+  else{
+    _contactState = NO_CONTACT;
+    _c = 0.0f;
+  }
+  // check contact
+  _sensedContact = ((fabs(_normalForce[LEFT]) >= _forceThreshold) || (fabs(_normalForce[RIGHT]) >= _forceThreshold)) && (_c == 1.0f);
+  // _sensedContact = (fabs(_normalForce[LEFT]) >= _forceThreshold) && (fabs(_normalForce[RIGHT]) >= _forceThreshold) && (_c == 1.0f);
+  std::cerr << "[dual_arm_control]: contact state: " << (int) _contactState << " c: " << _c << std::endl;
+  std::cerr << "[dual_arm_control]: _normalForceAverage[LEFT]: " << _normalForceAverage[LEFT] << std::endl;
+  std::cerr << "[dual_arm_control]: _normalForceAverage[RIGHT]: " << _normalForceAverage[RIGHT] << std::endl;
+}
+
+// ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Publish commands and data
+// ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void dual_arm_control::publish_commands()
+{
+	//
+	geometry_msgs::Pose vel_quat[NB_ROBOTS];
+	//
+	for(int k=0; k<NB_ROBOTS; k++)
+	{
+		_pubVelo[k].data.clear();
+		_pubVelo[k].data.push_back(_aad[k](0));		// axis angle pose_x	
+		_pubVelo[k].data.push_back(_aad[k](1));		// axis angle pose_y
+		_pubVelo[k].data.push_back(_aad[k](2));		// axis angle pose_z
+		_pubVelo[k].data.push_back(_vd[k](0));		// linear velocity v_x
+		_pubVelo[k].data.push_back(_vd[k](1));		// linear velocity v_y
+		_pubVelo[k].data.push_back(_vd[k](2));		// linear velocity v_z
+	  	// desired velocity
+		vel_quat[k].position.x		= _vd[k](0);
+		vel_quat[k].position.y		= _vd[k](1);
+		vel_quat[k].position.z		= _vd[k](2);
+		// desired pose
+		vel_quat[k].orientation.w	= _qd[k](0);
+		vel_quat[k].orientation.x	= _qd[k](1);
+		vel_quat[k].orientation.y	= _qd[k](2);
+		vel_quat[k].orientation.z	= _qd[k](3);
+	}
+	//
+	_pub_ts_commands[LEFT].publish(_pubVelo[LEFT]);
+	_pub_ts_commands[RIGHT].publish(_pubVelo[RIGHT]);
+
+	_pubDesiredVel_Quat[LEFT].publish(vel_quat[LEFT]);
+	_pubDesiredVel_Quat[RIGHT].publish(vel_quat[RIGHT]);
+}
 
 void dual_arm_control::publishData()
 {
@@ -2231,9 +1976,6 @@ void dual_arm_control::saveData()
 	Eigen::MatrixXf power_left   = _joints_torques[LEFT].transpose()  * _joints_velocities[LEFT];
 	Eigen::MatrixXf power_right  = _joints_torques[RIGHT].transpose() * _joints_velocities[RIGHT];
 
-	// To do: add desired object orientation
-	// To do : grasping point after the ee pose
-	// To o : add desired quaternion
 	// if(_startlogging)
 	// {
 		datalog._OutRecord_pose			<< (float)(_cycle_count * _dt) << ", ";																																																						// cycle time
