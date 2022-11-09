@@ -339,6 +339,7 @@ bool dual_arm_control::init()
 	gotParam = gotParam && nh_.getParam("dual_arm_task/modulated_reaching", modulated_reaching);  
 	gotParam = gotParam && nh_.getParam("dual_arm_task/isNorm_impact_vel", isNorm_impact_vel);
 	gotParam = gotParam && nh_.getParam("dual_arm_task/isQP_wrench_generation", isQP_wrench_generation);
+	gotParam = gotParam && nh_.getParam("dual_arm_task/objCtrlKey", _objCtrlKey);
 
 	gotParam = gotParam && nh_.getParam("dual_arm_task/lifting/increment_lift_pos", _increment_lift_pos);
 	gotParam = gotParam && nh_.getParam("conveyor_belt/control_mode", _ctrl_mode_conveyor_belt); 
@@ -883,7 +884,7 @@ void dual_arm_control::updatePoses()
 	/////////////////////////////////////////////////////////////////////////////////////////////
 	// Update trajectory of the object
 	// Update the object position or its desired position (attractor) through keyboard 
-	if(_objCtrlKey && false){
+	if(_objCtrlKey){
 		this->Keyboard_virtual_object_control(); 
 	}
 	else{
@@ -992,7 +993,7 @@ void dual_arm_control::computeCommands()
 	bool isPlacing          = _isPlacing || (_dualTaskSelector == PICK_AND_PLACE);
 	bool isThrowing         = _isThrowing || (_dualTaskSelector == TOSSING) || (_dualTaskSelector == PICK_AND_TOSS);
 	bool isPlaceTossing 		= _isPlaceTossing || (_dualTaskSelector == PLACE_TOSSING);
-	bool isClose2Release    = (dsThrowing.a_tangent_> 0.95f);
+	bool isClose2Release    = (dsThrowing.a_tangent_> 0.99f);
 	//
 	bool isPlacingCommand 	= (_release_flag) || ((_w_H_o.block<3,1>(0,3)-_xDo_placing).norm()<=0.05); // 0.07
 	bool isTossingCommand 	= (_release_flag) || ((_w_H_o.block<3,1>(0,3)-_tossVar.release_position).norm()<=0.035);
@@ -1220,6 +1221,8 @@ void dual_arm_control::computeCommands()
 
 			Eigen::Vector3f xDesTask = _xDo_lifting;
 			Eigen::Vector4f qDesTask = _qDo_lifting;
+
+			std::cout << " RRRRRRRRRRRRRRRRRRRRRRRRRRRRR    qDesTask \t" << _qDo_lifting.transpose() << std::endl;
 			// desired task position and orientation vectors
 			//----------------------------------------------
 			if(isPlacing){
@@ -1236,8 +1239,7 @@ void dual_arm_control::computeCommands()
 			}
 			// Target to object Orientation Adaptation
 			// ----------------------------------------
-			
-			if(true){
+			if(false){
 				this->mirror_target2object_orientation(_qt, qDesTask, ang_lim);
 			}
 			
@@ -1254,6 +1256,9 @@ void dual_arm_control::computeCommands()
 			// Desired object pose
 			//--------------------
 			_w_H_Do = Utils<float>::pose2HomoMx(xDesTask, qDesTask);  //
+
+			std::cout << " RRRRRRRRRRRRRRRRRRRRRRRRRRRRR    xDesTask \t" << xDesTask.transpose() << std::endl;
+			std::cout << " RRRRRRRRRRRRRRRRRRRRRRRRRRRRR    qDesTask \t" << qDesTask.transpose() << std::endl;
 			//
 			// Motion generation
 			//-------------------
@@ -1325,14 +1330,16 @@ void dual_arm_control::computeCommands()
   
   // Desired object's task wrench
   if(true){
-  	_desired_object_wrench.head(3) = -40.0f * (_w_H_o.block(0,3,3,1) - _w_H_Do.block(0,3,3,1)) - _objectMass * _gravity;
+  	// _desired_object_wrench.head(3) = -40.0f * (_w_H_o.block(0,3,3,1) - _w_H_Do.block(0,3,3,1))- _objectMass * _gravity;
+  	// _desired_object_wrench.head(3) = -10.0f * (_vo - FreeMotionCtrl.get_des_object_motion().head(3)) - _objectMass * _gravity;
+  	_desired_object_wrench.head(3) = - 12.64*_vo + 12.64f*FreeMotionCtrl.get_des_object_motion().head(3)  - _objectMass * _gravity;
   }
   else{
   	float Damp1 = 0.5f*(_d1[LEFT]+_d1[RIGHT]);
-  	_desired_object_wrench.head(3) = Damp1*( 0.5f*(_Vee[LEFT].head(3) + _Vee[RIGHT].head(3)) - 0.5f*(_Vd_ee[LEFT].head(3) + _Vd_ee[RIGHT].head(3)) )
-																   - _objectMass * _gravity;
+  	_desired_object_wrench.head(3) = Damp1*( 0.5f*(_Vee[LEFT].head(3) + _Vee[RIGHT].head(3)) - 0.5f*(_Vd_ee[LEFT].head(3) + _Vd_ee[RIGHT].head(3)) ) - _objectMass * _gravity;
   }
-	_desired_object_wrench.tail(3) = -15.0f*(_wo - FreeMotionCtrl.Omega_object_d_); //(0.5f*(_Vd_ee[LEFT].tail(3) + _Vd_ee[RIGHT].tail(3)) - 0.0f*0.5f*(_Vee[LEFT].tail(3) + _Vee[RIGHT].tail(3)));
+	// _desired_object_wrench.tail(3) = -15.0f*(_wo - 0.5f*(_Vd_ee[LEFT].tail(3) + _Vd_ee[RIGHT].tail(3))); //FreeMotionCtrl.Omega_object_d_); //(0.5f*(_Vd_ee[LEFT].tail(3) + _Vd_ee[RIGHT].tail(3)) - 0.0f*0.5f*(_Vee[LEFT].tail(3) + _Vee[RIGHT].tail(3)));
+	_desired_object_wrench.tail(3) = -15.0f*(_wo - FreeMotionCtrl.get_des_object_motion().tail(3));
  
   CooperativeCtrl.getAppliedWrenches(_goHome, _contactState, _w_H_o, _w_H_ee, _w_H_gp, _desired_object_wrench, _objectMass, _qp_wrench_generation, isForceDetected);
   // CooperativeCtrl.getAppliedWrenches(_goHome, _contactState, _w_H_o, _w_H_ee, _w_H_Dgp, _desired_object_wrench, _objectMass, _qp_wrench_generation, isForceDetected);
@@ -1505,7 +1512,8 @@ void dual_arm_control::Keyboard_reference_object_control()   // control of attra
 	// _qDo_lifting = Utils<float>::rotationMatrixToQuaternion(RDo_lifting);
 	//
 	_filt_delta_ang = 0.95*_filt_delta_ang + 0.05*_delta_ang;
-	Eigen::Matrix3f RDo_lifting  = Utils<float>::eulerAnglesToRotationMatrix(	_filt_delta_ang(2), _filt_delta_ang(1), _filt_delta_ang(0));
+	// Eigen::Matrix3f RDo_lifting  = Utils<float>::eulerAnglesToRotationMatrix(	_filt_delta_ang(2), _filt_delta_ang(1), _filt_delta_ang(0));
+	Eigen::Matrix3f RDo_lifting  = Utils<float>::eulerAnglesToRotationMatrix(	_filt_delta_ang(0), _filt_delta_ang(1), _filt_delta_ang(2));
 	_qDo_lifting = Utils<float>::rotationMatrixToQuaternion(RDo_lifting);
 	//
 	std::cout << "AAAAAAAAAAAAAAAAAA ROTATION ANGLE EULER XYZ \t" << _filt_delta_ang.transpose() << std::endl;
@@ -1519,6 +1527,15 @@ void dual_arm_control::mirror_target2object_orientation(Eigen::Vector4f qt, Eige
 	Eigen::Vector3f eAng_t = Utils<float>::getEulerAnglesXYZ_FixedFrame(Utils<float>::quaternionToRotationMatrix(qt));
 	Eigen::Vector3f eAng_o = Utils<float>::getEulerAnglesXYZ_FixedFrame(Utils<float>::quaternionToRotationMatrix(qo));
 
+	eAng_o(2) = eAng_o(2) + eAng_t(2);
+
+	if(eAng_t(0) >= ang_lim(0)){
+		eAng_t(0)   = ang_lim(0);
+	}
+	else if(eAng_t(0) <= -ang_lim(0)){
+		eAng_t(0)   = -ang_lim(0);
+	}
+	//
 	if(eAng_t(2) >= ang_lim(2)){
 		eAng_t(2)   = ang_lim(2);
 	}
@@ -1526,7 +1543,9 @@ void dual_arm_control::mirror_target2object_orientation(Eigen::Vector4f qt, Eige
 		eAng_t(2)   = -ang_lim(2);
 	}
 	
-	qo = Utils<float>::rotationMatrixToQuaternion( Utils<float>::eulerAnglesToRotationMatrix(eAng_t(2), eAng_o(1), eAng_o(0)) );
+	// qo = Utils<float>::rotationMatrixToQuaternion( Utils<float>::eulerAnglesToRotationMatrix(eAng_t(2), eAng_o(1), eAng_o(0)) );
+	// qo = Utils<float>::rotationMatrixToQuaternion( Utils<float>::eulerAnglesToRotationMatrix(eAng_o(0), eAng_o(1), eAng_t(2)) );
+	qo = Utils<float>::rotationMatrixToQuaternion( Utils<float>::eulerAnglesToRotationMatrix(eAng_o(0), eAng_o(1), eAng_o(2)) );
 }
 
 // //

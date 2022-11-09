@@ -49,14 +49,14 @@ throwingDS::throwingDS(){
 	// ==============================================================================================================================
 	ds_param_.is2ndOrder = false;
 	// Modulation parameters
-	ds_param_.modulRegion[0] = 0.28; // 0.20;
+	ds_param_.modulRegion[0] = 0.30; // 0.20;
 	ds_param_.modulRegion[1] = 0.035; // good 0.03;   
 	ds_param_.modulRegion[2] = 0.02; // 0.02;
 	//
 	// ============================================================================================
 	// Gains
 	// ============================================================================================
-	float T_settling = 0.8f; // [Settling time in second]
+	float T_settling = 1.2f; //  0.8f; // [Settling time in second]
 	float gn = pow((4.0f/T_settling),2.f);
 	// Stiffness
 	// ==========
@@ -176,7 +176,7 @@ Vector6f throwingDS::generate_throwing_motion(Eigen::Matrix4f w_H_ce,  Vector6f 
 	Eigen::Vector3f Omega = Vee.tail(3);
 	Eigen::Vector3f Xdes  = w_H_de.block<3,1>(0,3);	
 	Eigen::Vector3f Xretr = w_H_re.block<3,1>(0,3);	
-	Eigen::Vector3f Xb    = Xdes + BasisQ*Eigen::Vector3f(-0.5*this->rho_, 0.0, 0.0);
+	Eigen::Vector3f Xb    = Xdes + BasisQ*Eigen::Vector3f(-0.5*this->rho_, 0.0, 0.0);  //0.5
 	Eigen::Vector3f Xe    = Xdes + BasisQ*Eigen::Vector3f( 0.2*this->rho_, 0.0, 0.0);
 	Eigen::Vector3f Xc    = Xdes + BasisQ*Eigen::Vector3f(-0.2*this->rho_, 0.0, 0.0);  // w_H_po_
 	Eigen::Vector3f Xpick = w_H_po_.block<3,1>(0,3);	
@@ -232,23 +232,11 @@ Vector6f throwingDS::generate_throwing_motion(Eigen::Matrix4f w_H_ce,  Vector6f 
 
 	float activation   = a_proximity_;
 	a_retract_ = 0.0f;
-
-
-	// std::cout << "[throwingDS]:  -------------XXXXXXXXXXXXXXXXXXXXX ------ Xpick : \t" <<  Xpick.transpose() << std::endl;
-	// std::cout << "[throwingDS]:  -------------XXXXXXXXXXXXXXXXXXXXX ------ Xb  : \t" <<  Xb.transpose() << std::endl;
-	// std::cout << "[throwingDS]:  -------------XXXXXXXXXXXXXXXXXXXXX ------ Xti   : \t" <<  Xti.transpose() << std::endl;
-	// std::cout << "[throwingDS]:  -------------XXXXXXXXXXXXXXXXXXXXX ------ Xt_   : \t" <<  Xt_.transpose() << std::endl;
-	
-
 	// float a_normal_t   	= 0.5*(std::tanh(0.8f*this->sw_norm_  * (1.2f*this->range_norm_ - dist2line)) + 1.0 );  // good
 	// float a_normal_t   	= 0.5*(std::tanh(1.2f*this->sw_norm_  * (1.0f*this->range_norm_ - dist2line)) + 1.0 );
 	float tol_rad = (X-Xt_).norm(); //(X-Xt_).transpose() * (X-Xt_);
 	float a_normal_t   	= 0.5f*(std::tanh(1.2f*this->sw_norm_  * (this->range_norm_ - tol_rad)) + 1.0f );
-	// a_normal_t = 0.0f;
-	// std::cout << "[throwingDS]:  -------------XXXXXXXXXXXXXXXXXXXXX ------ a_proximity_   : \t" <<  a_proximity_ << std::endl;
-	// std::cout << "[throwingDS]:  -------------XXXXXXXXXXXXXXXXXXXXX ------ a_normal_   : \t" <<  a_normal_ << std::endl;
-	// std::cout << "[throwingDS]:  -------------XXXXXXXXXXXXXXXXXXXXX ------ a_normal_t   : \t" <<  a_normal_t << std::endl;
-	// std::cout << "[throwingDS]:  -------------XXXXXXXXXXXXXXXXXXXXX ------ Vdtoss   : \t" <<  Vdtoss.transpose() << std::endl;
+
 	if(a_normal_t >=0.90f){
       a_toss_ = 1.0f;
     }
@@ -336,7 +324,7 @@ Eigen::Vector3f throwingDS::compute_modulated_motion(float activation, Eigen::Ma
 
 	// computing the modulated second order DS (translation)
 	// float comb = 0.8f;  // good 0.3
-	float comb = 0.5f;  // good 0.3
+	float comb = 0.7f;  // good 0.3
 	// return (1.f - comb)*BasisQ * Lambda * BasisQ.transpose() * Areach_ee + comb *Areach_ee; 
 	return (1.f - comb)*BasisQ * Lambda * BasisQ.transpose() * Amodul_ee_norm + comb *Areach_ee; 
 }
@@ -365,6 +353,27 @@ Eigen::Vector3f throwingDS::compute_angular_motion(float coupling_, Eigen::Matri
 		return (Ko * Utils<float>::getOrientationErrorCur2Des(d_R_c_t));
 	}
 
+	// //--------------------------------------------------------------------------------------------------------
+	// // Rotation motion
+	// //----------------
+	// Eigen::Vector3f error_orient;      error_orient.setZero();
+ //  Vector6f des_twist_ee;  des_twist_ee.setZero();
+ //  //
+ //  Eigen::Matrix3f d_R_c = w_H_c.block<3,3>(0,0) * w_H_d.block<3,3>(0,0).transpose();
+ //  Eigen::AngleAxisf d_AxisAngle_c(d_R_c);
+ //  Eigen::Vector3f d_Axis_c = d_AxisAngle_c.axis();
+ //  //
+ //  error_orient = d_AxisAngle_c.axis().normalized() * d_AxisAngle_c.angle();
+ //  // ---------------------------------
+ //  // computing of desired ee velocity
+ //  // ---------------------------------
+ //  if(is2ndOrder){
+	// 	// approaximation of the acceleration (neglecting  -jacMuTheta_dot * Omega)
+	// 	return ( Do*Omega + Ko * error_orient);
+	// }
+	// else{
+	// 	return (Ko * error_orient);
+	// }
 }
 
 Eigen::MatrixXf throwingDS::createOrthonormalMatrixFromVector(Eigen::VectorXf inVec)

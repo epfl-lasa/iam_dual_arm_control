@@ -42,8 +42,8 @@ desVreach: 0.85
 # tossing task parameters (user defined)
 tossing:
   desVtoss:           0.85
-  releasePos:         [0.70, 0.00, 0.37] #[0.70, 0.00, 0.60] [0.70, 0.00, 0.40]
-  releaseOrient:      [1.00, 0.00, 0.00, 0.00] #[0.9914, 0, 0, 0.1305] #[0.9659,  0,  0,  0.2588] #
+  releasePos:         [0.70, 0.10, 0.37] #[0.70, 0.00, 0.60] [0.70, 0.00, 0.40]
+  releaseOrient:      [0.9436, 0, 0, 0.3310] #[0.9820, 0, 0, 0.1891] #[1.00, 0.00, 0.00, 0.00] #
   releaseLinVel_dir:  [1.00, 0.00, 0.50] # [1.00, 0.00, 1.00]
   releaseAngVel:      [0.00, 0.00, 0.00]
   restPos:            [0.50, 0.15, 0.30]
@@ -76,9 +76,10 @@ dual_arm_task:
   modulated_reaching: true
   isNorm_impact_vel: false
   isQP_wrench_generation: true
+  objCtrlKey: true
   lifting: 
     position: [0.45, 0.00, 0.50] #[0.45, 0.00, 0.70]
-    orientation: [1.00, 0.00, 0.00, 0.00] #[0.9914, 0, 0, 0.1305] #[0.9659,  0,  0,  0.2588] #
+    orientation: [0.9436, 0, 0, 0.3310] #[0.9820, 0, 0, 0.1891] #[1.00, 0.00, 0.00, 0.00] #
     increment_lift_pos: false
   placing: 
     position: [0.72, 0.00, 0.25] #[0.675, 0.0, 0.25]  [0.72, 0.0, 0.25]
@@ -86,6 +87,6 @@ dual_arm_task:
     height_via_point: 0.15
 # converyor-belt
 conveyor_belt:
-  control_mode: true
+  control_mode: false
   nominal_speed: 300
   magnitude_perturbation: 150
