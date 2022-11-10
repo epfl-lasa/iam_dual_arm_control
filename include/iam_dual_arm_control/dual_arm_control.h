@@ -371,6 +371,7 @@ class dual_arm_control
 		int _winLengthAvgSpeedEE;
 		// int _winCounterAvgSpeedEE;
 		bool _adaptationActive = false;
+		bool _isTargetFixed = true;
 
 		// ------------------------------------------------------------------------
 		bool _updatePathEstim  = false;
@@ -462,6 +463,11 @@ class dual_arm_control
 		void publish_conveyor_belt_cmds();
 		void set_2d_position_box_constraints(Eigen::Vector3f &position_vec, float limits[]);
 		void mirror_target2object_orientation(Eigen::Vector4f qt, Eigen::Vector4f &qo, Eigen::Vector3f ang_lim);
+		Eigen::Vector3f compute_intercept_with_target(const Eigen::Vector3f &x_pick, 
+		                                              const Eigen::Vector3f &x_target, 
+		                                              const Eigen::Vector3f &v_target, 
+		                                              float phi_i);
+		float get_desired_yaw_angle_target(const Eigen::Vector4f &qt, const Eigen::Vector3f &ang_lim);
 		
 };
 

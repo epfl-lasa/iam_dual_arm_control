@@ -77,6 +77,7 @@ dual_arm_task:
   isNorm_impact_vel: false
   isQP_wrench_generation: true
   objCtrlKey: true
+  isTargetFixed: true
   lifting: 
     position: [0.45, 0.00, 0.50] #[0.45, 0.00, 0.70]
     orientation: [0.9436, 0, 0, 0.3310] #[0.9820, 0, 0, 0.1891] #[1.00, 0.00, 0.00, 0.00] #
