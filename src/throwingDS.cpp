@@ -49,14 +49,14 @@ throwingDS::throwingDS(){
 	// ==============================================================================================================================
 	ds_param_.is2ndOrder = false;
 	// Modulation parameters
-	ds_param_.modulRegion[0] = 0.30; // 0.20;
-	ds_param_.modulRegion[1] = 0.035; // good 0.03;   
+	ds_param_.modulRegion[0] = 0.35; // 0.20;
+	ds_param_.modulRegion[1] = 0.04; // good 0.03;   0.35
 	ds_param_.modulRegion[2] = 0.02; // 0.02;
 	//
 	// ============================================================================================
 	// Gains
 	// ============================================================================================
-	float T_settling = 1.2f; //  0.8f; // [Settling time in second]
+	float T_settling = 1.0f; //  0.8f; // [Settling time in second]
 	float gn = pow((4.0f/T_settling),2.f);
 	// Stiffness
 	// ==========
@@ -176,7 +176,7 @@ Vector6f throwingDS::generate_throwing_motion(Eigen::Matrix4f w_H_ce,  Vector6f 
 	Eigen::Vector3f Omega = Vee.tail(3);
 	Eigen::Vector3f Xdes  = w_H_de.block<3,1>(0,3);	
 	Eigen::Vector3f Xretr = w_H_re.block<3,1>(0,3);	
-	Eigen::Vector3f Xb    = Xdes + BasisQ*Eigen::Vector3f(-0.5*this->rho_, 0.0, 0.0);  //0.5
+	Eigen::Vector3f Xb    = Xdes + BasisQ*Eigen::Vector3f(-0.3*this->rho_, 0.0, 0.0);  //0.5
 	Eigen::Vector3f Xe    = Xdes + BasisQ*Eigen::Vector3f( 0.2*this->rho_, 0.0, 0.0);
 	Eigen::Vector3f Xc    = Xdes + BasisQ*Eigen::Vector3f(-0.2*this->rho_, 0.0, 0.0);  // w_H_po_
 	Eigen::Vector3f Xpick = w_H_po_.block<3,1>(0,3);	
@@ -233,7 +233,6 @@ Vector6f throwingDS::generate_throwing_motion(Eigen::Matrix4f w_H_ce,  Vector6f 
 	float activation   = a_proximity_;
 	a_retract_ = 0.0f;
 	// float a_normal_t   	= 0.5*(std::tanh(0.8f*this->sw_norm_  * (1.2f*this->range_norm_ - dist2line)) + 1.0 );  // good
-	// float a_normal_t   	= 0.5*(std::tanh(1.2f*this->sw_norm_  * (1.0f*this->range_norm_ - dist2line)) + 1.0 );
 	float tol_rad = (X-Xt_).norm(); //(X-Xt_).transpose() * (X-Xt_);
 	float a_normal_t   	= 0.5f*(std::tanh(1.2f*this->sw_norm_  * (this->range_norm_ - tol_rad)) + 1.0f );
 
@@ -276,12 +275,8 @@ Vector6f throwingDS::generate_throwing_motion(Eigen::Matrix4f w_H_ce,  Vector6f 
 		// 
 		// Eigen::Vector3f Areach_ee      = Kp_[REACH]*(X - Xb); 					// DS for approaching the tossing position 
 		// Eigen::Vector3f Areach_ee      = Kp_[REACH]*(X - (a_normal_t *Xb + (1.0f-a_normal_t)*Xt_) ); 					// DS for approaching the tossing position 
-		
-		// Eigen::Vector3f Areach_ee      = Kp_[REACH]*(X - (sw_toss *Xb + (1.0f-sw_toss)*Xt_) ); 	// Xdes);// DS for approaching the tossing position 
-		// Eigen::Vector3f Amodul_ee_norm = 2.0f*Kp_[TOSS]*(X - Xb); 						// Modulated DS that aligned  the EE with the desired velocity
-		// Eigen::Vector3f Amodul_ee_tang = Kp_[TOSS]*(X - Xstar); 				// this->computeModulatedAcceleration(Km, Dm, X, Xdot, Xstar);
-		// Eigen::Vector3f Aretrac_ee     = Kp_[RETRACT]*(X - Xretr); 			// DS for retracting after the tossing position
-		Eigen::Vector3f Areach_ee      = Kp_[REACH]*(X -  Xtoss);//(sw_toss *Xtoss + (1.0f-sw_toss)*Xt_) ); 	// Xdes);// DS for approaching the tossing position 
+
+		Eigen::Vector3f Areach_ee      = Kp_[REACH]*(X -  Xb);//(sw_toss *Xtoss + (1.0f-sw_toss)*Xt_) ); 	// Xdes);// DS for approaching the tossing position 
 		Eigen::Vector3f Amodul_ee_norm = 1.5f*Kp_[TOSS]*(X - Xb); 						// Modulated DS that aligned  the EE with the desired velocity
 		Eigen::Vector3f Amodul_ee_tang = Kp_[TOSS]*(X - Xstar); 				// this->computeModulatedAcceleration(Km, Dm, X, Xdot, Xstar);
 		Eigen::Vector3f Aretrac_ee     = Kp_[RETRACT]*(X - Xretr); 			// DS for retracting after the tossing position
@@ -324,7 +319,7 @@ Eigen::Vector3f throwingDS::compute_modulated_motion(float activation, Eigen::Ma
 
 	// computing the modulated second order DS (translation)
 	// float comb = 0.8f;  // good 0.3
-	float comb = 0.7f;  // good 0.3
+	float comb = 0.3f;  // good 0.3
 	// return (1.f - comb)*BasisQ * Lambda * BasisQ.transpose() * Areach_ee + comb *Areach_ee; 
 	return (1.f - comb)*BasisQ * Lambda * BasisQ.transpose() * Amodul_ee_norm + comb *Areach_ee; 
 }

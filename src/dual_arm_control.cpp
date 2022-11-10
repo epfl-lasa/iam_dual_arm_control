@@ -1250,7 +1250,7 @@ void dual_arm_control::computeCommands()
 			for(int k=0; k<NB_ROBOTS; k++){ 
 				_w_H_Dgp[k].block(0,0,3,3)  = w_H_DesObj.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[k], _qgp_o[k]).block(0,0,3,3); 
 				if(isThrowing && isClose2Release){
-					_w_H_Dgp[k]  = _w_H_o * _o_H_ee[k];
+					// _w_H_Dgp[k]  = _w_H_o * _o_H_ee[k];
 				}
 			}
 			// Desired object pose
@@ -1296,9 +1296,7 @@ void dual_arm_control::computeCommands()
 				Eigen::Vector3f o_error_pos_abs = _w_H_o.block<3,3>(0,0).transpose() * error_p_abs;
 				Eigen::Vector3f o_error_pos_abs_paral = Eigen::Vector3f(o_error_pos_abs(0), 0.0f, o_error_pos_abs(2));
 				float cp_ap = Utils<float>::computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.17f, 1.0f, true);  // 50.0f, 0.05f, 2.8f
-				// create impact in the normal direction
-				// _Vd_ee[LEFT].head(3)  = _Vd_ee[LEFT].head(3)  + _n[LEFT]  * cp_ap * _desVimp; //0.05f; //
-				// _Vd_ee[RIGHT].head(3) = _Vd_ee[RIGHT].head(3) + _n[RIGHT] * cp_ap * _desVimp; //0.05f; //
+				// create impact at grabbing
 				_Vd_ee[LEFT].head(3)  = _Vd_ee[LEFT].head(3)  + _dirImp[LEFT]  * cp_ap * _desVimp; //0.05f; //
 				_Vd_ee[RIGHT].head(3) = _Vd_ee[RIGHT].head(3) + _dirImp[RIGHT] * cp_ap * _desVimp; //0.05f; //
 			}
