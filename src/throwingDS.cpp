@@ -56,7 +56,7 @@ throwingDS::throwingDS(){
 	// ============================================================================================
 	// Gains
 	// ============================================================================================
-	float T_settling = 1.0f; //  0.8f; // [Settling time in second]
+	float T_settling = 1.0f; //1.2f  0.8f; // [Settling time in second]
 	float gn = pow((4.0f/T_settling),2.f);
 	// Stiffness
 	// ==========
@@ -176,9 +176,9 @@ Vector6f throwingDS::generate_throwing_motion(Eigen::Matrix4f w_H_ce,  Vector6f 
 	Eigen::Vector3f Omega = Vee.tail(3);
 	Eigen::Vector3f Xdes  = w_H_de.block<3,1>(0,3);	
 	Eigen::Vector3f Xretr = w_H_re.block<3,1>(0,3);	
-	Eigen::Vector3f Xb    = Xdes + BasisQ*Eigen::Vector3f(-0.3*this->rho_, 0.0, 0.0);  //0.5
-	Eigen::Vector3f Xe    = Xdes + BasisQ*Eigen::Vector3f( 0.2*this->rho_, 0.0, 0.0);
-	Eigen::Vector3f Xc    = Xdes + BasisQ*Eigen::Vector3f(-0.2*this->rho_, 0.0, 0.0);  // w_H_po_
+	Eigen::Vector3f Xb    = Xdes + BasisQ*Eigen::Vector3f(-0.4*this->rho_, 0.0, 0.0);   // 0.4//0.5
+	Eigen::Vector3f Xe    = Xdes + BasisQ*Eigen::Vector3f( 0.2*this->rho_, 0.0, 0.0);   // 0.2
+	Eigen::Vector3f Xc    = Xdes + BasisQ*Eigen::Vector3f(-0.1*this->rho_, 0.0, 0.0);   // 0.1 // w_H_po_
 	Eigen::Vector3f Xpick = w_H_po_.block<3,1>(0,3);	
 	Eigen::Matrix3f Se1   = Eigen::MatrixXf::Zero(3,3); Se1(0,0) = 1.0f;
 	Eigen::Vector3f Xti   = Xdes + BasisQ * Se1 * BasisQ.transpose()*(Xpick - Xdes);
