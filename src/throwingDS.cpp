@@ -56,7 +56,7 @@ throwingDS::throwingDS(){
 	// ============================================================================================
 	// Gains
 	// ============================================================================================
-	float T_settling = 1.0f; //1.2f  0.8f; // [Settling time in second]
+	float T_settling = 1.2f; //1.2f  0.8f; // [Settling time in second]
 	float gn = pow((4.0f/T_settling),2.f);
 	// Stiffness
 	// ==========

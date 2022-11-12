@@ -265,6 +265,7 @@ bool dual_arm_control::init()
 	float param_toolOffset_sim_left;
 	float param_toolOffset_sim_right;
 
+	std::string param_object_name;
 	float param_objectMass;
 	std::vector<float> param_objectDim;
 	std::vector<float> param_graspOffset;
@@ -295,59 +296,64 @@ bool dual_arm_control::init()
 
 	bool gotParam = true;
 
+	while(!nh_.getParam("dual_system/simulation", _isSimulation)){ROS_INFO("Waitinng for param: dual_system/simulation ");}
+	while(!nh_.getParam("dual_system/passiveDS/dampingTopic/CustomController/left", param_damping_topic_CustomCtrl_left)){ROS_INFO("Waitinng for param : CustomController/left");}
+	while(!nh_.getParam("dual_system/passiveDS/dampingTopic/CustomController/right", param_damping_topic_CustomCtrl_right)){ROS_INFO("Waitinng for param : CustomController/right");}
+	while(!nh_.getParam("dual_system/passiveDS/dampingTopic/TorqueController/left", param_damping_topic_TorqueCtrl_left)){ROS_INFO("Waitinng for param : TorqueController/left");}
+	while(!nh_.getParam("dual_system/passiveDS/dampingTopic/TorqueController/right", param_damping_topic_TorqueCtrl_right)){ROS_INFO("Waitinng for param : TorqueController/right");}
+	while(!nh_.getParam("dual_system/tool/offset2end_effector/real/left",  param_toolOffset_real_left)){ROS_INFO("Waitinng for param:  offset2end_effector/real/left");}
+	while(!nh_.getParam("dual_system/tool/offset2end_effector/real/right", param_toolOffset_real_right)){ROS_INFO("Waitinng for param: offset2end_effector/real/right ");}
+	while(!nh_.getParam("dual_system/tool/offset2end_effector/sim/left",  param_toolOffset_sim_left)){ROS_INFO("Waitinng for param: offset2end_effector/sim/left ");}
+	while(!nh_.getParam("dual_system/tool/offset2end_effector/sim/right", param_toolOffset_sim_right)){ROS_INFO("Waitinng for param: offset2end_effector/sim/right ");}
 
-	gotParam = gotParam && nh_.getParam("passiveDS/dampingTopic/CustomController/left", param_damping_topic_CustomCtrl_left);
-	gotParam = gotParam && nh_.getParam("passiveDS/dampingTopic/CustomController/right", param_damping_topic_CustomCtrl_right);
-	gotParam = gotParam && nh_.getParam("passiveDS/dampingTopic/TorqueController/left", param_damping_topic_TorqueCtrl_left);
-	gotParam = gotParam && nh_.getParam("passiveDS/dampingTopic/TorqueController/right", param_damping_topic_TorqueCtrl_right);
+	while(!nh_.getParam("object/name", param_object_name)){ROS_INFO("Waitinng for param: object/name");}
+	while(!nh_.getParam("object/graspOffset", param_graspOffset)){ROS_INFO("Waitinng for param: object/graspOffset ");}
+	while(!nh_.getParam("object/" + param_object_name + "/dimension", param_objectDim)){ROS_INFO("Waitinng for param: object dimension ");}
+	while(!nh_.getParam("object/" + param_object_name + "/mass", param_objectMass)){ROS_INFO("Waitinng for param: object mass ");}
 
-	gotParam = gotParam && nh_.getParam("object/mass", param_objectMass);
-	gotParam = gotParam && nh_.getParam("object/dimension", param_objectDim); 
-	gotParam = gotParam && nh_.getParam("object/graspOffset", param_graspOffset);
+	while(!nh_.getParam("dual_arm_task/coordination/ds_absolute_gains", param_abs_gains)){ROS_INFO("Waitinng for param: ds_absolute_gains ");}
+	while(!nh_.getParam("dual_arm_task/coordination/ds_relative_gains", param_rel_gains)){ROS_INFO("Waitinng for param: ds_relative_gains ");}
 
-	gotParam = gotParam && nh_.getParam("tool/offset2end_effector/real/left",  param_toolOffset_real_left);
-	gotParam = gotParam && nh_.getParam("tool/offset2end_effector/real/right", param_toolOffset_real_right);
-	gotParam = gotParam && nh_.getParam("tool/offset2end_effector/sim/left",  param_toolOffset_sim_left);
-	gotParam = gotParam && nh_.getParam("tool/offset2end_effector/sim/right", param_toolOffset_sim_right);
-	gotParam = gotParam && nh_.getParam("desVimp", _desVimp);
-	gotParam = gotParam && nh_.getParam("desVreach", _desVreach);
-	gotParam = gotParam && nh_.getParam("tossing/desVtoss", _desVtoss);
-	gotParam = gotParam && nh_.getParam("tossing/releasePos", param_releasePos);
-	gotParam = gotParam && nh_.getParam("tossing/releaseOrient", param_releaseOrient);
-	gotParam = gotParam && nh_.getParam("tossing/releaseLinVel_dir", param_releaseLinVel_dir);
-	gotParam = gotParam && nh_.getParam("tossing/releaseAngVel", param_releaseAngVel);
-	gotParam = gotParam && nh_.getParam("tossing/restPos", param_restPos);
-	gotParam = gotParam && nh_.getParam("tossing/restOrient", param_restOrient);
-	gotParam = gotParam && nh_.getParam("tossing/increment_release_pos", _increment_release_pos);
+	while(!nh_.getParam("dual_arm_task/reach_to_grasp/impact/desVimp", _desVimp)){ROS_INFO("Waitinng for param: impact/desVimp");}
+	while(!nh_.getParam("dual_arm_task/reach_to_grasp/desVreach", _desVreach)){ROS_INFO("Waitinng for param: reach_to_grasp/desVreach");}
+	while(!nh_.getParam("dual_arm_task/reach_to_grasp/impact/impact_direction/friction_angle", _friction_angle)){ROS_INFO("Waitinng for param: impact_direction/friction_angl");}
+	while(!nh_.getParam("dual_arm_task/reach_to_grasp/impact/impact_direction/max_friction_angle", _max_friction_angle)){ROS_INFO("Waitinng for param: impact_direction/max_friction_angle");}
+	while(!nh_.getParam("dual_arm_task/reach_to_grasp/impact/impact_direction/impact_dir_preset", _impact_dir_preset)){ROS_INFO("Waitinng for param: impact_direction/impact_dir_preset");}
 
-	gotParam = gotParam && nh_.getParam("standby_pose/robot_left/position", param_stanbyPosition[LEFT]);
-	gotParam = gotParam && nh_.getParam("standby_pose/robot_left/orientation", param_stanbyOrientation[LEFT]);
-	gotParam = gotParam && nh_.getParam("standby_pose/robot_right/position", param_stanbyPosition[RIGHT]);
-	gotParam = gotParam && nh_.getParam("standby_pose/robot_right/orientation", param_stanbyOrientation[RIGHT]);
+	while(!nh_.getParam("dual_arm_task/standby_pose/robot_left/position", param_stanbyPosition[LEFT])){ROS_INFO("Waitinng for param: robot_left/position ");}
+	while(!nh_.getParam("dual_arm_task/standby_pose/robot_left/orientation", param_stanbyOrientation[LEFT])){ROS_INFO("Waitinng for param: robot_left/orientation ");}
+	while(!nh_.getParam("dual_arm_task/standby_pose/robot_right/position", param_stanbyPosition[RIGHT])){ROS_INFO("Waitinng for param: robot_right/position ");}
+	while(!nh_.getParam("dual_arm_task/standby_pose/robot_right/orientation", param_stanbyOrientation[RIGHT])){ROS_INFO("Waitinng for param: robot_right/orientation ");}
 
-	gotParam = gotParam && nh_.getParam("ds_absolute_gains", param_abs_gains);
-	gotParam = gotParam && nh_.getParam("ds_relative_gains", param_rel_gains);
-	gotParam = gotParam && nh_.getParam("impact_direction/friction_angle", _friction_angle);
-	gotParam = gotParam && nh_.getParam("impact_direction/max_friction_angle", _max_friction_angle); 
-	gotParam = gotParam && nh_.getParam("impact_direction/impact_dir_preset", _impact_dir_preset);
-	gotParam = gotParam && nh_.getParam("dual_arm_task/dualTaskSelector", _dualTaskSelector); 
-	gotParam = gotParam && nh_.getParam("dual_arm_task/lifting/position", param_xDo_lifting);
-	gotParam = gotParam && nh_.getParam("dual_arm_task/lifting/orientation", param_qDo_lifting);
-	gotParam = gotParam && nh_.getParam("dual_arm_task/placing/position", param_xDo_placing);
-	gotParam = gotParam && nh_.getParam("dual_arm_task/placing/orientation", param_qDo_placing); 
-	gotParam = gotParam && nh_.getParam("dual_arm_task/placing/height_via_point", _height_via_point); 
-	gotParam = gotParam && nh_.getParam("dual_arm_task/old_dual_method", _old_dual_method); 
-	gotParam = gotParam && nh_.getParam("dual_arm_task/modulated_reaching", modulated_reaching);  
-	gotParam = gotParam && nh_.getParam("dual_arm_task/isNorm_impact_vel", isNorm_impact_vel);
-	gotParam = gotParam && nh_.getParam("dual_arm_task/isQP_wrench_generation", isQP_wrench_generation);
-	gotParam = gotParam && nh_.getParam("dual_arm_task/objCtrlKey", _objCtrlKey);
-	gotParam = gotParam && nh_.getParam("dual_arm_task/isTargetFixed", _isTargetFixed);
+	while(!nh_.getParam("dual_arm_task/lifting/position", param_xDo_lifting)){ROS_INFO("Waitinng for param: lifting/position");}
+	while(!nh_.getParam("dual_arm_task/lifting/orientation", param_qDo_lifting)){ROS_INFO("Waitinng for param: lifting/orientation");}
+	while(!nh_.getParam("dual_arm_task/lifting/increment_lift_pos", _increment_lift_pos)){ROS_INFO("Waitinng for param: increment_lift_pos");}
 
-	gotParam = gotParam && nh_.getParam("dual_arm_task/lifting/increment_lift_pos", _increment_lift_pos);
-	gotParam = gotParam && nh_.getParam("conveyor_belt/control_mode", _ctrl_mode_conveyor_belt); 
-	gotParam = gotParam && nh_.getParam("conveyor_belt/nominal_speed", _nominalSpeed_conveyor_belt); 
-	gotParam = gotParam && nh_.getParam("conveyor_belt/magnitude_perturbation", _magniture_pert_conveyor_belt); 
-	gotParam = gotParam && nh_.getParam("dual_system/simulation", _isSimulation);   
+	while(!nh_.getParam("dual_arm_task/placing/position", param_xDo_placing)){ROS_INFO("Waitinng for param: placing/position");}
+	while(!nh_.getParam("dual_arm_task/placing/orientation", param_qDo_placing)){ROS_INFO("Waitinng for param: placing/orientation");}
+	while(!nh_.getParam("dual_arm_task/placing/height_via_point", _height_via_point)){ROS_INFO("Waitinng for param: placing/height_via_point");}
+
+	while(!nh_.getParam("dual_arm_task/tossing/desVtoss", _desVtoss)){ROS_INFO("Waitinng for param: tossing/desVtoss ");}
+	while(!nh_.getParam("dual_arm_task/tossing/releasePos", param_releasePos)){ROS_INFO("Waitinng for param: tossing/releasePos ");}
+	while(!nh_.getParam("dual_arm_task/tossing/releaseOrient", param_releaseOrient)){ROS_INFO("Waitinng for param: tossing/releaseOrien ");}
+	while(!nh_.getParam("dual_arm_task/tossing/releaseLinVel_dir", param_releaseLinVel_dir)){ROS_INFO("Waitinng for param: tossing/releaseLinVel_dir ");}
+	while(!nh_.getParam("dual_arm_task/tossing/releaseAngVel", param_releaseAngVel)){ROS_INFO("Waitinng for param: tossing/releaseAngVel ");}
+	while(!nh_.getParam("dual_arm_task/tossing/restPos", param_restPos)){ROS_INFO("Waitinng for param: tossing/restPos ");}
+	while(!nh_.getParam("dual_arm_task/tossing/restOrient", param_restOrient)){ROS_INFO("Waitinng for param: tossing/restOrient ");}
+	while(!nh_.getParam("dual_arm_task/tossing/increment_release_pos", _increment_release_pos)){ROS_INFO("Waitinng for param: tossing/increment_release_pos ");}
+
+	while(!nh_.getParam("dual_arm_task/dualTaskSelector", _dualTaskSelector)){ROS_INFO("Waitinng for param: dualTaskSelector");}
+	while(!nh_.getParam("dual_arm_task/old_dual_method", _old_dual_method)){ROS_INFO("Waitinng for param:  old_dual_method");}
+	while(!nh_.getParam("dual_arm_task/modulated_reaching", modulated_reaching)){ROS_INFO("Waitinng for param:  modulated_reaching");}
+	while(!nh_.getParam("dual_arm_task/isNorm_impact_vel", isNorm_impact_vel)){ROS_INFO("Waitinng for param:  isNorm_impact_vel");}
+	while(!nh_.getParam("dual_arm_task/isQP_wrench_generation", isQP_wrench_generation)){ROS_INFO("Waitinng for param:  isQP_wrench_generation");}
+	while(!nh_.getParam("dual_arm_task/objCtrlKey", _objCtrlKey)){ROS_INFO("Waitinng for param:  objCtrlKey");}
+	while(!nh_.getParam("dual_arm_task/isTargetFixed", _isTargetFixed)){ROS_INFO("Waitinng for param:  isTargetFixed");}
+
+	while(!nh_.getParam("conveyor_belt/control_mode", _ctrl_mode_conveyor_belt)){ROS_INFO("Waitinng for param: conveyor_belt/control_mode ");}
+	while(!nh_.getParam("conveyor_belt/nominal_speed", _nominalSpeed_conveyor_belt)){ROS_INFO("Waitinng for param: conveyor_belt/nominal_speed");}
+	while(!nh_.getParam("conveyor_belt/magnitude_perturbation", _magniture_pert_conveyor_belt)){ROS_INFO("Waitinng for param: conveyor_belt/magnitude_perturbation");}
+
 
 	if (!gotParam) {
     ROS_ERROR("Couldn't the retrieve one or many parameters. ");
@@ -1048,7 +1054,6 @@ void dual_arm_control::computeCommands()
 	else{
 	  _xd_landing = this->compute_intercept_with_target(_x_pickup, _xt,  _vt, feas_yaw_target);
 	}
-	std::cout << " IIIIIIIIIIIIIIIIIIIIIII _xd_landing \t " << _xd_landing.transpose() << std::endl;
 	std::cout << " IIIIIIIIIIIIIIIIIIIIIII _xd_landing  \t " << _xd_landing.transpose() << std::endl;
 
 
