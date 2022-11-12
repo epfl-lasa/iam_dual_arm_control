@@ -593,7 +593,10 @@ bool dual_arm_control::init()
 // {
 //   me->_stop = true;
 // }
-//
+
+// ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Run
+// ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void dual_arm_control::run() 
 {
 	ROS_INFO("Running the dual_arm_control");
@@ -604,16 +607,11 @@ void dual_arm_control::run()
 	while (nh_.ok()) {
 		//
 		auto start = std::chrono::high_resolution_clock::now();
-		//
+		// update
 		update_states_machines();
-		//
-		// get the first eigen value of the passive ds controller and Check for update of passive ds controller eigen value
-		std::vector<float> param_values;
-		ros::param::getCached(_dsDampingTopic[LEFT], param_values);	  _d1[LEFT] = param_values[0];
-		if(_d1[LEFT] <FLT_EPSILON) _d1[LEFT]   = 150.0f;
-		ros::param::getCached(_dsDampingTopic[RIGHT], param_values);  _d1[RIGHT] = param_values[0];
-		if(_d1[RIGHT]<FLT_EPSILON)  _d1[RIGHT] = 150.0f;
-
+		// get the first eigen value of the passive ds controller and its updated value
+		get_pasive_ds_1st_damping();
+		
 		_mutex.lock();
 			// update the poses of the robots and the object
 			updatePoses();
@@ -634,15 +632,12 @@ void dual_arm_control::run()
 		loop_rate_.sleep();
 		_cycle_count ++;    // counter the cycles
 
+		// Estimation of the running period 
 		auto stop = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+    std::cout << " [dual_arm_control] RUNNING PERIOD ------------> : \t " << duration.count() << " ms" << std::endl;
 
-    // To get the value of duration use the count()
-    // member function on the duration object
-    std::cout << " TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT" << std::endl;
-    std::cout << duration.count() << " ms" << std::endl;
 	}
-
 	// Send zero command
 	for(int k = 0; k < NB_ROBOTS; k++){
 		_vd[k].setZero();
@@ -655,9 +650,10 @@ void dual_arm_control::run()
 	loop_rate_.sleep();
 	// close the data logging files
 	datalog.Close_files();
-
+	
 	ros::shutdown();
 }
+// ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void dual_arm_control::update_states_machines(){
 	// ----------------------------------------------------
@@ -841,7 +837,7 @@ void dual_arm_control::update_states_machines(){
 void dual_arm_control::updatePoses()
 {
 	if(_initPoseCount < 100){
-		_w_H_eeStandby[LEFT]  = _w_H_rb[LEFT]  * Utils<float>::pose2HomoMx(_xrbStandby[LEFT],  _qrbStandby[LEFT]);			// WITH EE pose wrt. the world TO BE CHANGED
+		_w_H_eeStandby[LEFT]  = _w_H_rb[LEFT]  * Utils<float>::pose2HomoMx(_xrbStandby[LEFT],  _qrbStandby[LEFT]);		// WITH EE pose wrt. the world TO BE CHANGED
 		_w_H_eeStandby[RIGHT] = _w_H_rb[RIGHT] * Utils<float>::pose2HomoMx(_xrbStandby[RIGHT], _qrbStandby[RIGHT]);		// WITH EE pose wrt. the world
 		FreeMotionCtrl._w_H_eeStandby[LEFT]  = _w_H_eeStandby[LEFT];
 		FreeMotionCtrl._w_H_eeStandby[RIGHT] = _w_H_eeStandby[RIGHT];
@@ -849,55 +845,20 @@ void dual_arm_control::updatePoses()
 		_xDo    = Eigen::Vector3f(_xo(0), _xo(1), _xDo_lifting(2));   // set attractor of lifting task   
 		_qDo    = _qo; 																								// _qDo_lifting
 		_w_H_Do = Utils<float>::pose2HomoMx(_xDo, _qDo);
-		//
 		_x_intercept = Eigen::Vector3f(_xo(0), 0.0, _xo(2));
+		// for catching
 		FreeMotionCtrl.set_virtual_object_frame(Utils<float>::pose2HomoMx(_x_intercept, _qo));
 
 		_initPoseCount ++;
 	}
 	
-	// Estimation of moving average EE speed
-	// -------------------------------------
-	float avgSpeedEE = 0.5f*(_Vee[LEFT].head(3).norm() + _Vee[RIGHT].head(3).norm());
-	//
-  if(_windowSpeedEE.size() < _winLengthAvgSpeedEE){   	
-    _windowSpeedEE.push_back(avgSpeedEE);
-    _movingAvgSpeedEE = 0.0f;
-  }
-  else{
-    _windowSpeedEE.pop_front();
-    _windowSpeedEE.push_back(avgSpeedEE);
-    _movingAvgSpeedEE = 0.0f;
+	// Estimation of moving average EE and target speed
+	// this->estimate_moving_average_ee_speed();
+	// this->estimate_moving_average_target_velocity();
 
-    for(int i = 0; i < _winLengthAvgSpeedEE; i++){
-			_movingAvgSpeedEE+=_windowSpeedEE[i]/_winLengthAvgSpeedEE;
-    }
-  }
-  // Estimation of moving average target velocity
-	// --------------------------------------------
-  if(_windowVelTarget.size() < _winLengthAvgSpeedEE){   	
-    _windowVelTarget.push_back(_vt);
-    _movingAvgVelTarget.setZero();
-  }
-  else{
-    _windowVelTarget.pop_front();
-    _windowVelTarget.push_back(_vt);
-    _movingAvgVelTarget.setZero();
-
-    for(int i = 0; i < _winLengthAvgSpeedEE; i++){
-			_movingAvgVelTarget +=_windowVelTarget[i] * (1.f/_winLengthAvgSpeedEE);
-    }
-  }
-
-	/////////////////////////////////////////////////////////////////////////////////////////////
-	// Update trajectory of the object
 	// Update the object position or its desired position (attractor) through keyboard 
-	if(_objCtrlKey){
-		this->Keyboard_virtual_object_control(); 
-	}
-	else{
-		this->Keyboard_reference_object_control();
-	}
+	if(_objCtrlKey){ this->Keyboard_virtual_object_control(); }
+	else{ this->Keyboard_reference_object_control(); }
 	//
 	if(_increment_release_pos){
 		this->update_release_position();
@@ -905,89 +866,37 @@ void dual_arm_control::updatePoses()
 	
 	// homogeneous transformations associated with the reaching task
 	for(int k=0; k<NB_ROBOTS; k++){
-		// _w_H_ee[k]  = _w_H_rb[k]  * Utils<float>::pose2HomoMx(_x[k],  _q[k]);		// with ee pose wrt. the robot base
 		_w_H_ee[k]  = Utils<float>::pose2HomoMx(_x[k],  _q[k]);			// WITH EE pose wrt. the world
 		_w_H_gp[k]  = _w_H_o * Utils<float>::pose2HomoMx(_xgp_o[k],  _qgp_o[k]);
+		_w_H_Dgp[k] = _w_H_Do * Utils<float>::pose2HomoMx(_xgp_o[k],  _qgp_o[k]);
 		_n[k]       = _w_H_gp[k].block(0,0,3,3).col(2);
-		_w_H_Dgp[k] = _w_H_gp[k];
 		_err[k]     = (_w_H_ee[k].block(0,3,3,1)  - _w_H_gp[k].block(0,3,3,1)).norm();
-
-		// _BasisQ[k]  = Utils<float>::create3dOrthonormalMatrixFromVector(_desVimp *_n[k]);
+		_o_H_ee[k]  = _w_H_o.inverse() * _w_H_ee[k];
 
 		if(CooperativeCtrl._ContactConfidence == 1.0)
 		{
-			_o_H_ee[k]  = _w_H_o.inverse() * _w_H_ee[k];
 			_o_H_ee[k](1,3) *= 0.95f; 
 			_w_H_Dgp[k]  = _w_H_Do * _o_H_ee[k];
-			// _w_H_Dgp[k]  = _w_H_o * _o_H_ee[k];
-			if((!_isThrowing)){
-				_w_H_Dgp[k].block(0,0,3,3)  = _w_H_Do.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[k],  _qgp_o[k]).block(0,0,3,3);
-				// _w_H_Dgp[k].block(0,0,3,3)  = _w_H_o.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[k],  _qgp_o[k]).block(0,0,3,3);
-			}
-			//
-			// if(!_isPickupSet){
-			// 	dsThrowing.set_pickup_object_pose(_xo, _qo);
-			// 	_isPickupSet = true;
-			// }
+			// _w_H_gp[k]  = _w_H_o * _o_H_ee[k];
 		}
 	}
-	// // update object's pickup position and release state
-	// if(!_isPickupSet && !_releaseAndretract){
-	// 	if(_sensedContact && (CooperativeCtrl._ContactConfidence == 1.0)){
-	// 		// update the release pose
-	// 		// dsThrowing.set_toss_pose(_tossVar.release_position, _tossVar.release_orientation);
-	// 		// dsThrowingEstim.set_toss_pose(_tossVar.release_position, _tossVar.release_orientation);
-	// 		//
-	// 		// dsThrowing.set_pickup_object_pose(_xo, _qo);
-	// 		dsThrowing.set_pickup_object_pose(_x_pickup, _qo);
-	// 		// dsThrowingEstim.set_pickup_object_pose(_xo, _qo);
-	// 		// Eigen::Vector3f new_toss_velocity = _desVtoss * (_tossVar.release_position -_xo).normalized();
-	// 		// Eigen::Vector3f new_toss_velocity = _desVtoss * (_tossVar.release_position -_x_pickup).normalized();
-
-	// 		// _tossVar.release_linear_velocity = _desVtoss * (_tossVar.release_position -_xo).normalized();
-	// 		// _tossVar.release_linear_velocity = _desVtoss * (_tossVar.release_position -_x_pickup).normalized();
-	// 		if(_increment_release_pos){
-	// 				// _tossVar.release_linear_velocity = _desVtoss * (_tossVar.release_position -_xDo_lifting).normalized();
-	// 		}
-	// 		dsThrowing.set_toss_linear_velocity(_tossVar.release_linear_velocity);
-	// 		// dsThrowingEstim.set_toss_linear_velocity(_tossVar.release_linear_velocity);
-	// 		// dsThrowing.set_toss_linear_velocity(new_toss_velocity);
-	// 		_isPickupSet = true;
-	// 	}
-	// 	else{
-	// 		_x_pickup = _xo;
-	// 		dsThrowing.set_pickup_object_pose(_x_pickup, _qo);
-	// 		// dsThrowingEstim.set_pickup_object_pose(_xo, _qo);
-
-	// 	}
-	// }
-
-
 	// Compute errors to object center position and dimension vector
 	Eigen::Matrix4f le_H_re     =  _w_H_ee[LEFT].inverse() * _w_H_ee[RIGHT];
 	Eigen::Matrix4f lgp_H_rgp   =  _w_H_gp[LEFT].inverse() * _w_H_gp[RIGHT];
-	Eigen::Vector3f t_o_absEE   =  0.5f*( _w_H_gp[LEFT].block(0,3,3,1) +  _w_H_gp[RIGHT].block(0,3,3,1)) - 0.5f*( _w_H_ee[LEFT].block(0,3,3,1) +  _w_H_ee[RIGHT].block(0,3,3,1));
+	Eigen::Vector3f t_o_absEE   =  Utils<float>::get_abs_3d(_w_H_gp) - Utils<float>::get_abs_3d(_w_H_ee);
 	_eoD = fabs(le_H_re(2,3)) - fabs(lgp_H_rgp(2,3)); //(_xD-_xoD).dot(_xoD.normalized());
 	_eoC = t_o_absEE.norm(); //(_xoC-_xC).norm();
   	//
-	// // printing for analysis
-	// std::cout << "[dual_arm_control]: _w_H_ee[LEFT]: \n" <<  _w_H_ee[0] << std::endl;
-	// std::cout << "[dual_arm_control]: _w_H_gp[LEFT]: \n" << _w_H_gp[0] << std::endl;
-	// std::cout << "[dual_arm_control]: _w_H_ee[RIGHT]: \n" << _w_H_ee[1] << std::endl;
-	// std::cout << "[dual_arm_control]: _w_H_gp[RIGHT]: \n" << _w_H_gp[1] << std::endl;
-
-	// std::cout << "[dual_arm_control]: _w_H_o:  \n" <<  _w_H_o << std::endl;
-	// std::cout << "[dual_arm_control]: _w_H_Do: \n" <<  _w_H_Do << std::endl;
-	// std::cout << " ------------------------------------------------------------------- " << std::endl;
-	// std::cout << "[dual_arm_control]: FFFFFFF  filteredWrench[LEFT]: \t"  << _filteredWrench[0].transpose() << std::endl;
-	// std::cout << "[dual_arm_control]: FFFFFFF  filteredWrench[RIGHT]: \t" << _filteredWrench[1].transpose() << std::endl;
-	// // std::cout << "[dual_arm_control]:  ddddddddddddddddd  _eoD: \t" << _eoD << std::endl;
-	// // std::cout << "[dual_arm_control]:  ddddddddddddddddd  _eoC: \t" << _eoC << std::endl;
-	// // std::cout << "[dual_arm_control]:  ddddddd      _dualTaskSelector: \t" << _dualTaskSelector << std::endl;
-	std::cout << "[dual_arm_control]:  targettttttttttttt  _vt: \t" << _vt.transpose() << std::endl;
-	std::cout << "[dual_arm_control]:  NNNNNNNNNNEEEEW TOSS DIR IS : \t" << (_tossVar.release_position -_x_pickup).normalized().transpose() << std::endl;
 }
 
+//
+void dual_arm_control::get_pasive_ds_1st_damping(){
+	std::vector<float> param_values;
+	ros::param::getCached(_dsDampingTopic[LEFT], param_values);	  _d1[LEFT] = param_values[0];
+	if(_d1[LEFT] <FLT_EPSILON) _d1[LEFT]   = 150.0f;
+	ros::param::getCached(_dsDampingTopic[RIGHT], param_values);  _d1[RIGHT] = param_values[0];
+	if(_d1[RIGHT]<FLT_EPSILON)  _d1[RIGHT] = 150.0f;
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void dual_arm_control::computeCommands()
@@ -1056,6 +965,8 @@ void dual_arm_control::computeCommands()
 	}
 	std::cout << " IIIIIIIIIIIIIIIIIIIIIII _xd_landing  \t " << _xd_landing.transpose() << std::endl;
 
+	std::cout << " AAAAAAAAAAAAAAAAABBBBBBBBBBBBSSSSSSSSS Pos  \t " << Utils<float>::get_abs_3d(_x).transpose() << std::endl;
+
 
 	// Adaptation factor
 	// --------------------------------------------------------------------------------------------------------------------------------------------
@@ -1067,8 +978,9 @@ void dual_arm_control::computeCommands()
 	// --------------------------------------------------------------------------------------------------------------------------------------------
 	if(!_isPickupSet && !_releaseAndretract){
 		// dxEE_dual_ = 0.5f*(VEE[LEFT] + VEE[RIGHT]);
-		_dxEE_dual_avg 		 += (0.5f*(_Vee[LEFT].head(3) + _Vee[RIGHT].head(3)).norm() - _dxEE_dual_avg_0)/(_counter_monocycle + 1);
-		_xEE_dual 					= 0.5f*(_w_H_ee[LEFT].block(0,3,3,1) + _w_H_ee[RIGHT].block(0,3,3,1));
+		// _dxEE_dual_avg 		 += (0.5f*(_Vee[LEFT].head(3) + _Vee[RIGHT].head(3)).norm() - _dxEE_dual_avg_0)/(_counter_monocycle + 1);
+		_dxEE_dual_avg 		 += (Utils<float>::get_abs_3d(_Vee, true).norm() - _dxEE_dual_avg_0)/(_counter_monocycle + 1);
+		_xEE_dual 					= Utils<float>::get_abs_3d(_w_H_ee); //0.5f*(_w_H_ee[LEFT].block(0,3,3,1) + _w_H_ee[RIGHT].block(0,3,3,1));
 		_Del_xEE_dual_avg  += (_xEE_dual- _xEE_dual_0).norm();
 		//
 		_dxEE_dual_avg_0 = _dxEE_dual_avg;
@@ -1313,7 +1225,7 @@ void dual_arm_control::computeCommands()
 				FreeMotionCtrl.computeCoordinatedMotion2(_w_H_ee, _w_H_gp, _w_H_o, _Vd_ee, _qd, false);
 				// FreeMotionCtrl.computeCoordinatedMotion3(_w_H_ee, _w_H_gp, _w_H_o, _Vo, _x_intercept, _Vd_ee, _qd, false);
 				//
-				Eigen::Vector3f error_p_abs     = _w_H_o.block(0,3,3,1) - 0.5f*( _w_H_ee[LEFT].block(0,3,3,1) +  _w_H_ee[RIGHT].block(0,3,3,1));
+				Eigen::Vector3f error_p_abs     = _w_H_o.block(0,3,3,1) - Utils<float>::get_abs_3d(_w_H_ee); 
 				Eigen::Vector3f o_error_pos_abs = _w_H_o.block<3,3>(0,0).transpose() * error_p_abs;
 				Eigen::Vector3f o_error_pos_abs_paral = Eigen::Vector3f(o_error_pos_abs(0), 0.0f, o_error_pos_abs(2));
 				float cp_ap = Utils<float>::computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.17f, 1.0f, true);  // 50.0f, 0.05f, 2.8f
@@ -1350,12 +1262,12 @@ void dual_arm_control::computeCommands()
   // Desired object's task wrench
   if(true){
   	// _desired_object_wrench.head(3) = -40.0f * (_w_H_o.block(0,3,3,1) - _w_H_Do.block(0,3,3,1))- _objectMass * _gravity;
-  	// _desired_object_wrench.head(3) = -10.0f * (_vo - FreeMotionCtrl.get_des_object_motion().head(3)) - _objectMass * _gravity;
-  	_desired_object_wrench.head(3) = - 12.64*_vo + 12.64f*FreeMotionCtrl.get_des_object_motion().head(3)  - _objectMass * _gravity;
+  	// _desired_object_wrench.head(3) = -12.64f * (_vo - FreeMotionCtrl.get_des_object_motion().head(3)) - _objectMass * _gravity;
   }
   else{
   	float Damp1 = 0.5f*(_d1[LEFT]+_d1[RIGHT]);
-  	_desired_object_wrench.head(3) = Damp1*( 0.5f*(_Vee[LEFT].head(3) + _Vee[RIGHT].head(3)) - 0.5f*(_Vd_ee[LEFT].head(3) + _Vd_ee[RIGHT].head(3)) ) - _objectMass * _gravity;
+  	// _desired_object_wrench.head(3) = Damp1*( 0.5f*(_Vee[LEFT].head(3) + _Vee[RIGHT].head(3)) - 0.5f*(_Vd_ee[LEFT].head(3) + _Vd_ee[RIGHT].head(3)) ) - _objectMass * _gravity;
+  	_desired_object_wrench.head(3) = Damp1*(Utils<float>::get_abs_3d(_Vee, true) - Utils<float>::get_abs_3d(_Vd_ee, true)) - _objectMass * _gravity;
   }
 	// _desired_object_wrench.tail(3) = -15.0f*(_wo - 0.5f*(_Vd_ee[LEFT].tail(3) + _Vd_ee[RIGHT].tail(3))); //FreeMotionCtrl.Omega_object_d_); //(0.5f*(_Vd_ee[LEFT].tail(3) + _Vd_ee[RIGHT].tail(3)) - 0.0f*0.5f*(_Vee[LEFT].tail(3) + _Vee[RIGHT].tail(3)));
 	_desired_object_wrench.tail(3) = -15.0f*(_wo - FreeMotionCtrl.get_des_object_motion().tail(3));
@@ -1444,7 +1356,6 @@ void dual_arm_control::computeCommands()
 }
 
 // ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//
 void dual_arm_control::prepareCommands(Vector6f Vd_ee[], Eigen::Vector4f qd[], Vector6f V_gpo[])
 {
 	Eigen::Matrix<float,3,1> axis_d[NB_ROBOTS];	float angle_d[NB_ROBOTS];
@@ -1710,6 +1621,45 @@ float dual_arm_control::get_desired_yaw_angle_target(const Eigen::Vector4f &qt, 
   }
   //
   return phi_t_rot;
+}
+
+void dual_arm_control::estimate_moving_average_ee_speed(){
+	// Estimation of moving average EE  and speed
+	// -------------------------------------
+	float avgSpeedEE = Utils<float>::get_abs_3d(_Vee, true).norm(); //0.5f*(_Vee[LEFT].head(3).norm() + _Vee[RIGHT].head(3).norm());
+
+	//
+  if(_windowSpeedEE.size() < _winLengthAvgSpeedEE){   	
+    _windowSpeedEE.push_back(avgSpeedEE);
+    _movingAvgSpeedEE = 0.0f;
+  }
+  else{
+    _windowSpeedEE.pop_front();
+    _windowSpeedEE.push_back(avgSpeedEE);
+    _movingAvgSpeedEE = 0.0f;
+
+    for(int i = 0; i < _winLengthAvgSpeedEE; i++){
+			_movingAvgSpeedEE+=_windowSpeedEE[i]/_winLengthAvgSpeedEE;
+    }
+  }
+}
+
+void dual_arm_control::estimate_moving_average_target_velocity(){
+	// Estimation of moving average target velocity
+	// --------------------------------------------
+  if(_windowVelTarget.size() < _winLengthAvgSpeedEE){   	
+    _windowVelTarget.push_back(_vt);
+    _movingAvgVelTarget.setZero();
+  }
+  else{
+    _windowVelTarget.pop_front();
+    _windowVelTarget.push_back(_vt);
+    _movingAvgVelTarget.setZero();
+
+    for(int i = 0; i < _winLengthAvgSpeedEE; i++){
+			_movingAvgVelTarget +=_windowVelTarget[i] * (1.f/_winLengthAvgSpeedEE);
+    }
+  }
 }
 // ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

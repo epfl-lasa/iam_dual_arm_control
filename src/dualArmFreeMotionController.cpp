@@ -467,17 +467,12 @@ void dualArmFreeMotionController::computeReleaseAndRetractMotion(Eigen::Matrix4f
   Eigen::Matrix4f w_H_ar, lr_H_rr;           // absolute and relative EE poses
   Eigen::Matrix4f w_H_ap, lp_H_rp;           // absolute and relative object's grasp points
   Eigen::Matrix4f w_H_ar_stb, lr_H_rr_stb;   // absolute and relative EE standby poses
-  Eigen::Matrix4f lp_H_rp_pgrasp;            // relative pregrasp EE pose
   // Bimanual coordinated task-space transforms
   Utils<float>::getBimanualTransforms(w_H_ee[LEFT], w_H_ee[RIGHT], w_H_ar, lr_H_rr);    // EE
   // Utils<float>::getBimanualTransforms(w_H_gp[LEFT], w_H_gp[RIGHT], w_H_ap, lp_H_rp);      // object's grasp points
   Utils<float>::getBimanualTransforms(w_H_dgp_l, w_H_dgp_r, w_H_ap, lp_H_rp);      // object's grasp points
   Utils<float>::getBimanualTransforms(this->_w_H_eeStandby[LEFT], this->_w_H_eeStandby[RIGHT], w_H_ar_stb, lr_H_rr_stb); // standby arms
   //
-  lp_H_rp_pgrasp      = lp_H_rp;
-  lp_H_rp_pgrasp(1, 3) *= 1.5; // * lp_H_rp(1, 3);
-
-
   // =====================================
   // Relative velocity of the hands
   // =====================================

@@ -446,6 +446,7 @@ class dual_arm_control
 
 		bool init();
 		void updatePoses();
+		void get_pasive_ds_1st_damping();
 		void computeCommands();
 		void publish_commands();
 		void publishData();
@@ -468,6 +469,8 @@ class dual_arm_control
 		                                              const Eigen::Vector3f &v_target, 
 		                                              float phi_i);
 		float get_desired_yaw_angle_target(const Eigen::Vector4f &qt, const Eigen::Vector3f &ang_lim);
+		void estimate_moving_average_ee_speed();
+		void estimate_moving_average_target_velocity();
 		
 };
 

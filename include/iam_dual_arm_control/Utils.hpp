@@ -888,7 +888,30 @@ class Utils
 		return out;
 	}
 
-			
+	static Eigen::Matrix<T,3,1> get_abs_3d(Eigen::Matrix<T,3,1> v_left, Eigen::Matrix<T,3,1> v_right){
+		return 0.5 *(v_left+v_right);
+	}
+	static Eigen::Matrix<T,3,1> get_abs_3d(Eigen::Matrix<T,4,4> H_left, Eigen::Matrix<T,4,4> H_right){
+		return 0.5 *(H_left.block(0,3,3,1) + H_right.block(0,3,3,1));
+	}
+		
+	static Eigen::Matrix<T,3,1> get_abs_3d(Eigen::Matrix<T,3,1> Vec[2]){
+		return 0.5 *(Vec[0]+Vec[1]);
+	}
+
+	static Eigen::Matrix<T,3,1> get_abs_3d(Eigen::Matrix<T,6,1> Vec[2], bool top){
+		//
+		if(!top){
+			return 0.5 *(Vec[0].tail(3)+Vec[1].tail(3));
+		}
+		else{
+			return 0.5 *(Vec[0].head(3)+Vec[1].head(3));
+		}
+	}				
+
+	static Eigen::Matrix<T,3,1> get_abs_3d(Eigen::Matrix<T,4,4> H[2]){
+		return 0.5 *(H[0].block(0,3,3,1)+H[1].block(0,3,3,1));
+	}		
 
 
 };
