@@ -105,9 +105,10 @@ dual_arm_task:
     restPos:            [0.50, 0.15, 0.30]
     restOrient:         [1.00, 0.00, 0.00, 0.00] 
     increment_release_pos: false
+    dual_angular_limit: [22.5, 22.5, 22.5]
 
 # converyor-belt
 conveyor_belt:
-  control_mode: false
+  control_mode: true
   nominal_speed: 300
   magnitude_perturbation: 150

@@ -713,6 +713,7 @@ void dualArmFreeMotionController::computeCoordinatedMotion2(Eigen::Matrix4f w_H_
   // =======================================
   // Absolute velocity of the End-effectors
   // =======================================
+  // _activationAperture = 1.0;
   // Eigen::Vector3f d_p_abs = reachable_p *w_H_ap.block<3,1>(0,3) + (1.0f-reachable_p)*w_H_ar_stb.block<3,1>(0,3);
   Eigen::Vector3f d_p_abs = _activationAperture * reachable_p *w_H_ap.block<3,1>(0,3) 
                           + (1.0f-_activationAperture * reachable_p)*(_activationAperture * w_H_ar_stb.block<3,1>(0,3) + (1. - _activationAperture)*w_H_ap_momentum.block<3,1>(0,3));

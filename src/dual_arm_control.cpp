@@ -250,6 +250,7 @@ dual_arm_control::dual_arm_control(	ros::NodeHandle &n, double frequency, 	//std
 	_Del_xEE_dual_avg 	= 0.f;
 	_xEE_dual.setZero();
 	_xEE_dual_0.setZero(); 
+	_dual_angular_limit.setZero();
 }
 //
 dual_arm_control::~dual_arm_control(){}
@@ -276,6 +277,7 @@ bool dual_arm_control::init()
 	std::vector<float> param_releaseAngVel;
 	std::vector<float> param_restPos;
 	std::vector<float> param_restOrient;
+	std::vector<float> param_dual_angular_limit;
 
 	std::vector<float> param_stanbyPosition[NB_ROBOTS];
 	std::vector<float> param_stanbyOrientation[NB_ROBOTS];
@@ -340,7 +342,8 @@ bool dual_arm_control::init()
 	while(!nh_.getParam("dual_arm_task/tossing/releaseAngVel", param_releaseAngVel)){ROS_INFO("Waitinng for param: tossing/releaseAngVel ");}
 	while(!nh_.getParam("dual_arm_task/tossing/restPos", param_restPos)){ROS_INFO("Waitinng for param: tossing/restPos ");}
 	while(!nh_.getParam("dual_arm_task/tossing/restOrient", param_restOrient)){ROS_INFO("Waitinng for param: tossing/restOrient ");}
-	while(!nh_.getParam("dual_arm_task/tossing/increment_release_pos", _increment_release_pos)){ROS_INFO("Waitinng for param: tossing/increment_release_pos ");}
+	while(!nh_.getParam("dual_arm_task/tossing/increment_release_pos", _increment_release_pos)){ROS_INFO("Waitinng for param: tossing/increment_release_pos ");}  
+	while(!nh_.getParam("dual_arm_task/tossing/dual_angular_limit", param_dual_angular_limit)){ROS_INFO("Waitinng for param: tossing/param_dual_angular_limit ");}
 
 	while(!nh_.getParam("dual_arm_task/dualTaskSelector", _dualTaskSelector)){ROS_INFO("Waitinng for param: dualTaskSelector");}
 	while(!nh_.getParam("dual_arm_task/old_dual_method", _old_dual_method)){ROS_INFO("Waitinng for param:  old_dual_method");}
@@ -397,6 +400,8 @@ bool dual_arm_control::init()
 	_qDo_lifting = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_qDo_lifting.data(), param_qDo_lifting.size());
 	_xDo_placing = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_xDo_placing.data(), param_xDo_placing.size());
 	_qDo_placing = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_qDo_placing.data(), param_qDo_placing.size());
+	_dual_angular_limit = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_dual_angular_limit.data(), param_dual_angular_limit.size());
+	
 
 	// relative grasping positons
 	_xgp_o[0] = Eigen::Vector3f(0.0f, -_objectDim(1)/2.0f,  0.0f) + graspOffset;   // left  
@@ -426,7 +431,6 @@ bool dual_arm_control::init()
 																								boost::bind(&dual_arm_control::updateRobotWrench,this,_1,LEFT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 	_sub_joint_states[LEFT]	 			= nh_.subscribe<sensor_msgs::JointState>("/iiwa1/joint_states", 1, 
 																								boost::bind(&dual_arm_control::updateRobotStatesLeft,this,_1), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
-
 	_sub_base_pose[RIGHT] 		 		= nh_.subscribe<geometry_msgs::Pose>(_topic_pose_robot_base[RIGHT], 1, 
 																								boost::bind(&dual_arm_control::updateBasePoseCallback,this,_1,RIGHT), ros::VoidPtr(), ros::TransportHints().reliable().tcpNoDelay());
 	_sub_ee_pose[RIGHT]   		 		= nh_.subscribe<geometry_msgs::Pose>(_topic_pose_robot_ee[RIGHT], 1, 
@@ -461,10 +465,9 @@ bool dual_arm_control::init()
 	_pubDesiredTwist[LEFT] 		  	= nh_.advertise<geometry_msgs::Twist>("/passive_control/iiwa1/des_twist", 1);  //  "/dual_arm_control/robot_right/desired/ee_velocity"
 	_pubDesiredTwist[RIGHT] 	 		= nh_.advertise<geometry_msgs::Twist>("/passive_control/iiwa_blue/des_twist", 1);
 
-
-	_pubDistAttractorEe[LEFT] 		= nh_.advertise<std_msgs::Float64>("/dual_arm_control/iiwa1/error", 1);     						// "/passive_control/iiwa1/error"
+	_pubDistAttractorEe[LEFT] 		= nh_.advertise<std_msgs::Float64>("/dual_arm_control/iiwa1/error", 1);     							// "/passive_control/iiwa1/error"
 	_pubDistAttractorEe[RIGHT] 		= nh_.advertise<std_msgs::Float64>("/dual_arm_control/iiwa_blue/error", 1);   						// "/passive_control/iiwa_blue/error"
-  _pubAttractor[LEFT] 					= nh_.advertise<geometry_msgs::Pose>("/dual_arm_control/iiwa1/attractor", 1);						// "/passive_control/iiwa1/attractor"
+  _pubAttractor[LEFT] 					= nh_.advertise<geometry_msgs::Pose>("/dual_arm_control/iiwa1/attractor", 1);							// "/passive_control/iiwa1/attractor"
 	_pubAttractor[RIGHT] 					= nh_.advertise<geometry_msgs::Pose>("/dual_arm_control/iiwa_blue/attractor", 1);					// "/passive_control/iiwa_blue/attractor"
 	_pubNormLinVel[LEFT]					= nh_.advertise<std_msgs::Float64>("/dual_arm_control/iiwa_left/lin_vel_norm", 1);
 	_pubNormLinVel[RIGHT]					= nh_.advertise<std_msgs::Float64>("/dual_arm_control/iiwa_right/lin_vel_norm", 1);
@@ -479,7 +482,6 @@ bool dual_arm_control::init()
 	_pubConveyorBeltSpeed 				= nh_.advertise<std_msgs::Int32>("/conveyor_belt/desired_speed", 1); 
 
 
-	
  	// releaseLinVel = (_desVtoss/sqrt(2.0f))*Eigen::Vector3f(1.00, 0.00, 1.00);
  	_tossVar.release_linear_velocity = _desVtoss * _tossVar.release_linear_velocity.normalized();
  	//-------------------------------------------------------------------------------------------------
@@ -866,7 +868,7 @@ void dual_arm_control::updatePoses()
 	
 	// homogeneous transformations associated with the reaching task
 	for(int k=0; k<NB_ROBOTS; k++){
-		_w_H_ee[k]  = Utils<float>::pose2HomoMx(_x[k],  _q[k]);			// WITH EE pose wrt. the world
+		// _w_H_ee[k]  = Utils<float>::pose2HomoMx(_x[k],  _q[k]);			// WITH EE pose wrt. the world
 		_w_H_gp[k]  = _w_H_o * Utils<float>::pose2HomoMx(_xgp_o[k],  _qgp_o[k]);
 		_w_H_Dgp[k] = _w_H_Do * Utils<float>::pose2HomoMx(_xgp_o[k],  _qgp_o[k]);
 		_n[k]       = _w_H_gp[k].block(0,0,3,3).col(2);
@@ -880,13 +882,7 @@ void dual_arm_control::updatePoses()
 			// _w_H_gp[k]  = _w_H_o * _o_H_ee[k];
 		}
 	}
-	// Compute errors to object center position and dimension vector
-	Eigen::Matrix4f le_H_re     =  _w_H_ee[LEFT].inverse() * _w_H_ee[RIGHT];
-	Eigen::Matrix4f lgp_H_rgp   =  _w_H_gp[LEFT].inverse() * _w_H_gp[RIGHT];
-	Eigen::Vector3f t_o_absEE   =  Utils<float>::get_abs_3d(_w_H_gp) - Utils<float>::get_abs_3d(_w_H_ee);
-	_eoD = fabs(le_H_re(2,3)) - fabs(lgp_H_rgp(2,3)); //(_xD-_xoD).dot(_xoD.normalized());
-	_eoC = t_o_absEE.norm(); //(_xoC-_xC).norm();
-  	//
+
 }
 
 //
@@ -926,14 +922,14 @@ void dual_arm_control::computeCommands()
 	// Intercept/ landing location
 	// ----------------------------------------------------------------------------------------------------------------------------------------
 	// limits for throwing object's yaw angle
-	Eigen::Vector3f ang_lim; 
-	ang_lim <<  M_PI/8.f,  M_PI/8.f,  M_PI/8.f;
+	// Eigen::Vector3f ang_lim; 
+	// ang_lim <<  M_PI/8.f,  M_PI/8.f,  M_PI/8.f;
 	
 	// compute intercept position limits
 	Eigen::Vector3f x_origin= _x_pickup;
 	x_origin = Eigen::Vector3f(0.35, 0, 0);
-	Eigen::Vector3f x_i_min = this->compute_intercept_with_target(x_origin, _xt,  _vt, -ang_lim(2));
-	Eigen::Vector3f x_i_max = this->compute_intercept_with_target(x_origin, _xt,  _vt,  ang_lim(2));
+	Eigen::Vector3f x_i_min = this->compute_intercept_with_target(x_origin, _xt,  _vt, -_dual_angular_limit(2));
+	Eigen::Vector3f x_i_max = this->compute_intercept_with_target(x_origin, _xt,  _vt,  _dual_angular_limit(2));
 
 	// self imposed limits on intercept region (placing on moving target)
 	float intercep_limits[4];
@@ -946,7 +942,7 @@ void dual_arm_control::computeCommands()
 	std::cout << " CCCCCCCCCCCCCCCCCCCCCCC Intercept limits MAX \t " << x_i_max.transpose() << std::endl;
 
 	// determine the feasible throwing/placing direction 
-	float feas_yaw_target = this->get_desired_yaw_angle_target(_qt, ang_lim);
+	float feas_yaw_target = this->get_desired_yaw_angle_target(_qt, _dual_angular_limit);
 	float phi_throwing    = feas_yaw_target; 
 	
 	// determine the intercept or desired landing position  
@@ -1018,7 +1014,9 @@ void dual_arm_control::computeCommands()
 	// computation of speed adaptation term: beta_vel_mod
 	float beta_vel_mod_max = min( 2.0f, min((_v_max/_Vd_ee[LEFT].head(3).norm()), (_v_max/_Vd_ee[RIGHT].head(3).norm())) );
 
-	if((-xt_bar.dot(_vt) > 0) && ((_initPoseCount > 50) && ((xt_bar - xt2go_bar).norm() < 0.04f))){
+	bool isMotionTriggered = (-xt_bar.dot(_vt) > 0) && ((_initPoseCount > 50) && ((xt_bar - xt2go_bar).norm() < 0.04f));
+
+	if(isMotionTriggered){
 		_isIntercepting = true; 
 	}
 	
@@ -1038,10 +1036,17 @@ void dual_arm_control::computeCommands()
 		else{
 			beta_vel_mod_unfilt = (std::tanh(7.0f * (time2intercept_bot - time2intercept_tgt)) + 1.0 );
 		}
+
+		// beta_vel_mod_unfilt = 1.0f;
 		//
 		if(beta_vel_mod_unfilt >=beta_vel_mod_max){ beta_vel_mod_unfilt = beta_vel_mod_max; }
 		// FreeMotionCtrl._activationAperture = ( _adaptationActive && ((_xd_landing - _xt).normalized().dot(_vt) <= 0.07f)) ? 0.0f : 1.0f;
-		FreeMotionCtrl._activationAperture = _adaptationActive ? 0.5f*(std::tanh(100.f * ((_xd_landing - _xt).normalized().dot(_vt) - 0.07f)) + 1.0 ) : 1.0f;
+		float activeApt = 0.5f*(std::tanh(100.f * ((_xd_landing - _xt).normalized().dot(_vt) - 0.07f)) + 1.0 );
+		float activeAperture = _adaptationActive ? activeApt : 1.0f;
+		FreeMotionCtrl._activationAperture = activeAperture;
+
+		std::cout << " AAAAAAAAADDDDDDDDDDDD PPPPPPPPPPPPPPPPPP ------------------------------------------- > beta_vel_mod_unfilt  \t " << beta_vel_mod_unfilt << std::endl;
+		std::cout << " AAAAAAAAADDDDDDDDDDDD PPPPPPPPPPPPPPPPPP ------------------------------------------- > activeAperture  \t " << activeAperture << std::endl;
 	}
 	else{
 		beta_vel_mod_unfilt = 1.0f;
@@ -1074,7 +1079,7 @@ void dual_arm_control::computeCommands()
 			_tossVar.release_linear_velocity =  _desVtoss * _tossVar.release_linear_velocity.normalized();
 
 			if(true){
-				this->mirror_target2object_orientation(_qt, _tossVar.release_orientation, ang_lim);
+				this->mirror_target2object_orientation(_qt, _tossVar.release_orientation, _dual_angular_limit);
 			}
 			//
 			dsThrowing.set_toss_pose(_tossVar.release_position, _tossVar.release_orientation);
@@ -1121,7 +1126,7 @@ void dual_arm_control::computeCommands()
 			_xDo_placing(1) = 0.0f;
 		}
 		//
-		if((_initPoseCount > 50) && ((xt_bar - xt2go_bar).norm() < 0.04f) && (!_hasCaughtOnce)) 								// 0.80     // tossing
+		if(isMotionTriggered && (!_hasCaughtOnce)) 								// 0.80     // tossing
 		// if((_initPoseCount > 50) && (fabs(_xo(1)-y_2_go) < 0.02f) && (!_hasCaughtOnce)) 											// 0.80   	// catching
 		{
 			_goHome 				= false;
@@ -1155,7 +1160,6 @@ void dual_arm_control::computeCommands()
 			Eigen::Vector3f xDesTask = _xDo_lifting;
 			Eigen::Vector4f qDesTask = _qDo_lifting;
 
-			std::cout << " RRRRRRRRRRRRRRRRRRRRRRRRRRRRR    qDesTask \t" << _qDo_lifting.transpose() << std::endl;
 			// desired task position and orientation vectors
 			//----------------------------------------------
 			if(isPlacing){
@@ -1173,7 +1177,7 @@ void dual_arm_control::computeCommands()
 			// Target to object Orientation Adaptation
 			// ----------------------------------------
 			if(false){
-				this->mirror_target2object_orientation(_qt, qDesTask, ang_lim);
+				this->mirror_target2object_orientation(_qt, qDesTask, _dual_angular_limit);
 			}
 			
 			// 
@@ -1189,9 +1193,6 @@ void dual_arm_control::computeCommands()
 			// Desired object pose
 			//--------------------
 			_w_H_Do = Utils<float>::pose2HomoMx(xDesTask, qDesTask);  //
-
-			std::cout << " RRRRRRRRRRRRRRRRRRRRRRRRRRRRR    xDesTask \t" << xDesTask.transpose() << std::endl;
-			std::cout << " RRRRRRRRRRRRRRRRRRRRRRRRRRRRR    qDesTask \t" << qDesTask.transpose() << std::endl;
 			//
 			// Motion generation
 			//-------------------
@@ -1609,18 +1610,18 @@ Eigen::Vector3f dual_arm_control::compute_intercept_with_target(const Eigen::Vec
 
 float dual_arm_control::get_desired_yaw_angle_target(const Eigen::Vector4f &qt, const Eigen::Vector3f &ang_lim)
 {
-  Eigen::Vector3f eAng_t = Utils<float>::getEulerAnglesXYZ_FixedFrame(Utils<float>::quaternionToRotationMatrix(qt));
+  // Eigen::Vector3f eAng_t = Utils<float>::getEulerAnglesXYZ_FixedFrame(Utils<float>::quaternionToRotationMatrix(qt));
 
-  float phi_t_rot = eAng_t(2);
+  // float phi_t_rot = eAng_t(2);
+  // //
+  // if(phi_t_rot >= ang_lim(2)){
+  //   phi_t_rot   = ang_lim(2);
+  // }
+  // else if(phi_t_rot <= -ang_lim(2)){
+  //   phi_t_rot   =-ang_lim(2);
+  // }
   //
-  if(phi_t_rot >= ang_lim(2)){
-    phi_t_rot   = ang_lim(2);
-  }
-  else if(phi_t_rot <= -ang_lim(2)){
-    phi_t_rot   =-ang_lim(2);
-  }
-  //
-  return phi_t_rot;
+  return 0.0f; //phi_t_rot;
 }
 
 void dual_arm_control::estimate_moving_average_ee_speed(){
@@ -1693,7 +1694,6 @@ void dual_arm_control::objectPoseCallback(const geometry_msgs::Pose::ConstPtr& m
  _xo = temp;
  _xo_filtered->GetOutput(1,temp);
  _vo = temp;	
-	_w_H_o = Utils<float>::pose2HomoMx(_xo, _qo);
 	//
 	_qo_filtered->AddData(_qo);
 	_qo_filtered->GetOutput(1,temp_o);
@@ -1707,6 +1707,8 @@ void dual_arm_control::objectPoseCallback(const geometry_msgs::Pose::ConstPtr& m
 
 	_Vo.head(3) = _vo;
 	_Vo.tail(3) = _wo;
+
+	_w_H_o = Utils<float>::pose2HomoMx(_xo, _qo);
 }
 
 void dual_arm_control::targetPoseCallback(const geometry_msgs::Pose::ConstPtr& msg)
@@ -1749,6 +1751,8 @@ void dual_arm_control::updateEEPoseCallback(const geometry_msgs::Pose::ConstPtr&
 	              -tcp(1),    tcp(0),       0.0f;
 
 	_tcp_W_EE[k].block(0,3,3,3) = skew_Mx_tcp;
+	//
+	_w_H_ee[k]  = Utils<float>::pose2HomoMx(_x[k],  _q[k]);			// WITH EE pose wrt. the world
 }
 
 void dual_arm_control::updateEETwistCallback(const geometry_msgs::Twist::ConstPtr& msg, int k)
@@ -1850,6 +1854,13 @@ void dual_arm_control::updateContactState()
       _normalForceAverage[k] /= MOVING_FORCE_WINDOW_SIZE;
     }
   }
+  // Compute errors to object center position and dimension vector
+	Eigen::Matrix4f le_H_re     =  _w_H_ee[LEFT].inverse() * _w_H_ee[RIGHT];
+	Eigen::Matrix4f lgp_H_rgp   =  _w_H_gp[LEFT].inverse() * _w_H_gp[RIGHT];
+	Eigen::Vector3f t_o_absEE   =  Utils<float>::get_abs_3d(_w_H_gp) - Utils<float>::get_abs_3d(_w_H_ee);
+	_eoD = fabs(le_H_re(2,3)) - fabs(lgp_H_rgp(2,3)); 
+	_eoC = t_o_absEE.norm(); 
+
   // if(_normalForceAverage[LEFT] > 2.0f && _normalForceAverage[RIGHT] > 2.0f &&  _eoD < 0.05f && _eoC < 0.1f)
   // if (_normalForceAverage[LEFT] > _forceThreshold || _normalForceAverage[RIGHT] > _forceThreshold && (CooperativeCtrl._ContactConfidence == 1.0f)) 
   if ((_normalForceAverage[LEFT] > 2.0f || _normalForceAverage[RIGHT] > 2.0f) && _eoD < 0.065f && (_eoC < 0.065f || CooperativeCtrl._ContactConfidence == 1.0f))

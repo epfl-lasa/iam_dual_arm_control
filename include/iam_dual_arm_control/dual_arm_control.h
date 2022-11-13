@@ -334,6 +334,7 @@ class dual_arm_control
 		Matrix6f 		_tcp_W_EE[NB_ROBOTS];			// Velocity Twist transformation between the robot EE and the tool center point (tcp)
 		Eigen::Vector3f _dirImp[NB_ROBOTS];
 		Eigen::Vector3f _VdImpact[NB_ROBOTS]; 
+		Eigen::Vector3f _dual_angular_limit;
 		bool _release_flag;
 
 		//
