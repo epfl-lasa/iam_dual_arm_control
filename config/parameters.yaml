@@ -61,7 +61,7 @@ dual_arm_task:
   isNorm_impact_vel: false
   isQP_wrench_generation: true
   objCtrlKey: true
-  isTargetFixed: true
+  isTargetFixed: false
   # coordination
   coordination:
     # Bimanual DS gains
@@ -98,14 +98,14 @@ dual_arm_task:
   # tossing task parameters (user defined)
   tossing:
     desVtoss:           0.85
-    releasePos:         [0.68, 0.10, 0.37] #[0.70, 0.00, 0.60] [0.70, 0.00, 0.40]
-    releaseOrient:      [0.9436, 0, 0, 0.3310] #[0.9820, 0, 0, 0.1891] #[1.00, 0.00, 0.00, 0.00] #
+    releasePos:         [0.68, 0.00, 0.37] #[0.70, 0.00, 0.60] [0.70, 0.00, 0.40]
+    releaseOrient:      [1.00, 0.00, 0.00, 0.00] # [0.9436, 0, 0, 0.3310] #[0.9820, 0, 0, 0.1891] #
     releaseLinVel_dir:  [1.00, 0.10, 0.50] # [1.00, 0.00, 1.00]
     releaseAngVel:      [0.00, 0.00, 0.00]
     restPos:            [0.50, 0.15, 0.30]
     restOrient:         [1.00, 0.00, 0.00, 0.00] 
     increment_release_pos: false
-    dual_angular_limit: [22.5, 22.5, 22.5]
+    dual_angular_limit: [0.39, 0.39, 0.39] # 0.39
 
 # converyor-belt
 conveyor_belt:

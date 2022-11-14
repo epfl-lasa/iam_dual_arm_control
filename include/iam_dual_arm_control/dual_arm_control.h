@@ -374,6 +374,17 @@ class dual_arm_control
 		bool _adaptationActive = false;
 		bool _isTargetFixed = true;
 
+		bool _feasibleAlgo = false;
+		bool _pickupBased  = true;
+		bool _trackTargetRotation = false;
+		bool _isMotionTriggered =false;
+		bool _isRatioFactor = false;
+		float _tol_attractor = 0.07f;
+		float _switchSlopeAdapt = 100.0f;
+		float _beta_vel_mod_unfilt = 1.0f;
+		float _time2intercept_tgt;
+		float _time2intercept_bot;
+
 		// ------------------------------------------------------------------------
 		bool _updatePathEstim  = false;
 		int _counter_monocycle = 0;
@@ -472,6 +483,12 @@ class dual_arm_control
 		float get_desired_yaw_angle_target(const Eigen::Vector4f &qt, const Eigen::Vector3f &ang_lim);
 		void estimate_moving_average_ee_speed();
 		void estimate_moving_average_target_velocity();
+		void find_desired_landing_position(Eigen::Vector3f x_origin, bool isPlacing, bool isPlaceTossing, bool isThrowing);
+		void update_intercept_position(float intercep_limits[]);
+		void find_release_configuration();
+		void set_release_state();
+		void estimate_target_state_to_go();
+		void compute_adaptation_factors();
 		
 };
 
