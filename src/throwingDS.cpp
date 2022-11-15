@@ -49,7 +49,7 @@ throwingDS::throwingDS(){
 	// ==============================================================================================================================
 	ds_param_.is2ndOrder = false;
 	// Modulation parameters
-	ds_param_.modulRegion[0] = 0.28; // 0.20;
+	ds_param_.modulRegion[0] = 0.35; // 0.20;
 	ds_param_.modulRegion[1] = 0.035; // good 0.03;   
 	ds_param_.modulRegion[2] = 0.02; // 0.02;
 	//
@@ -176,9 +176,9 @@ Vector6f throwingDS::generate_throwing_motion(Eigen::Matrix4f w_H_ce,  Vector6f 
 	Eigen::Vector3f Omega = Vee.tail(3);
 	Eigen::Vector3f Xdes  = w_H_de.block<3,1>(0,3);	
 	Eigen::Vector3f Xretr = w_H_re.block<3,1>(0,3);	
-	Eigen::Vector3f Xb    = Xdes + BasisQ*Eigen::Vector3f(-0.5*this->rho_, 0.0, 0.0);
-	Eigen::Vector3f Xe    = Xdes + BasisQ*Eigen::Vector3f( 0.2*this->rho_, 0.0, 0.0);
-	Eigen::Vector3f Xc    = Xdes + BasisQ*Eigen::Vector3f(-0.2*this->rho_, 0.0, 0.0);  // w_H_po_
+	Eigen::Vector3f Xb    = Xdes + BasisQ*Eigen::Vector3f(-0.4*this->rho_, 0.0, 0.0); // -0.5
+	Eigen::Vector3f Xe    = Xdes + BasisQ*Eigen::Vector3f( 0.2*this->rho_, 0.0, 0.0); //  0.2
+	Eigen::Vector3f Xc    = Xdes + BasisQ*Eigen::Vector3f(-0.1*this->rho_, 0.0, 0.0); // -0.2  // w_H_po_
 	Eigen::Vector3f Xpick = w_H_po_.block<3,1>(0,3);	
 	Eigen::Matrix3f Se1   = Eigen::MatrixXf::Zero(3,3); Se1(0,0) = 1.0f;
 	Eigen::Vector3f Xti   = Xdes + BasisQ * Se1 * BasisQ.transpose()*(Xpick - Xdes);
@@ -336,7 +336,7 @@ Eigen::Vector3f throwingDS::compute_modulated_motion(float activation, Eigen::Ma
 
 	// computing the modulated second order DS (translation)
 	// float comb = 0.8f;  // good 0.3
-	float comb = 0.5f;  // good 0.3
+	float comb = 0.35f;  // good 0.3
 	// return (1.f - comb)*BasisQ * Lambda * BasisQ.transpose() * Areach_ee + comb *Areach_ee; 
 	return (1.f - comb)*BasisQ * Lambda * BasisQ.transpose() * Amodul_ee_norm + comb *Areach_ee; 
 }

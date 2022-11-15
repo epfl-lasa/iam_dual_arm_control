@@ -730,7 +730,7 @@ void dual_arm_control::update_states_machines(){
 
 				case 't':{ _isThrowing = !_isThrowing; 
 							if(_isThrowing){
-								_dualTaskSelector = TOSSING; // toss
+								_dualTaskSelector = PICK_AND_TOSS; //TOSSING; // toss
 								_hasCaughtOnce = false;
 							}
 							else if(!_isThrowing){
@@ -1268,7 +1268,13 @@ void dual_arm_control::computeCommands()
 		time2intercept_tgt = fabs(fabs(Lp_Va_pred_tgt(0) +1e-6 - Lp_Va_pred_tgt(1)*flytime_obj)/(Lp_Va_pred_tgt(1)+1e-6));
 		time2intercept_bot = Lp_Va_pred_bot(0)/Lp_Va_pred_bot(1);
 
-		beta_vel_mod_unfilt = (std::tanh(5.5f * (time2intercept_bot - time2intercept_tgt)) + 1.0 );
+		// beta_vel_mod_unfilt = (std::tanh(5.5f * (time2intercept_bot - time2intercept_tgt)) + 1.0 );
+		if(false){
+			beta_vel_mod_unfilt = (Lp_Va_pred_tgt(1)/(Lp_Va_pred_bot(1) +1e-6)) * (Lp_Va_pred_bot(0)/fabs(Lp_Va_pred_tgt(0) +1e-6 - Lp_Va_pred_tgt(1)*flytime_obj) );
+		}
+		else{
+			beta_vel_mod_unfilt = (std::tanh(7.0f * (time2intercept_bot - time2intercept_tgt)) + 1.0 );
+		}
 
 		if(beta_vel_mod_unfilt >=beta_vel_mod_max){
 			beta_vel_mod_unfilt = beta_vel_mod_max;
