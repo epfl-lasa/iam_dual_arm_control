@@ -1231,6 +1231,9 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
       }
       break;
       case 1:{ // point to point motion of the object 
+        A.block<3,3>(0,0) = -4.0f * this->gain_p_abs;
+        A.block<3,3>(3,3) = -20.0f * this->gain_p_rel;
+
         Vector6f X_bi = Eigen::VectorXf::Zero(6);
         X_bi.head(3)  = w_H_Do.block<3,1>(0,3) - w_H_o.block<3,1>(0,3)+ 0.5f*(X[LEFT] + X[RIGHT]);
         X_bi.tail(3)  = 0.95f*(X[RIGHT] - X[LEFT]);
@@ -1250,7 +1253,7 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
         activation = 1.0f;
 
         //
-        // this->constrained_ang_vel_correction(w_H_ee, w_H_gp, w_H_o, w_H_Do, Vd_ee_nom, true);
+        this->constrained_ang_vel_correction(w_H_ee, w_H_gp, w_H_o, w_H_Do, Vd_ee_nom, true);
       }
       break;
 
@@ -1520,7 +1523,8 @@ void dualArmFreeMotionController::constrained_ang_vel_correction(Eigen::Matrix4f
   // ---------------------------------
   // computing of desired ee velocity
   // ---------------------------------
-  Omega_object_d_ = -1.2f* jacMuTheta_o.inverse() * gain_o_abs * error_o;
+  // Omega_object_d_ = -1.2f* jacMuTheta_o.inverse() * gain_o_abs * error_o;
+  Omega_object_d_ = -1.2f* gain_o_abs * error_o;
   //
   for(int k=0; k<NB_ROBOTS; k++){
     //

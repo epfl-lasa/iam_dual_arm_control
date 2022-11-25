@@ -14,15 +14,15 @@ dual_system:
 # object
 object:
   mass : 3 #2.5
-  dimension:       [0.26, 0.26,  0.26] #[0.18, 0.19, 0.18] #[0.18, 0.19, 0.18] #[0.20, 0.20, 0.20] #[0.20, 0.30, 0.20] # 
-  graspOffset:     [-0.04, 0.00, 0.03] #[-0.02, 0.00, -0.015] #[0.00, 0.00, 0.00] #
+  dimension:       [ 0.26, 0.26, 0.26] #[0.13, 0.18, 0.14] #[0.18, 0.19, 0.18] #[0.18, 0.19, 0.18] #[0.20, 0.20, 0.20] #[0.20, 0.30, 0.20] # 
+  graspOffset:     [-0.04, 0.00, 0.03] #[-0.00, 0.00, -0.0] #[0.00, 0.00, 0.00] #
 
   cubicBox :       [0.26, 0.26, 0.26]
   coronaBottePack: [0.13, 0.19, 0.14] 
   openBox:         [0.20, 0.30, 0.20]
   bottlesPack:     [0.25, 0.19, 0.20]
   drGabsPack:      [0.13, 0.14, 0.15]
-  smallOpenBox:    [0.16, 0.29, 0.14]
+  fruitOpenBox:    [0.16, 0.29, 0.14]
   optitrackBox:    [0.18, 0.19, 0.18]
 
 
@@ -38,7 +38,7 @@ desVreach: 0.85
 # tossing task parameters (user defined)
 tossing:
   desVtoss:           0.85
-  releasePos:         [0.68, 0.00, 0.35] #[0.70, 0.00, 0.60] [0.70, 0.00, 0.40]
+  releasePos:         [0.69, 0.00, 0.35] #[0.70, 0.00, 0.60] [0.70, 0.00, 0.40]
   releaseOrient:      [1.00, 0.00, 0.00, 0.00]
   releaseLinVel_dir:  [1.00, 0.00, 0.50] # [1.00, 0.00, 1.00]
   releaseAngVel:      [0.00, 0.00, 0.00]
@@ -73,7 +73,7 @@ dual_arm_task:
   isNorm_impact_vel: false
   isQP_wrench_generation: true
   lifting: 
-    position: [0.45, 0.00, 0.50] #[0.45, 0.00, 0.70]
+    position: [0.45, 0.00, 0.40] #[0.45, 0.00, 0.70]
     orientation: [1.00, 0.00, 0.00, 0.00]
     increment_lift_pos: false
   placing: 
