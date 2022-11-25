@@ -105,6 +105,7 @@ class dualArmFreeMotionController
 		Eigen::Vector3f _objectDim;
 		float _alpha_obs[NB_ROBOTS];
 		float _activationAperture;
+		Vector6f _Vd_o;
 		
 		//
 		dualArmFreeMotionController();
@@ -227,7 +228,14 @@ class dualArmFreeMotionController
 						                                  float tolerance_dist2contact,
 						                                  float dt,
 						                                  float speedScaling);
-		};
+
+			Eigen::Vector3f boost_ang_velocity(const Eigen::Vector3f& tmp_omega, float maxDq, float oriGainMx_);
+			Eigen::Vector3f compute_desired_angular_velocity(Eigen::Vector4f quat, Eigen::Vector4f quat_d, Eigen::Matrix3f gain_o);
+			Eigen::MatrixXf get_bimanual_grasp_mx(const Eigen::Matrix4f &w_H_o, Eigen::Matrix4f w_H_gp[]);
+			Vector6f compute_desired_task_twist( const Eigen::Matrix4f &w_H_c, const Eigen::Matrix4f &w_H_d);
+			Vector6f get_des_object_motion();
+
+};
 
 #endif // dualArmFreeMotionController_H
 
