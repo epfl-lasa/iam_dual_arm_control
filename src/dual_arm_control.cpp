@@ -1778,6 +1778,16 @@ void dual_arm_control::objectPoseCallback(const geometry_msgs::Pose::ConstPtr& m
  _vo = temp;	
 	//
 	_qo_filtered->AddData(_qo);
+	_qo_filtered->GetOutput(0,temp_o);
+	_qo = temp_o;
+	// normalizing the quaternion
+	_qo.normalize();
+	//
+	if(_qo.norm() <= 1e-8){
+		_qo = Eigen::Vector4f(1.0, 0.0, 0.0, 0.0);
+	}
+	//
+	// ===========================================================
 	_qo_filtered->GetOutput(1,temp_o);
 	Eigen::Vector4f qo_dot = temp_o;
 	//

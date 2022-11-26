@@ -2,7 +2,7 @@
 
 dual_system:
   # Simulation or Real robot
-  simulation: true
+  simulation: false
   # End-effector tool
   tool:
     offset2end_effector:
@@ -24,8 +24,8 @@ dual_system:
 
 # object
 object:
-  name : "cubicBoxSim"
-  graspOffset:     [-0.04, 0.00, -0.0] #[-0.04, 0.00, -0.02] #[-0.06, 0.00, 0.03] #[-0.02, 0.00, -0.015] #
+  name : "cubicBoxReal"
+  graspOffset:     [-0.04, 0.00, 0.03] #[-0.04, 0.00, -0.02] #[-0.06, 0.00, 0.03] #[-0.02, 0.00, -0.015] #
   # Object type
   cubicBoxSim :       
     dimension:  [0.20, 0.20, 0.20]
@@ -57,7 +57,7 @@ object:
 dual_arm_task:
   dualTaskSelector: 3
   old_dual_method: false
-  modulated_reaching: true
+  modulated_reaching: false
   isNorm_impact_vel: false
   isQP_wrench_generation: true
   objCtrlKey: true
@@ -88,7 +88,7 @@ dual_arm_task:
   # lifting task parameters (user defined)
   lifting: 
     position: [0.45, 0.00, 0.50] #[0.45, 0.00, 0.70]
-    orientation: [0.9436, 0, 0, 0.3310] #[0.9820, 0, 0, 0.1891] #[1.00, 0.00, 0.00, 0.00] #
+    orientation: [1.00, 0.00, 0.00, 0.00] #[0.9436, 0, 0, 0.3310] #[0.9820, 0, 0, 0.1891] #
     increment_lift_pos: false
   # placing task parameters (user defined)
   placing: 
