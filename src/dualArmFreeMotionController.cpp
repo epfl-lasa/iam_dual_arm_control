@@ -376,8 +376,8 @@ void dualArmFreeMotionController::computeAsyncMotion(Eigen::Matrix4f w_H_ee[],  
     // ---------------------------------
     // computing of desired ee velocity
     // ---------------------------------
-    Vd_ee[k].head(3) = -gain_p_abs * error_ee.head(3);
-    Vd_ee[k].tail(3) = -jacMuTheta_ee.inverse() * gain_o_abs * error_ee.tail(3);
+    Vd_ee[k].head(3) = -2.0f*gain_p_abs * error_ee.head(3);
+    Vd_ee[k].tail(3) = -3.0f*jacMuTheta_ee.inverse() * gain_o_abs * error_ee.tail(3);
     Vd_ee[k]         = Utils<float>::SaturationTwist(_v_max, _w_max, Vd_ee[k]);
   }
   // Computation of desired orientation
