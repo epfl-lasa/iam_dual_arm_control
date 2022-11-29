@@ -1476,7 +1476,7 @@ void dual_arm_control::computeCommands()
 // 	bool isPlacingCommand 	= (_release_flag) || ((_w_H_o.block<3,1>(0,3)-_xDo_placing).norm()<=0.05); // 0.07
 // 	bool isTossingCommand 	= (_release_flag) || ((_w_H_o.block<3,1>(0,3)-_tossVar.release_position).norm()<=0.035);
 // 	//
-// 	bool placing_done 			= (_release_flag) || ((_w_H_o.block<3,1>(0,3)-_xDo_placing).norm()<=0.05);
+// 	bool placing_done 			= (_release_flag) || ((_w_H_o.block<3,1>(0,3)-_xDo_placing).norm()<=0.065); //0.05
 // 	bool placeTossing_done 	= (_release_flag) || (((_w_H_o.block<3,1>(0,3)-_tossVar.release_position).norm()<=0.07) 
 // 																						|| ((_w_H_o.block<2,1>(0,3)-_xDo_placing.head(2)).norm() <= 0.05 ) );
 // 	bool tossing_done 			= (_release_flag) || ( ((_w_H_o.block<3,1>(0,3)-_tossVar.release_position).norm()<=0.035) );
@@ -1639,6 +1639,7 @@ void dual_arm_control::computeCommands()
 // 			if(isPlacing){
 // 				xDesTask = _xDo_placing;
 // 				qDesTask = _qDo_placing;
+// 				// this->set_2d_position_box_constraints(_xDo_placing, intercep_limits); 
 // 			}
 // 			if(isPlaceTossing){
 // 				xDesTask = _xDo_placing;

@@ -338,7 +338,7 @@ Eigen::Vector3f throwingDS::compute_modulated_motion(float activation, Eigen::Ma
 	// float comb = 0.8f;  // good 0.3
 	float comb = 0.35f;  // good 0.3
 	// return (1.f - comb)*BasisQ * Lambda * BasisQ.transpose() * Areach_ee + comb *Areach_ee; 
-	return (1.f - comb)*BasisQ * Lambda * BasisQ.transpose() * Amodul_ee_norm + comb *Areach_ee; 
+	return (1.f - comb)*BasisQ * Lambda * BasisQ.transpose() * Amodul_ee_norm + comb *Areach_ee;
 }
 
 

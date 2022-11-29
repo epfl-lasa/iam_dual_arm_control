@@ -38,7 +38,7 @@ desVreach: 0.85
 # tossing task parameters (user defined)
 tossing:
   desVtoss:           0.85
-  releasePos:         [0.69, 0.00, 0.35] #[0.70, 0.00, 0.60] [0.70, 0.00, 0.40]
+  releasePos:         [0.70, 0.00, 0.40] #[0.69, 0.00, 0.35] #[0.70, 0.00, 0.60] [0.70, 0.00, 0.40]
   releaseOrient:      [1.00, 0.00, 0.00, 0.00]
   releaseLinVel_dir:  [1.00, 0.00, 0.50] # [1.00, 0.00, 1.00]
   releaseAngVel:      [0.00, 0.00, 0.00]
