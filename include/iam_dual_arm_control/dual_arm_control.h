@@ -337,6 +337,7 @@ class dual_arm_control
 		Matrix6f 		_tcp_W_EE[NB_ROBOTS];			// Velocity Twist transformation between the robot EE and the tool center point (tcp)
 		Eigen::Vector3f _dirImp[NB_ROBOTS];
 		Eigen::Vector3f _VdImpact[NB_ROBOTS]; 
+		Eigen::Vector3f _dual_angular_limit;
 		bool _release_flag;
 
 		//
@@ -374,6 +375,30 @@ class dual_arm_control
 		int _winLengthAvgSpeedEE;
 		// int _winCounterAvgSpeedEE;
 		bool _adaptationActive = false;
+		bool _isTargetFixed = true;
+
+		bool _feasibleAlgo = false;
+		bool _pickupBased  = true;
+		bool _trackTargetRotation = false;
+		bool _isMotionTriggered =false;
+		bool _isRatioFactor = false;
+		float _tol_attractor = 0.07f;
+		float _switchSlopeAdapt = 100.0f;
+		float _beta_vel_mod_unfilt = 1.0f;
+		float _time2intercept_tgt;
+		float _time2intercept_bot;
+
+		// ------------------------------------------------------------------------
+		bool _updatePathEstim  = false;
+		int _counter_monocycle = 0;
+		int _counter_pickup 	 = 0;
+		float _dxEE_dual_avg 	 = 0.f;
+		float _dxEE_dual_avg_pcycle	 = 0.f;
+		float _dxEE_dual_avg_0 = 0.f;
+		float _Del_xEE_dual_avg 	 = 0.f;
+		Eigen::Vector3f _xEE_dual;
+		Eigen::Vector3f _xEE_dual_0;
+		// ------------------------------------------------------------------------
 
 		// target
 		std::deque<Eigen::Vector3f> _windowVelTarget;
@@ -451,6 +476,21 @@ class dual_arm_control
 		Eigen::Vector3f get_object_desired_direction(int task_type, Eigen::Vector3f object_pos);
 		void update_release_position();
 		void publish_conveyor_belt_cmds();
+		void set_2d_position_box_constraints(Eigen::Vector3f &position_vec, float limits[]);
+		void mirror_target2object_orientation(Eigen::Vector4f qt, Eigen::Vector4f &qo, Eigen::Vector3f ang_lim);
+		Eigen::Vector3f compute_intercept_with_target(const Eigen::Vector3f &x_pick, 
+		                                              const Eigen::Vector3f &x_target, 
+		                                              const Eigen::Vector3f &v_target, 
+		                                              float phi_i);
+		float get_desired_yaw_angle_target(const Eigen::Vector4f &qt, const Eigen::Vector3f &ang_lim);
+		void estimate_moving_average_ee_speed();
+		void estimate_moving_average_target_velocity();
+		void find_desired_landing_position(Eigen::Vector3f x_origin, bool isPlacing, bool isPlaceTossing, bool isThrowing);
+		void update_intercept_position(float intercep_limits[]);
+		void find_release_configuration();
+		void set_release_state();
+		void estimate_target_state_to_go();
+		void compute_adaptation_factors();
 
 };
 
