@@ -919,7 +919,7 @@ void dual_arm_control::computeCommands()
 	bool isPlaceTossing 		= _isPlaceTossing || (_dualTaskSelector == PLACE_TOSSING);
 	bool isClose2Release    = (dsThrowing.a_tangent_> 0.99f);
 	//
-	bool isPlacingCommand 	= (_release_flag) || ((_w_H_o.block<3,1>(0,3)-_xDo_placing).norm()<=0.05); // 0.07
+	bool isPlacingCommand 	= (_release_flag) || ((_w_H_o.block<3,1>(0,3)-_xDo_placing).norm()<=0.07); // 0.07 0.05
 	bool isTossingCommand 	= (_release_flag) || ((_w_H_o.block<3,1>(0,3)-_tossVar.release_position).norm()<=0.035);
 	//
 	bool placing_done 			= (_release_flag) || ((_w_H_o.block<3,1>(0,3)-_xDo_placing).norm()<=0.05);
@@ -1134,6 +1134,18 @@ void dual_arm_control::computeCommands()
 			//------------------------------
 			if(  (isPlacing && placing_done) || (isPlaceTossing && placeTossing_done) || (isThrowing && tossing_done) ){
 				_releaseAndretract = true;
+			}
+
+			if(isPlacing || isThrowing || isPlaceTossing ){
+				// force feedback to grab objects
+				float f_gain = 0.02f;
+				float abs_force_correction = f_gain * 0.5f*( (_filteredWrench[LEFT].segment(0,3)  - CooperativeCtrl._f_applied[LEFT].head(3)).dot(_n[LEFT])  
+																		 + (_filteredWrench[RIGHT].segment(0,3) - CooperativeCtrl._f_applied[RIGHT].head(3)).dot(_n[RIGHT]) );   
+				if(fabs(abs_force_correction)  > 0.2f){
+				abs_force_correction = abs_force_correction/fabs(abs_force_correction) * 0.2f;
+				}
+				_Vd_ee[LEFT].head(3)  =  _Vd_ee[LEFT].head(3)  - 0.50*abs_force_correction * _n[LEFT];
+				_Vd_ee[RIGHT].head(3) =  _Vd_ee[RIGHT].head(3) - 0.50*abs_force_correction * _n[RIGHT];
 			}
 		}
 		//===================================================================================================================
