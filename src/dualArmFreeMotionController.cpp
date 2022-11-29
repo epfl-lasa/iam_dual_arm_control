@@ -1236,55 +1236,19 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
       }
       break;
       case 1:{ // point to point motion of the object 
-        // =======================================================================================
-        A.block<3,3>(0,0) = -4.0f * this->gain_p_abs;
-        A.block<3,3>(3,3) = -20.0f * this->gain_p_rel;
-
-        Vector6f X_bi = Eigen::VectorXf::Zero(6);
-        X_bi.head(3)  = w_H_Do.block<3,1>(0,3) - w_H_o.block<3,1>(0,3)+ 0.5f*(X[LEFT] + X[RIGHT]);
-        X_bi.tail(3)  = 0.95f*(X[RIGHT] - X[LEFT]);
-
-        Xstar_dual =  _Tbi.inverse() * X_bi;
-        // Amodul_ee_norm = _Tbi.inverse() * A * _Tbi *(X_dual - Xstar_dual);          // Modulated DS that aligned  the EE with the desired velocity
-        // Amodul_ee_tang = _Tbi.inverse() * A * _Tbi *(X_dual - Xstar_dual);  // ;
-
-        Vector6f v_task_bi = ( A * _Tbi*(X_dual - Xstar_dual));
-                 v_task_bi = Utils<float>::SaturationTwist(Vd_o.head(3).norm(), _w_max, v_task_bi);
-        // v_task_bi.head(3)  = v_task_bi.head(3).normalized()*1.0f*v_task_bi.head(3).norm();
-        // v_task_bi.head(3) = v_task_bi.head(3).normalized()*Vd_o.head(3).norm();
-
-        Amodul_ee_norm = _Tbi.inverse() * v_task_bi;  // 
-        Amodul_ee_tang = _Tbi.inverse() * v_task_bi;  //
-        //
-        activation = 1.0f;
-        //
-        this->constrained_ang_vel_correction(w_H_ee, w_H_gp, w_H_o, w_H_Do, Vd_ee_nom, true);
-        // ========================================================================================
-
+        // // =======================================================================================
         // A.block<3,3>(0,0) = -4.0f * this->gain_p_abs;
         // A.block<3,3>(3,3) = -20.0f * this->gain_p_rel;
 
         // Vector6f X_bi = Eigen::VectorXf::Zero(6);
-        // X_bi.head(3)  = 0.5f*(X[LEFT] + X[RIGHT]); //w_H_Do.block<3,1>(0,3) - w_H_o.block<3,1>(0,3)+ 0.5f*(X[LEFT] + X[RIGHT]);
-        // X_bi.tail(3)  = 0.90f*(X[RIGHT] - X[LEFT]);
+        // X_bi.head(3)  = w_H_Do.block<3,1>(0,3) - w_H_o.block<3,1>(0,3)+ 0.5f*(X[LEFT] + X[RIGHT]);
+        // X_bi.tail(3)  = 0.95f*(X[RIGHT] - X[LEFT]);
 
         // Xstar_dual =  _Tbi.inverse() * X_bi;
-        // // Amodul_ee_norm = _Tbi.inverse() * A * _Tbi *(X_dual - Xstar_dual);           // Modulated DS that aligned  the EE with the desired velocity
-        // // Amodul_ee_tang = _Tbi.inverse() * A * _Tbi *(X_dual - Xstar_dual);           // ;
-        // // --------------------------------------------------------------------------------------
-        // _Vd_o = this->compute_desired_task_twist( w_H_o, w_H_Do);
-        // Vector6f v_des_obj = _Vd_o;
-        // v_des_obj.tail(3).setZero();
-        // Vector6f d_twist_l = GraspMx_obj.leftCols(6).transpose() *v_des_obj; //_Vd_o;
-        // Vector6f d_twist_r = GraspMx_obj.rightCols(6).transpose()*v_des_obj; //_Vd_o;
+        // // Amodul_ee_norm = _Tbi.inverse() * A * _Tbi *(X_dual - Xstar_dual);          // Modulated DS that aligned  the EE with the desired velocity
+        // // Amodul_ee_tang = _Tbi.inverse() * A * _Tbi *(X_dual - Xstar_dual);  // ;
 
-        
-        // Vector6f Xdot_bi = Eigen::VectorXf::Zero(6);
-        // Xdot_bi.head(3)  = 0.5*(d_twist_l.head(3)+d_twist_l.head(3)); //_Vd_o.head(3);
-        // Xdot_bi.tail(3)  = Eigen::VectorXf::Zero(3);
-
-        // // Vector6f v_task_bi = ( A * _Tbi*(X_dual - Xstar_dual));
-        // Vector6f v_task_bi = (A * _Tbi*(X_dual - Xstar_dual) + 1.0f*sw_norm_Do* Xdot_bi );
+        // Vector6f v_task_bi = ( A * _Tbi*(X_dual - Xstar_dual));
         //          v_task_bi = Utils<float>::SaturationTwist(Vd_o.head(3).norm(), _w_max, v_task_bi);
         // // v_task_bi.head(3)  = v_task_bi.head(3).normalized()*1.0f*v_task_bi.head(3).norm();
         // // v_task_bi.head(3) = v_task_bi.head(3).normalized()*Vd_o.head(3).norm();
@@ -1294,11 +1258,47 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
         // //
         // activation = 1.0f;
         // //
-        // // this->constrained_ang_vel_correction(w_H_ee, w_H_gp, w_H_o, w_H_Do, Vd_ee_nom, false);
-        // // this->computeDesiredOrientation(1.0f, w_H_ee, w_H_gp, w_H_o, qd_nom, false);
-        // // std::cout << " LLLLLLLLLLLLLLLLLLLL    Bimanaul Grasp Matrix \n" << GraspMx_obj << std::endl;
-        // Vd_ee_nom[LEFT].tail(3)  = Vd_ee_nom[LEFT].tail(3)  + _Vd_o.tail(3);
-        // Vd_ee_nom[RIGHT].tail(3) = Vd_ee_nom[RIGHT].tail(3) + _Vd_o.tail(3);
+        // this->constrained_ang_vel_correction(w_H_ee, w_H_gp, w_H_o, w_H_Do, Vd_ee_nom, true);
+        // // ========================================================================================
+
+        A.block<3,3>(0,0) = -4.0f * this->gain_p_abs;
+        A.block<3,3>(3,3) = -20.0f * this->gain_p_rel;
+
+        Vector6f X_bi = Eigen::VectorXf::Zero(6);
+        X_bi.head(3)  = 0.5f*(X[LEFT] + X[RIGHT]); //w_H_Do.block<3,1>(0,3) - w_H_o.block<3,1>(0,3)+ 0.5f*(X[LEFT] + X[RIGHT]);
+        X_bi.tail(3)  = 0.90f*(X[RIGHT] - X[LEFT]);
+
+        Xstar_dual =  _Tbi.inverse() * X_bi;
+        // Amodul_ee_norm = _Tbi.inverse() * A * _Tbi *(X_dual - Xstar_dual);           // Modulated DS that aligned  the EE with the desired velocity
+        // Amodul_ee_tang = _Tbi.inverse() * A * _Tbi *(X_dual - Xstar_dual);           // ;
+        // --------------------------------------------------------------------------------------
+        _Vd_o = this->compute_desired_task_twist( w_H_o, w_H_Do);
+        Vector6f v_des_obj = _Vd_o;
+        v_des_obj.tail(3).setZero();
+        Vector6f d_twist_l = GraspMx_obj.leftCols(6).transpose() *v_des_obj; //_Vd_o;
+        Vector6f d_twist_r = GraspMx_obj.rightCols(6).transpose()*v_des_obj; //_Vd_o;
+
+        
+        Vector6f Xdot_bi = Eigen::VectorXf::Zero(6);
+        Xdot_bi.head(3)  = 0.5*(d_twist_l.head(3)+d_twist_r.head(3)); //_Vd_o.head(3);
+        Xdot_bi.tail(3)  = Eigen::VectorXf::Zero(3);
+
+        // Vector6f v_task_bi = ( A * _Tbi*(X_dual - Xstar_dual));
+        Vector6f v_task_bi = (A * _Tbi*(X_dual - Xstar_dual) + 1.0f*sw_norm_Do* Xdot_bi );
+                 v_task_bi = Utils<float>::SaturationTwist(Vd_o.head(3).norm(), _w_max, v_task_bi);
+        // v_task_bi.head(3)  = v_task_bi.head(3).normalized()*1.0f*v_task_bi.head(3).norm();
+        // v_task_bi.head(3) = v_task_bi.head(3).normalized()*Vd_o.head(3).norm();
+
+        Amodul_ee_norm = _Tbi.inverse() * v_task_bi;  // 
+        Amodul_ee_tang = _Tbi.inverse() * v_task_bi;  //
+        //
+        activation = 1.0f;
+        //
+        // this->constrained_ang_vel_correction(w_H_ee, w_H_gp, w_H_o, w_H_Do, Vd_ee_nom, false);
+        // this->computeDesiredOrientation(1.0f, w_H_ee, w_H_gp, w_H_o, qd_nom, false);
+        // std::cout << " LLLLLLLLLLLLLLLLLLLL    Bimanaul Grasp Matrix \n" << GraspMx_obj << std::endl;
+        Vd_ee_nom[LEFT].tail(3)  = Vd_ee_nom[LEFT].tail(3)  + _Vd_o.tail(3);
+        Vd_ee_nom[RIGHT].tail(3) = Vd_ee_nom[RIGHT].tail(3) + _Vd_o.tail(3);
       }
       break;
 
@@ -1330,7 +1330,36 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
       break;
 
       case 3:{ // point to point motion of the object 
+        // // ================================================================================================
+        // _integral_Vee_d[LEFT].setZero();
+        // _integral_Vee_d[RIGHT].setZero();
+        // //
+        // Vector6f X_bi = Eigen::VectorXf::Zero(6);
+        // X_bi.head(3)  = 0.5f*(X[LEFT] + X[RIGHT]);
+        // X_bi.tail(3)  = 0.95f*(X[RIGHT] - X[LEFT]);
+        // Xstar_dual    =  _Tbi.inverse() * X_bi;
+        // //
+        // //velocity based motion of the object
+        // Vector6f Xdot_bi      = Eigen::VectorXf::Zero(6);
+        // Eigen::Vector3f X_rel = X[RIGHT] - X[LEFT];
+
+        // Eigen::Vector3f w_o   = 0.0f*Vd_o.tail(3);
+        // Xdot_bi.head(3)       = Vd_o.head(3);
+        // Xdot_bi.tail(3)       = w_o.cross(X_rel);
+
+        // Vector6f v_task_bi = ( A * _Tbi*(X_dual - Xstar_dual) + 1.0f*sw_norm_Do* Xdot_bi );
+        // v_task_bi.head(3)  = v_task_bi.head(3).normalized()*1.0f*v_task_bi.head(3).norm();
+        // // v_task_bi.head(3) = v_task_bi.head(3).normalized()*Vd_o.head(3).norm();
+
+        // Amodul_ee_norm = _Tbi.inverse() * v_task_bi;  // 
+        // Amodul_ee_tang = _Tbi.inverse() * v_task_bi;  //
+        // //
+        // activation = 1.0f;
+        // // ===============================================================================================
         //
+        A.block<3,3>(0,0) = -4.0f * this->gain_p_abs;
+        A.block<3,3>(3,3) = -20.0f * this->gain_p_rel;
+
         _integral_Vee_d[LEFT].setZero();
         _integral_Vee_d[RIGHT].setZero();
         //
@@ -1338,28 +1367,43 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
         X_bi.head(3)  = 0.5f*(X[LEFT] + X[RIGHT]);
         X_bi.tail(3)  = 0.95f*(X[RIGHT] - X[LEFT]);
         Xstar_dual    =  _Tbi.inverse() * X_bi;
+        // --------------------------
         //
+        float a_filt = 0.02;
+        _Vd_o.head(3) = (1-a_filt)*_Vd_o.head(3) + a_filt*Vd_o.head(3);
+        _Vd_o.head(3) = Vd_o.head(3);
+
+        Vector6f d_twist_l = GraspMx_obj.leftCols(6).transpose() *_Vd_o;
+        Vector6f d_twist_r = GraspMx_obj.rightCols(6).transpose()*_Vd_o;
+
         //velocity based motion of the object
-        Vector6f Xdot_bi      = Eigen::VectorXf::Zero(6);
-        Eigen::Vector3f X_rel = X[RIGHT] - X[LEFT];
-
-        Eigen::Vector3f w_o   = 0.0f*Vd_o.tail(3);
-        Xdot_bi.head(3)       = Vd_o.head(3);
-        Xdot_bi.tail(3)       = w_o.cross(X_rel);
-
+        Vector6f Xdot_bi = Eigen::VectorXf::Zero(6);
+        Xdot_bi.head(3)  = 0.5*(d_twist_l.head(3)+d_twist_r.head(3));     //_Vd_o.head(3);
+        Xdot_bi.tail(3)  = 0.0*(d_twist_r.head(3) - d_twist_l.head(3));   //Eigen::VectorXf::Zero(3);
+        //
         Vector6f v_task_bi = ( A * _Tbi*(X_dual - Xstar_dual) + 1.0f*sw_norm_Do* Xdot_bi );
         v_task_bi.head(3)  = v_task_bi.head(3).normalized()*1.0f*v_task_bi.head(3).norm();
-        // v_task_bi.head(3) = v_task_bi.head(3).normalized()*Vd_o.head(3).norm();
+        // v_task_bi.head(3) = v_task_bi.head(3).normalized()*_Vd_o.head(3).norm();
 
         Amodul_ee_norm = _Tbi.inverse() * v_task_bi;  // 
         Amodul_ee_tang = _Tbi.inverse() * v_task_bi;  //
         //
         activation = 1.0f;
+        //
+        // DS_ee_nominal.head(3) = d_twist_l.head(3);
+        // DS_ee_nominal.tail(3) = d_twist_r.head(3);
+        //
+        Vd_ee_nom[LEFT].tail(3)  = Vd_ee_nom[LEFT].tail(3)  + 0.2f * _Vd_o.tail(3);
+        Vd_ee_nom[RIGHT].tail(3) = Vd_ee_nom[RIGHT].tail(3) + 0.2f * _Vd_o.tail(3);
+
       }
       break;
 
       case 4:{ // point to point motion of the object 
-        //
+        // //
+        // A.block<3,3>(0,0) = -4.0f * this->gain_p_abs;
+        // A.block<3,3>(3,3) = -20.0f * this->gain_p_rel;
+
         _integral_Vee_d[LEFT].setZero();
         _integral_Vee_d[RIGHT].setZero();
         //
@@ -1405,6 +1449,8 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
         //
         Vd_ee_nom[LEFT].tail(3)  = Vo_place.tail(3);
         Vd_ee_nom[RIGHT].tail(3) = Vo_place.tail(3);
+        //
+        _Vd_o = Vo_place;
       }
       break;
 
