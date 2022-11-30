@@ -1438,16 +1438,16 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],
         // DS_ee_nominal.head(3) = d_twist_l.head(3);
         // DS_ee_nominal.tail(3) = d_twist_r.head(3);
         //
-        Vd_ee_nom[LEFT].tail(3)  = Vd_ee_nom[LEFT].tail(3)  + 0.2f * _Vd_o.tail(3);
-        Vd_ee_nom[RIGHT].tail(3) = Vd_ee_nom[RIGHT].tail(3) + 0.2f * _Vd_o.tail(3);
+        Vd_ee_nom[LEFT].tail(3)  = Vd_ee_nom[LEFT].tail(3)  + 0.0f * _Vd_o.tail(3);
+        Vd_ee_nom[RIGHT].tail(3) = Vd_ee_nom[RIGHT].tail(3) + 0.0f * _Vd_o.tail(3);
 
       }
       break;
 
       case 4:{ // point to point motion of the object 
         //
-        A.block<3,3>(0,0) = -4.0f * this->gain_p_abs;
-        A.block<3,3>(3,3) = -20.0f * this->gain_p_rel;
+        // A.block<3,3>(0,0) = -4.0f * this->gain_p_abs;
+        // A.block<3,3>(3,3) = -20.0f * this->gain_p_rel;
 
         _integral_Vee_d[LEFT].setZero();
         _integral_Vee_d[RIGHT].setZero();
