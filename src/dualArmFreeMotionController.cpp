@@ -1268,7 +1268,7 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],
 
         Vector6f X_bi = Eigen::VectorXf::Zero(6);
         X_bi.head(3)  = 0.5f*(X[LEFT] + X[RIGHT]); //w_H_Do.block<3,1>(0,3) - w_H_o.block<3,1>(0,3)+ 0.5f*(X[LEFT] + X[RIGHT]);
-        X_bi.tail(3)  = 0.90f*(X[RIGHT] - X[LEFT]);
+        X_bi.tail(3)  = 0.95f*(X[RIGHT] - X[LEFT]);
 
         Xstar_dual =  _Tbi.inverse() * X_bi;
         // Amodul_ee_norm = _Tbi.inverse() * A * _Tbi *(X_dual - Xstar_dual);           // Modulated DS that aligned  the EE with the desired velocity
@@ -1276,7 +1276,7 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],
         // --------------------------------------------------------------------------------------
         _Vd_o = this->compute_desired_task_twist( w_H_o, w_H_Do);
         Vector6f des_Twist_obj = _Vd_o;
-        des_Twist_obj.tail(3).setZero(); 
+        des_Twist_obj.tail(3) = 0.0f*des_Twist_obj.tail(3); //.setZero(); 
         Vector6f d_twist_l = GraspMx_obj.leftCols(6).transpose() *des_Twist_obj; //_Vd_o; // 
         Vector6f d_twist_r = GraspMx_obj.rightCols(6).transpose()*des_Twist_obj; //_Vd_o; // 
 
@@ -1462,6 +1462,12 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],
         Eigen::Vector3f X_rel = X[RIGHT] - X[LEFT];
         Vector6f Vo = Eigen::VectorXf::Zero(6);
         Vector6f Vo_place = this->generatePlacingMotion2(w_H_o, w_H_Do, _height_via_point, Vo, false);
+        // ------------------------------------------------
+        float a_filt = 0.05;
+        _Vd_o = (1-a_filt)*_Vd_o + a_filt*Vo_place;
+        Vo_place = _Vd_o;
+        // ------------------------------------------------
+
         float cp_obj = Utils<float>::computeCouplingFactor(w_H_o.block<3,1>(0,3)-w_H_Do.block<3,1>(0,3), 50.0f, 0.12f, 1.0f, true);
         // float cp_obj = 0.5f*(std::tanh(1.5f*this->sw_norm_  * (1.0f*this->range_norm_ - (w_H_o.block<3,1>(0,3)-w_H_Do.block<3,1>(0,3)).norm()))  + 1.0f );
 

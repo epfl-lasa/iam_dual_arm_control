@@ -24,8 +24,8 @@ dual_system:
 
 # object
 object:
-  name : "openBox"
-  graspOffset: [-0.02, 0.00, -0.02] # [-0.04, 0.00, 0.03] # [-0.0, 0.00, 0.015] #[-0.06, 0.00, 0.03] #
+  name : "smallCubicBox"
+  graspOffset: [0.01, 0.00, 0.02] # [-0.04, 0.00, 0.03] # [-0.0, 0.00, 0.015] #[-0.06, 0.00, 0.03] #
   # Object type
   cubicBoxSim :       
     dimension:  [0.20, 0.20, 0.20]
@@ -41,10 +41,11 @@ object:
   coronaBottePack: 
     dimension:  [0.13, 0.19, 0.14]
     mass: 3.5
-    #graspOffset: [-0.0, 0.00, 0.015]
+    #graspOffset: [-0.0, 0.00, 0.015] [-0.02, 0.00, -0.00]:full glass bottles
   openBox:         
     dimension:  [0.20, 0.30, 0.20]
     mass: 4.5
+    # graspOffset: [-0.02, 0.00, -0.01]
   bottlesPack:     
     dimension:  [0.25, 0.19, 0.20]
     mass: 6
@@ -78,7 +79,7 @@ dual_arm_task:
   reach_to_grasp:
     desVreach: 0.85
     impact:
-      desVimp:   0.5
+      desVimp:   0.45
       impact_direction: # impact direction (angle in degree) 
         friction_angle: 20 #36
         max_friction_angle: 40
@@ -93,18 +94,18 @@ dual_arm_task:
       orientation: [0.3827, 0.9239, 0.0, 0.0]
   # lifting task parameters (user defined)
   lifting: 
-    position: [0.45, 0.00, 0.50] #[0.45, 0.00, 0.70]
+    position: [0.45, 0.00, 0.45] #[0.45, 0.00, 0.70]
     orientation: [1.00, 0.00, 0.00, 0.00] #[0.9436, 0, 0, 0.3310] #[0.9820, 0, 0, 0.1891] #
     increment_lift_pos: false
   # placing task parameters (user defined)
   placing: 
-    position: [0.71, 0.00, 0.20] #[0.675, 0.0, 0.25]  [0.72, 0.0, 0.25]
+    position: [0.72, 0.10, 0.20] #[0.675, 0.0, 0.25]  [0.72, 0.0, 0.25]
     orientation: [1.00, 0.00, 0.00, 0.00]
-    height_via_point: 0.10
+    height_via_point: 0.05
   # tossing task parameters (user defined)
   tossing:
     desVtoss:           0.85
-    releasePos:         [0.70, 0.00, 0.37] #[0.70, 0.00, 0.60] [0.70, 0.00, 0.40]
+    releasePos:         [0.68, 0.00, 0.37] #[0.70, 0.00, 0.60] [0.70, 0.00, 0.40]
     releaseOrient:      [1.00, 0.00, 0.00, 0.00] # [0.9436, 0, 0, 0.3310] #[0.9820, 0, 0, 0.1891] #
     releaseLinVel_dir:  [1.00, 0.10, 0.50] # [1.00, 0.00, 1.00]
     releaseAngVel:      [0.00, 0.00, 0.00]

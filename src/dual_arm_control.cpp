@@ -197,6 +197,7 @@ dual_arm_control::dual_arm_control(	ros::NodeHandle &n, double frequency, 	//std
 	_delta_pos.setZero();
 	_delta_ang.setZero();
 	_filt_delta_ang.setZero();
+	_filt_delta_ang_mir.setZero();
 	_delta_rel_pos.setZero();
 
 	_delta_oDx  = 0.0f;
@@ -243,7 +244,7 @@ dual_arm_control::dual_arm_control(	ros::NodeHandle &n, double frequency, 	//std
 
 	_feasibleAlgo = false;
 	_pickupBased  = true;
-	_trackTargetRotation = false;
+	_trackTargetRotation = true;
 	_isMotionTriggered =false;
 	_isRatioFactor = false;
 	_tol_attractor = 0.07f;
@@ -423,6 +424,7 @@ bool dual_arm_control::init()
 	//
 	Eigen::Matrix3f RDo_lifting = Utils<float>::quaternionToRotationMatrix(_qDo_lifting);
 	_filt_delta_ang = Utils<float>::getEulerAnglesXYZ_FixedFrame(RDo_lifting);
+	_filt_delta_ang_mir = Utils<float>::getEulerAnglesXYZ_FixedFrame(RDo_lifting);
 
 	// ======================================================================================================
 	// ROS TOPICS
@@ -833,12 +835,22 @@ void dual_arm_control::update_states_machines(){
 
 				// placing hight
 				case 'x':
-					_xDo_placing(2)-= 0.01;  
+					if(_dualTaskSelector == PICK_AND_TOSS){
+						_tossVar.release_position(1)-=0.01;
+					}
+					else{
+						_xDo_placing(2)-= 0.01; 
+					} 
 				break;
 
 				// placing hight
 				case 'n':
-					_xDo_placing(2)+= 0.01;  
+					if(_dualTaskSelector == PICK_AND_TOSS){
+						_tossVar.release_position(1)+=0.01;
+					}
+					else{
+						_xDo_placing(2)+= 0.01; 
+					} 
 				break;
 
 			}
@@ -922,7 +934,7 @@ void dual_arm_control::computeCommands()
 	bool isPlacingCommand 	= (_release_flag) || ((_w_H_o.block<3,1>(0,3)-_xDo_placing).norm()<=0.07); // 0.07 0.05
 	bool isTossingCommand 	= (_release_flag) || ((_w_H_o.block<3,1>(0,3)-_tossVar.release_position).norm()<=0.035);
 	//
-	bool placing_done 			= (_release_flag) || ((_w_H_o.block<3,1>(0,3)-_xDo_placing).norm()<=0.07); //0.05
+	bool placing_done 			= (_release_flag) || ((_w_H_o.block<3,1>(0,3)-_xDo_placing).norm()<=0.08); //0.05
 	bool placeTossing_done 	= (_release_flag) || (((_w_H_o.block<3,1>(0,3)-_tossVar.release_position).norm()<=0.07) 
 																						|| ((_w_H_o.block<2,1>(0,3)-_xDo_placing.head(2)).norm() <= 0.05 ) );
 	bool tossing_done 			= (_release_flag) || ( ((_w_H_o.block<3,1>(0,3)-_tossVar.release_position).norm()<=0.035) );
@@ -1096,7 +1108,7 @@ void dual_arm_control::computeCommands()
 			}
 			// Target to object Orientation Adaptation
 			// ----------------------------------------
-			if(_trackTargetRotation && !(isPlacing || isThrowing || isPlaceTossing)){
+			if(_trackTargetRotation && !(isThrowing || isPlaceTossing)){  // isPlacing || 
 				this->mirror_target2object_orientation(_qt, qDesTask, _dual_angular_limit);
 			}
 			
@@ -1144,8 +1156,8 @@ void dual_arm_control::computeCommands()
 				if(fabs(abs_force_correction)  > 0.2f){
 				abs_force_correction = abs_force_correction/fabs(abs_force_correction) * 0.2f;
 				}
-				_Vd_ee[LEFT].head(3)  =  _Vd_ee[LEFT].head(3)  - 0.50*abs_force_correction * _n[LEFT];
-				_Vd_ee[RIGHT].head(3) =  _Vd_ee[RIGHT].head(3) - 0.50*abs_force_correction * _n[RIGHT];
+				_Vd_ee[LEFT].head(3)  =  _Vd_ee[LEFT].head(3)  - 0.40*abs_force_correction * _n[LEFT];   // 0.6 (heavy objects)
+				_Vd_ee[RIGHT].head(3) =  _Vd_ee[RIGHT].head(3) - 0.40*abs_force_correction * _n[RIGHT];  // 0.6 (heavy objects)
 			}
 		}
 		//===================================================================================================================
@@ -1281,7 +1293,8 @@ void dual_arm_control::computeCommands()
 	std::cout << " AAAA  ADAPTATION STATUS AAAAA is  -----------> : \t " << _adaptationActive << std::endl; 
 	// std::cout << " PPPPPPPPPPPPp _magniture_pert_conveyor_belt PPPPPP is  -----------> : \t " << _magniture_pert_conveyor_belt << std::endl; 
 	// std::cout << " CCCCCCCCCCCCCCCC FreeMotionCtrl._activationAperture CCCCCCCCCC is  -----------> : \t " << FreeMotionCtrl._activationAperture << std::endl;  
-	std::cout << " PPPPPPPPPPPPPPP _xDo_placing PPPPPPPPPP  is  -----------> : \t " << _xDo_placing.transpose() << std::endl; 
+	std::cout << " PPPPPPPPPPPPPPP _xDo_placing PPPPPPPPPP  is  -----------> : \t " << _xDo_placing.transpose() << std::endl;  
+	std::cout << " PPPPPPPPPPPPPPP release_position PPPPPPPPPP  is  -----------> : \t " << _tossVar.release_position.transpose() << std::endl;
 	// std::cout << " PPPPPPPPUUUUUUUUUUU _x_pickup PPPPPPPPPPUUUUUUUUUUU  is  -----------> : \t " << _x_pickup.transpose() << std::endl; 
 	// std::cout << " AAAAAAAAAAAAAAAAA PATH_LENGTH AND SPEED AVG AAAAAAAAAAAAAAAAA is  \t " << _dual_PathLen_AvgSpeed.transpose() << std::endl; 
 	// std::cout << " AAAAAAAAAAAAAAAAA AVERAGE SPEED END_EFFECTOR AAAAAAAAAAAAAAAAA is  \t " << _movingAvgSpeedEE << std::endl;  
@@ -1390,7 +1403,11 @@ void dual_arm_control::mirror_target2object_orientation(Eigen::Vector4f qt, Eige
 	Eigen::Vector3f eAng_t = Utils<float>::getEulerAnglesXYZ_FixedFrame(Utils<float>::quaternionToRotationMatrix(qt));
 	Eigen::Vector3f eAng_o = Utils<float>::getEulerAnglesXYZ_FixedFrame(Utils<float>::quaternionToRotationMatrix(qo));
 
-	eAng_o(2) = eAng_o(2) + eAng_t(2);
+	// eAng_o(2) = eAng_o(2) + eAng_t(2);
+	
+	_filt_delta_ang_mir = 0.95*_filt_delta_ang_mir + 0.05*(eAng_t - eAng_o);
+	eAng_t(0) = eAng_o(0) + _filt_delta_ang_mir(0);
+	eAng_t(2) = eAng_o(2) + _filt_delta_ang_mir(2);
 
 	if(eAng_t(0) >= ang_lim(0)){
 		eAng_t(0)   = ang_lim(0);
@@ -1407,8 +1424,9 @@ void dual_arm_control::mirror_target2object_orientation(Eigen::Vector4f qt, Eige
 	}
 	
 	// qo = Utils<float>::rotationMatrixToQuaternion( Utils<float>::eulerAnglesToRotationMatrix(eAng_t(2), eAng_o(1), eAng_o(0)) );
-	// qo = Utils<float>::rotationMatrixToQuaternion( Utils<float>::eulerAnglesToRotationMatrix(eAng_o(0), eAng_o(1), eAng_t(2)) );
-	qo = Utils<float>::rotationMatrixToQuaternion( Utils<float>::eulerAnglesToRotationMatrix(eAng_o(0), eAng_o(1), eAng_o(2)) );
+	qo = Utils<float>::rotationMatrixToQuaternion( Utils<float>::eulerAnglesToRotationMatrix(eAng_o(0), eAng_o(1), eAng_t(2)) );
+	
+	// qo = Utils<float>::rotationMatrixToQuaternion( Utils<float>::eulerAnglesToRotationMatrix(eAng_o(0), eAng_o(1), eAng_o(2)) );
 }
 
 // //
