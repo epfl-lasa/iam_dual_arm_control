@@ -2,7 +2,7 @@
 
 dual_system:
   # Simulation or Real robot
-  simulation: false
+  simulation: true
   # End-effector tool
   tool:
     offset2end_effector:
@@ -24,39 +24,48 @@ dual_system:
 
 # object
 object:
-  name : "smallCubicBox"
-  graspOffset: [0.01, 0.00, 0.02] # [-0.04, 0.00, 0.03] # [-0.0, 0.00, 0.015] #[-0.06, 0.00, 0.03] #
+  name : "cubicBoxSim"
+  graspOffset: [0.01, 0.00, 0.02] # [0.01, 0.00, 0.02] # [-0.04, 0.00, 0.03] # [-0.0, 0.00, 0.015] #[-0.06, 0.00, 0.03] #
   # Object type
   cubicBoxSim :       
     dimension:  [0.20, 0.20, 0.20]
+    graspOffset: [0.0, 0.00,  0.0]
     mass: 1
   cubicBoxReal :       
     dimension:  [0.26, 0.26, 0.26]
+    graspOffset: [0.0, 0.00,  0.0]
     mass: 3
     #graspOffset: [-0.04, 0.00, 0.03]
   smallCubicBox :       
     dimension:  [0.18, 0.19, 0.18]
+    graspOffset: [0.01, 0.00, 0.02]
     mass: 1
     #graspOffset: [-0.02, 0.00, 0.01]
   coronaBottePack: 
     dimension:  [0.13, 0.19, 0.14]
+    graspOffset: [0.0, 0.00,  0.0]
     mass: 3.5
     #graspOffset: [-0.0, 0.00, 0.015] [-0.02, 0.00, -0.00]:full glass bottles
   openBox:         
     dimension:  [0.20, 0.30, 0.20]
+    graspOffset: [0.0, 0.00,  0.0]
     mass: 4.5
-    # graspOffset: [-0.02, 0.00, -0.01]
   bottlesPack:     
     dimension:  [0.25, 0.19, 0.20]
+    graspOffset: [0.0, 0.00,  0.0]
     mass: 6
   drGabsPack:      
     dimension:  [0.13, 0.14, 0.15]
+    graspOffset: [0.0, 0.00,  0.0]
     mass: 1.5
   smallOpenBox:    
     dimension:  [0.16, 0.29, 0.14]
+    graspOffset: [0.0, 0.00,  0.0]
     mass: 3.5
   optitrackBox:    
     dimension:  [0.18, 0.19, 0.18]
+    graspOffset: [0.0, 0.00,  0.0]
+    mass: 1.0
 
 
 

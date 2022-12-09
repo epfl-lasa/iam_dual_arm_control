@@ -203,8 +203,6 @@ class dual_arm_control
 		float _err[NB_ROBOTS];
 		bool _qp_wrench_generation;
 		bool _firstRobotPose[NB_ROBOTS];
-		bool _firstRobotTwist[NB_ROBOTS];
-		bool _firstWrenchReceived[NB_ROBOTS];
 		bool _sensedContact;
 
 		bool _startlogging;
@@ -485,11 +483,11 @@ class dual_arm_control
 		void estimate_moving_average_ee_speed();
 		void estimate_moving_average_target_velocity();
 		void find_desired_landing_position(Eigen::Vector3f x_origin, bool isPlacing, bool isPlaceTossing, bool isThrowing);
-		void update_intercept_position(float intercep_limits[]);
+		void update_intercept_position(float flytime_obj, float intercep_limits[]);
 		void find_release_configuration();
 		void set_release_state();
-		void estimate_target_state_to_go();
-		void compute_adaptation_factors();
+		void estimate_target_state_to_go(Eigen::Vector2f Lp_Va_pred_bot, Eigen::Vector2f Lp_Va_pred_tgt, float flytime_obj);
+		void compute_adaptation_factors(Eigen::Vector2f Lp_Va_pred_bot, Eigen::Vector2f Lp_Va_pred_tgt, float flytime_obj);
 		
 };
 
