@@ -90,8 +90,6 @@ dual_arm_control::dual_arm_control(	ros::NodeHandle &n, double frequency, 	//std
 		_wrenchBiasOK[k] = false;
 
 		_firstRobotPose[k] = false;
-		_firstRobotTwist[k] = false;
-		_firstWrenchReceived[k] = false;
 		// 
 		_pubVelo[k].data.clear();
 		_pubVelo[k].data.push_back(0.0);		// axis angle poses _x	
@@ -234,7 +232,7 @@ dual_arm_control::dual_arm_control(	ros::NodeHandle &n, double frequency, 	//std
 	_isDisturbTarget 	= false;
 	_beta_vel_mod 		= 1.0f;
 	_initSpeedScaling = 1.0f; 	//0.75; 	//
-	_trackingFactor 	= 0.35f; 	//0.17f; 	// 0.35f better
+	_trackingFactor 	= 0.40f; 	//0.17f; 	// 0.35f better
 	_delta_tracking 	= 0.0f;
 	_winLengthAvgSpeedEE = 20;
 	// _winCounterAvgSpeedEE = 0;
@@ -321,7 +319,7 @@ bool dual_arm_control::init()
 	while(!nh_.getParam("dual_system/tool/offset2end_effector/sim/right", param_toolOffset_sim_right)){ROS_INFO("Waitinng for param: offset2end_effector/sim/right ");}
 
 	while(!nh_.getParam("object/name", param_object_name)){ROS_INFO("Waitinng for param: object/name");}
-	while(!nh_.getParam("object/graspOffset", param_graspOffset)){ROS_INFO("Waitinng for param: object/graspOffset ");}
+	while(!nh_.getParam("object/" + param_object_name + "/graspOffset", param_graspOffset)){ROS_INFO("Waitinng for param: object/graspOffset ");}
 	while(!nh_.getParam("object/" + param_object_name + "/dimension", param_objectDim)){ROS_INFO("Waitinng for param: object dimension ");}
 	while(!nh_.getParam("object/" + param_object_name + "/mass", param_objectMass)){ROS_INFO("Waitinng for param: object mass ");}
 
@@ -997,17 +995,30 @@ void dual_arm_control::computeCommands()
 	// // ----------------------------------------------------------------------------------------------------------------------------------------
 	// ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+	//
 	// ===========================================================================================================
 	// Application
 	// ===========================================================================================================
 	if( (!_releaseAndretract) && (fmod(_cycle_count, 20)==0)){
 		_dual_PathLen_AvgSpeed = FreeMotionCtrlEstim.predictRobotTranslation( _w_H_ee, _w_H_gp,  _w_H_eeStandby, _w_H_o, _tossVar.release_position, _desVtoss, 0.05f, 0.100f, _initSpeedScaling);
 	}
+	// -------------------------------------------------------------
+	Eigen::Vector2f Lp_Va_pred_bot = {_dual_PathLen_AvgSpeed(0), _trackingFactor *_dual_PathLen_AvgSpeed(1)}; 							
+	Eigen::Vector2f Lp_Va_pred_tgt = tossParamEstimator.estimateTarget_SimpPathLength_AverageSpeed(_xt, _xd_landing, _vt); 	
+	//
+	float flytime_obj = 0.200f; //0.255f;
+	float eps_den = 1e-6;
+	float time2intercept_tgt = fabs(fabs(Lp_Va_pred_tgt(0) +eps_den - Lp_Va_pred_tgt(1)*flytime_obj)/(Lp_Va_pred_tgt(1)+eps_den));
+	float time2intercept_bot = Lp_Va_pred_bot(0)/Lp_Va_pred_bot(1);
+	//
+	_time2intercept_tgt = 0.0f;
+	_time2intercept_bot = 0.0f;
+	// -------------------------------------------------------------
 
 	// determine the desired landing position
 	this->find_desired_landing_position(x_origin, isPlacing, isPlaceTossing, isThrowing); 	// ---> _xd_landing
 	// Estimate the target state to go
-	this->estimate_target_state_to_go();  	// ---> _xt_state2go
+	this->estimate_target_state_to_go(Lp_Va_pred_bot, Lp_Va_pred_tgt, flytime_obj);  	// ---> _xt_state2go
 
 	// set at pickup instant
 	if(!_isPickupSet && !_releaseAndretract)
@@ -1015,7 +1026,7 @@ void dual_arm_control::computeCommands()
 		if(_sensedContact && (CooperativeCtrl._ContactConfidence == 1.0)){
 
 			// Update intercept (desired landing) position
-			this->update_intercept_position(intercep_limits);    	// ---> _xd_landing
+			this->update_intercept_position(flytime_obj, intercep_limits);    	// ---> _xd_landing
 			// Determination of the release configuration
 			this->find_release_configuration();	// ---> _tossVar.release_position  _tossVar.release_linear_velocity
 			// set the release state and the object pickup position
@@ -1030,7 +1041,7 @@ void dual_arm_control::computeCommands()
 	}
 
 	// Adaptation of the desired motion 
-	this->compute_adaptation_factors();
+	this->compute_adaptation_factors(Lp_Va_pred_bot, Lp_Va_pred_tgt, flytime_obj);
 	// // ===========================================================================================================
 	// // ===========================================================================================================
 
@@ -1660,25 +1671,19 @@ void dual_arm_control::find_desired_landing_position(Eigen::Vector3f x_origin, b
 
 }
 
-void dual_arm_control::update_intercept_position(float intercep_limits[]){
+//
+void dual_arm_control::update_intercept_position(float flytime_obj, float intercep_limits[]){
 
-		// Eigen::Vector2f Lp_Va_pred_bot = {_dual_PathLen_AvgSpeed(0), _trackingFactor *_dual_PathLen_AvgSpeed(1)}; 						
-		// Eigen::Vector2f Lp_Va_pred_tgt = tossParamEstimator.estimateTarget_SimpPathLength_AverageSpeed(_xt, _xd_landing, _vt); 
-		float flytime_obj = 0.200f; //0.255f;
-		// float eps_den = 1e-6;
-		// float time2intercept_tgt = fabs(fabs(Lp_Va_pred_tgt(0) +eps_den - Lp_Va_pred_tgt(1)*flytime_obj)/(Lp_Va_pred_tgt(1)+eps_den));
-		// float time2intercept_bot = Lp_Va_pred_bot(0)/Lp_Va_pred_bot(1);
-
-		Eigen::Vector3f x_t_intercept = _xt + _vt*(_time2intercept_bot + flytime_obj);
-		// apply constraints
-		this->set_2d_position_box_constraints(x_t_intercept, intercep_limits); 
-		//
-		if(_adaptationActive){
-			_xd_landing.head(2) = x_t_intercept.head(2);
-			if(_isPlaceTossing || (_dualTaskSelector == PLACE_TOSSING) ){
-				_xDo_placing.head(2) = _xt.head(2) + 0.35*_vt.head(2)*(_time2intercept_bot + flytime_obj);
-			}
+	Eigen::Vector3f x_t_intercept = _xt + _vt*(_time2intercept_bot + flytime_obj);
+	// apply constraints
+	this->set_2d_position_box_constraints(x_t_intercept, intercep_limits); 
+	//
+	if(_adaptationActive){
+		_xd_landing.head(2) = x_t_intercept.head(2);
+		if(_isPlaceTossing || (_dualTaskSelector == PLACE_TOSSING) ){
+			_xDo_placing.head(2) = _xt.head(2) + 0.35*_vt.head(2)*(_time2intercept_bot + flytime_obj);
 		}
+	}
 }
 
 void dual_arm_control::find_release_configuration(){ // xD_landing
@@ -1719,15 +1724,13 @@ void dual_arm_control::set_release_state(){
 	dsThrowing.set_pickup_object_pose(_x_pickup, _qo);
 }
 
-void dual_arm_control::estimate_target_state_to_go(){
+//
+void dual_arm_control::estimate_target_state_to_go(Eigen::Vector2f Lp_Va_pred_bot, Eigen::Vector2f Lp_Va_pred_tgt, float flytime_obj){
 	// Estimation of the target state-to-go
 	// -------------------------------------
-	Eigen::Vector2f Lp_Va_pred_bot = {_dual_PathLen_AvgSpeed(0), _trackingFactor *_dual_PathLen_AvgSpeed(1)}; 							
-	Eigen::Vector2f Lp_Va_pred_tgt = tossParamEstimator.estimateTarget_SimpPathLength_AverageSpeed(_xt, _xd_landing, _vt); 	
-	float flytime_obj = 0.200f; //0.255f;
 	// Target state to go
 	_xt_state2go = tossParamEstimator.estimate_target_state_to_go(_xt, _vt, _xd_landing, Lp_Va_pred_bot, Lp_Va_pred_tgt, flytime_obj);
-	
+
 	// boolean robot's motion trigger
 	Eigen::Vector3f xt_bar 		= _xt - _xd_landing;
 	Eigen::Vector3f xt2go_bar = _xt_state2go - _xd_landing;
@@ -1735,7 +1738,8 @@ void dual_arm_control::estimate_target_state_to_go(){
 
 }
 
-void dual_arm_control::compute_adaptation_factors(){
+
+void dual_arm_control::compute_adaptation_factors(Eigen::Vector2f Lp_Va_pred_bot, Eigen::Vector2f Lp_Va_pred_tgt, float flytime_obj){
 	if(_isMotionTriggered){
 		_isIntercepting = true; 
 	}
@@ -1743,11 +1747,8 @@ void dual_arm_control::compute_adaptation_factors(){
 	float beta_vel_mod_max = min( 2.0f, min((_v_max/_Vd_ee[LEFT].head(3).norm()), (_v_max/_Vd_ee[RIGHT].head(3).norm())) );
 	//
 	if(_isIntercepting && !_releaseAndretract){
-		Eigen::Vector2f Lp_Va_pred_bot = {_dual_PathLen_AvgSpeed(0), _trackingFactor *_dual_PathLen_AvgSpeed(1)}; 						
-		Eigen::Vector2f Lp_Va_pred_tgt = tossParamEstimator.estimateTarget_SimpPathLength_AverageSpeed(_xt, _xd_landing, _vt); 
-		float flytime_obj = 0.200f; //0.255f;
-		float eps_den = 1e-6;
 		//
+		float eps_den = 1e-6;
 		_time2intercept_tgt = fabs(fabs(Lp_Va_pred_tgt(0) +eps_den - Lp_Va_pred_tgt(1)*flytime_obj)/(Lp_Va_pred_tgt(1)+eps_den));
 		_time2intercept_bot = Lp_Va_pred_bot(0)/Lp_Va_pred_bot(1);
 
@@ -1769,11 +1770,9 @@ void dual_arm_control::compute_adaptation_factors(){
 	else{
 		_beta_vel_mod_unfilt = 1.0f;
 		FreeMotionCtrl._activationAperture = 1.0f;
-		_time2intercept_tgt = 0.0f;
-		_time2intercept_bot = 0.0f;
 	}
-
 }	
+
 // ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
