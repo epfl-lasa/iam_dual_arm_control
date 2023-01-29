@@ -1195,7 +1195,7 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],
     // //
     Matrix6f A = Eigen::MatrixXf::Identity(6,6);
     A.block<3,3>(0,0) = -4.0f * this->gain_p_abs;
-    A.block<3,3>(3,3) = -12.0f * this->gain_p_rel;
+    A.block<3,3>(3,3) = -8.0f * this->gain_p_rel;
     Matrix6f A_prime  = _Tbi.inverse() * A * _Tbi;
     Matrix6f _Tbi_1_A = _Tbi.inverse() * A;
     //
@@ -1264,7 +1264,7 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],
       case 1:{ // point to point motion of the object 
 
         A.block<3,3>(0,0) = -4.0f * this->gain_p_abs;
-        A.block<3,3>(3,3) = -20.0f * this->gain_p_rel;
+        A.block<3,3>(3,3) = -8.0f * this->gain_p_rel;
 
         Vector6f X_bi = Eigen::VectorXf::Zero(6);
         X_bi.head(3)  = 0.5f*(X[LEFT] + X[RIGHT]); //w_H_Do.block<3,1>(0,3) - w_H_o.block<3,1>(0,3)+ 0.5f*(X[LEFT] + X[RIGHT]);
@@ -1438,8 +1438,8 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],
         // DS_ee_nominal.head(3) = d_twist_l.head(3);
         // DS_ee_nominal.tail(3) = d_twist_r.head(3);
         //
-        Vd_ee_nom[LEFT].tail(3)  = Vd_ee_nom[LEFT].tail(3)  + 0.0f * _Vd_o.tail(3);
-        Vd_ee_nom[RIGHT].tail(3) = Vd_ee_nom[RIGHT].tail(3) + 0.0f * _Vd_o.tail(3);
+        Vd_ee_nom[LEFT].tail(3)  = Vd_ee_nom[LEFT].tail(3)  + 0.2f * _Vd_o.tail(3);
+        Vd_ee_nom[RIGHT].tail(3) = Vd_ee_nom[RIGHT].tail(3) + 0.2f * _Vd_o.tail(3);
 
       }
       break;
