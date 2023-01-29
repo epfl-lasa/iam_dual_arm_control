@@ -279,7 +279,8 @@ bool dual_arm_control::init()
 	std::string param_object_name;
 	float param_objectMass;
 	std::vector<float> param_objectDim;
-	std::vector<float> param_graspOffset;
+	std::vector<float> param_graspOffset_L;
+	std::vector<float> param_graspOffset_R;
 
 	std::vector<float> param_releasePos;
 	std::vector<float> param_releaseOrient;
@@ -319,7 +320,8 @@ bool dual_arm_control::init()
 	while(!nh_.getParam("dual_system/tool/offset2end_effector/sim/right", param_toolOffset_sim_right)){ROS_INFO("Waitinng for param: offset2end_effector/sim/right ");}
 
 	while(!nh_.getParam("object/name", param_object_name)){ROS_INFO("Waitinng for param: object/name");}
-	while(!nh_.getParam("object/" + param_object_name + "/graspOffset", param_graspOffset)){ROS_INFO("Waitinng for param: object/graspOffset ");}
+	while(!nh_.getParam("object/" + param_object_name + "/graspOffset_L", param_graspOffset_L)){ROS_INFO("Waitinng for param: object/graspOffset_L ");}
+	while(!nh_.getParam("object/" + param_object_name + "/graspOffset_R", param_graspOffset_R)){ROS_INFO("Waitinng for param: object/graspOffset_R ");}
 	while(!nh_.getParam("object/" + param_object_name + "/dimension", param_objectDim)){ROS_INFO("Waitinng for param: object dimension ");}
 	while(!nh_.getParam("object/" + param_object_name + "/mass", param_objectMass)){ROS_INFO("Waitinng for param: object mass ");}
 
@@ -386,10 +388,11 @@ bool dual_arm_control::init()
 		_dsDampingTopic[RIGHT] = param_damping_topic_CustomCtrl_right;
 	}
 
-	_objectMass 					  				= param_objectMass;
-	_objectDim 						  				= Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_objectDim.data(), param_objectDim.size());
-	Eigen::Vector3f graspOffset    	= Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_graspOffset.data(), param_graspOffset.size());
-
+	_objectMass 					  					= param_objectMass;
+	_objectDim 						  					= Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_objectDim.data(), param_objectDim.size());
+	Eigen::Vector3f graspOffset_L    	= Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_graspOffset_L.data(), param_graspOffset_L.size());
+	Eigen::Vector3f graspOffset_R    	= Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_graspOffset_R.data(), param_graspOffset_R.size());
+	
 	_toolOffsetFromEE[0]  			  		= _isSimulation ? param_toolOffset_sim_left :  param_toolOffset_real_left;
 	_toolOffsetFromEE[1]  			  		= _isSimulation ? param_toolOffset_sim_right :  param_toolOffset_real_right;
 	_tossVar.release_position      	  = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_releasePos.data(), param_releasePos.size());
@@ -414,8 +417,8 @@ bool dual_arm_control::init()
 	
 
 	// relative grasping positons
-	_xgp_o[0] = Eigen::Vector3f(0.0f, -_objectDim(1)/2.0f,  0.0f) + graspOffset;   // left  
-	_xgp_o[1] = Eigen::Vector3f(0.0f,  _objectDim(1)/2.0f,  0.0f) + graspOffset; 	 // right 
+	_xgp_o[0] = Eigen::Vector3f(0.0f, -_objectDim(1)/2.0f,  0.0f) + graspOffset_L;   // left  
+	_xgp_o[1] = Eigen::Vector3f(0.0f,  _objectDim(1)/2.0f,  0.0f) + graspOffset_R; 	 // right 
 
 	// conveyor belt
 	_desSpeed_conveyor_belt = _nominalSpeed_conveyor_belt;
@@ -1120,7 +1123,7 @@ void dual_arm_control::computeCommands()
 			// Target to object Orientation Adaptation
 			// ----------------------------------------
 			if(_trackTargetRotation && !(isThrowing || isPlaceTossing)){  // isPlacing || 
-				this->mirror_target2object_orientation(_qt, qDesTask, _dual_angular_limit);
+				// this->mirror_target2object_orientation(_qt, qDesTask, _dual_angular_limit);
 			}
 			
 			// 
