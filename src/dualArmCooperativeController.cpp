@@ -20,8 +20,8 @@ bool dualArmCooperativeController::init()
 	//
 	_mu_ee							= 0.9f; //0.9f; //0.4f;
 	_gamma_ee						= 0.9f; //0.9f; //0.4f;
-	_deltaX_ee					= 0.5f; //0.5f;
-	_deltaY_ee					= 0.5f; //0.5f;
+	_deltaX_ee					= 0.05f; //0.5f;
+	_deltaY_ee					= 0.05f; //0.5f;
 	_contactOccured    	= false;
 	_targetForce     		= 45.0f; // 45.0f; //  40
 	//
@@ -53,6 +53,14 @@ bool dualArmCooperativeController::init()
 	//
 	_weight_EEs_slack.setZero();
 	_weight_EEs_slack << 100.0, 100.0, 100.0, 200.0, 200.0, 200.0;
+	// _weight_EEs_wrench.setOnes();
+	// _weight_EEs_wrench.segment(0, 3) *= 250.0e-2; 	//1.0e-02  Forces
+	// _weight_EEs_wrench.segment(3, 3) *= 50.0e-2; 	//1.0e-02 	Moments
+	// _weight_EEs_wrench.segment(6, 3) *= 250.0e-2; 	//1.0e-02 	Forces
+	// _weight_EEs_wrench.segment(9, 3) *= 50.0e-2; 	//1.0e-02	Moments	
+	// //
+	// _weight_EEs_slack.setZero();
+	// _weight_EEs_slack << 500.0, 500.0, 500.0, 100.0, 100.0, 100.0;
 
 	// initialization of the cvxgen solver for the cooperative manipulation
 	bwc_set_defaults();

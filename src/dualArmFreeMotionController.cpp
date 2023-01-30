@@ -1264,7 +1264,7 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],
       case 1:{ // point to point motion of the object 
 
         A.block<3,3>(0,0) = -4.0f * this->gain_p_abs;
-        A.block<3,3>(3,3) = -8.0f * this->gain_p_rel;
+        A.block<3,3>(3,3) = -12.0f * this->gain_p_rel;
 
         Vector6f X_bi = Eigen::VectorXf::Zero(6);
         X_bi.head(3)  = 0.5f*(X[LEFT] + X[RIGHT]); //w_H_Do.block<3,1>(0,3) - w_H_o.block<3,1>(0,3)+ 0.5f*(X[LEFT] + X[RIGHT]);
