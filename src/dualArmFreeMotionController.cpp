@@ -1195,7 +1195,7 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],
     // //
     Matrix6f A = Eigen::MatrixXf::Identity(6,6);
     A.block<3,3>(0,0) = -4.0f * this->gain_p_abs;
-    A.block<3,3>(3,3) = -8.0f * this->gain_p_rel;
+    A.block<3,3>(3,3) = -4.0f * this->gain_p_rel;
     Matrix6f A_prime  = _Tbi.inverse() * A * _Tbi;
     Matrix6f _Tbi_1_A = _Tbi.inverse() * A;
     //
@@ -1276,7 +1276,7 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],
         // --------------------------------------------------------------------------------------
         _Vd_o = this->compute_desired_task_twist( w_H_o, w_H_Do);
         Vector6f des_Twist_obj = _Vd_o;
-        des_Twist_obj.tail(3) = 0.0f*des_Twist_obj.tail(3); //.setZero(); 
+        des_Twist_obj.tail(3) = 1.0f*des_Twist_obj.tail(3); //.setZero(); 
         Vector6f d_twist_l = GraspMx_obj.leftCols(6).transpose() *des_Twist_obj; //_Vd_o; // 
         Vector6f d_twist_r = GraspMx_obj.rightCols(6).transpose()*des_Twist_obj; //_Vd_o; // 
 
@@ -1306,7 +1306,7 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],
         Vd_ee_nom[LEFT].tail(3)  = Vd_ee_nom[LEFT].tail(3)  +1.0f* _Vd_o.tail(3);
         Vd_ee_nom[RIGHT].tail(3) = Vd_ee_nom[RIGHT].tail(3) +1.0f* _Vd_o.tail(3);
 
-        // ======================================================================================
+        // // ======================================================================================
         // X_bi.head(3)  = w_H_Do.block<3,1>(0,3) - w_H_o.block<3,1>(0,3)+ 0.5f*(X[LEFT] + X[RIGHT]);
         // X_bi.tail(3)  = 0.95f*(X[RIGHT] - X[LEFT]);
 
@@ -2322,7 +2322,7 @@ Vector6f dualArmFreeMotionController::compute_desired_task_twist(const Eigen::Ma
   float gain_theta = 0.5f*(std::tanh(30  * (0.25 - error_ee.tail(3).norm())) + 1.0);
   float gn_adapt = (1 + 2.f*gain_theta);
   des_twist_ee.head(3) = -4.0f*gain_p_abs * error_ee.head(3);
-  des_twist_ee.tail(3) = -1.2f*gain_o_abs * gn_adapt * error_ee.tail(3);
+  des_twist_ee.tail(3) = -1.0f*gain_o_abs * gn_adapt * error_ee.tail(3);
   des_twist_ee         = Utils<float>::SaturationTwist(_v_max, _w_max, des_twist_ee);
 
   return des_twist_ee;

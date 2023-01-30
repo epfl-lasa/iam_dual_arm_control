@@ -203,6 +203,8 @@ class dual_arm_control
 		float _err[NB_ROBOTS];
 		bool _qp_wrench_generation;
 		bool _firstRobotPose[NB_ROBOTS];
+		bool _firstRobotTwist[NB_ROBOTS];
+		bool _firstWrenchReceived[NB_ROBOTS];
 		bool _sensedContact;
 
 		bool _startlogging;
@@ -419,6 +421,8 @@ class dual_arm_control
 		void updateEEPoseCallback(const geometry_msgs::Pose::ConstPtr& msg , int k);
 		void updateEETwistCallback(const geometry_msgs::Twist::ConstPtr& msg, int k);
 		void updateRobotWrench(const geometry_msgs::WrenchStamped::ConstPtr& msg, int k);
+		void updateRobotWrenchLeft(const geometry_msgs::WrenchStamped::ConstPtr& msg);
+		void updateRobotWrenchRight(const geometry_msgs::WrenchStamped::ConstPtr& msg);
 		void updateContactState();
 		void updateRobotStatesLeft(const sensor_msgs::JointState::ConstPtr &msg);
 		void updateRobotStatesRight(const sensor_msgs::JointState::ConstPtr &msg);
@@ -473,6 +477,8 @@ class dual_arm_control
 		Eigen::Vector3f get_object_desired_direction(int task_type, Eigen::Vector3f object_pos);
 		void update_release_position();
 		void publish_conveyor_belt_cmds();
+		void update_placing_position(float y_t_min, float y_t_max);
+		void constrain_placing_position(float x_t_min, float x_t_max, float y_t_min, float y_t_max);
 		void set_2d_position_box_constraints(Eigen::Vector3f &position_vec, float limits[]);
 		void mirror_target2object_orientation(Eigen::Vector4f qt, Eigen::Vector4f &qo, Eigen::Vector3f ang_lim);
 		Eigen::Vector3f compute_intercept_with_target(const Eigen::Vector3f &x_pick, 

@@ -18,10 +18,10 @@ bool dualArmCooperativeController::init()
 	_min_nF 						= 30.0f; //30.0 20.0;  // 40.0f;
 	_max_nF 						= 45.0f; // 45.0f; //  60.0f;
 	//
-	_mu_ee							= 0.7f; //0.9f; //0.4f;
-	_gamma_ee						= 0.7f; //0.9f; //0.4f;
-	_deltaX_ee					= 0.07f; //0.5f;
-	_deltaY_ee					= 0.07f; //0.5f;
+	_mu_ee							= 0.9f; //0.9f; //0.4f;
+	_gamma_ee						= 0.9f; //0.9f; //0.4f;
+	_deltaX_ee					= 0.5f; //0.5f;
+	_deltaY_ee					= 0.5f; //0.5f;
 	_contactOccured    	= false;
 	_targetForce     		= 45.0f; // 45.0f; //  40
 	//
