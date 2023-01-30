@@ -1438,8 +1438,8 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],
         // DS_ee_nominal.head(3) = d_twist_l.head(3);
         // DS_ee_nominal.tail(3) = d_twist_r.head(3);
         //
-        Vd_ee_nom[LEFT].tail(3)  = Vd_ee_nom[LEFT].tail(3)  + 0.2f * _Vd_o.tail(3);
-        Vd_ee_nom[RIGHT].tail(3) = Vd_ee_nom[RIGHT].tail(3) + 0.2f * _Vd_o.tail(3);
+        Vd_ee_nom[LEFT].tail(3)  = Vd_ee_nom[LEFT].tail(3)  + 1.0f * _Vd_o.tail(3);
+        Vd_ee_nom[RIGHT].tail(3) = Vd_ee_nom[RIGHT].tail(3) + 1.0f * _Vd_o.tail(3);
 
       }
       break;

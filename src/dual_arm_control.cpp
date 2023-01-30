@@ -1110,36 +1110,96 @@ void dual_arm_control::computeCommands()
 			dsThrowing.reset_release_flag();
 			_isIntercepting = false;
 		}
-		// ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		else // reaching and constrained motion
-		// ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+			// // ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+			// else // reaching and constrained motion
+			// // ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+			// {
+	    //   if((isPlacing && isPlacingCommand) || (isThrowing && isTossingCommand)){
+	    //     _releaseAndretract = true;
+	    //   }
+
+	    //   if(isContact){
+	    //     _Vd_o  = dsThrowing.apply(_xo, _qo, _vo, Eigen::Vector3f(0.0f, 0.0f, 0.0f), 1);  // Function to call in a loop
+	    //     _releaseAndretract = dsThrowing.get_release_flag();
+	    //     			// Release and Retract condition
+			// 		//------------------------------
+			// 		if(  (isPlacing && placing_done) || (isPlaceTossing && placeTossing_done) || (isThrowing && tossing_done) ){
+			// 			_releaseAndretract = true;
+			// 		}
+	    //   }
+	    //   else
+	    //   {
+	    // 		dsThrowing._refVtoss = _desVimp;
+	    //     _Vd_o.setZero();  // for data logging
+	    //   }
+	    //   // //
+	    //   // if(isPlacing){ this->update_placing_position(y_t_min, y_t_max); }
+	    //   // if(isPlacing || isPlaceTossing){ this->constrain_placing_position(x_t_min, x_t_max, y_t_min, y_t_max); }
+
+	    //   // ------------------------------------------------------------------
+	    //   // Desired object pose
+			// 	//--------------------
+	    //   Eigen::Vector3f xDesTask = _xDo_lifting;
+			// 	Eigen::Vector4f qDesTask = _qDo_lifting;
+
+			// 	// desired task position and orientation vectors
+			// 	//----------------------------------------------
+			// 	if(isPlacing){
+			// 		xDesTask = _xDo_placing;
+			// 		qDesTask = _qDo_placing;
+			// 	}
+			// 	if(isPlaceTossing){
+			// 		xDesTask = _xDo_placing;
+			// 		qDesTask = _qDo_placing;
+			// 	}
+			// 	if(isThrowing){
+			// 		xDesTask = _tossVar.release_position;
+			// 		qDesTask = _tossVar.release_orientation;
+			// 	}
+			// 	// Target to object Orientation Adaptation
+			// 	// ----------------------------------------
+			// 	if(_trackTargetRotation && !(isThrowing || isPlaceTossing)){  // isPlacing || 
+			// 		this->mirror_target2object_orientation(_qt, qDesTask, _dual_angular_limit);
+			// 	}
+			// 	_w_H_Do = Utils<float>::pose2HomoMx(xDesTask, qDesTask);  //
+
+	    //   // ---------------------------------------------------------------
+	    //   FreeMotionCtrl.getDesiredMotion(no_dual_mds_method,
+		  //                                   isContact, 
+		  //                                   isPlacing,
+		  //                                   isThrowing,
+		  //                                   isClose2Release,
+		  //                                   _dualTaskSelector,
+		  //                                   _w_H_ee, 
+		  //                                   _xgp_o,
+		  //                                   _qgp_o,
+		  //                                   _o_H_ee,
+		  //                                   _w_H_o, 
+		  //                                   _w_H_Do,
+		  //                                   _xDo_placing,
+		  //                                   qDesTask, //_qDo_placing,
+		  //                                   _tossVar.release_position,
+		  //                                   qDesTask, //_tossVar.release_orientation,
+		  //                                   _height_via_point,
+		  //                                   _Vee,
+		  //                                   _Vd_o,
+		  //                                   _BasisQ,
+		  //                                   _VdImpact,
+		  //                                   _w_H_Dgp,
+		  //                                   _Vd_ee, 
+		  //                                   _qd, 
+		  //                                   _release_flag);
+	    //   // ----------------------------------------------------------------
+			
+			// } // reaching and constrained motion
+
+		//===================================================================================================================
+		else if(isContact)  // Constraint motion phase (Cooperative control)
+		//===================================================================================================================
 		{
-      if((isPlacing && isPlacingCommand) || (isThrowing && isTossingCommand)){
-        _releaseAndretract = true;
-      }
+			_Vd_o  = dsThrowing.apply(_xo, _qo, _vo, Eigen::Vector3f(0.0f, 0.0f, 0.0f), 1);  // Function to call in a loop
 
-      if(isContact){
-        _Vd_o  = dsThrowing.apply(_xo, _qo, _vo, Eigen::Vector3f(0.0f, 0.0f, 0.0f), 1);  // Function to call in a loop
-        _releaseAndretract = dsThrowing.get_release_flag();
-        			// Release and Retract condition
-				//------------------------------
-				if(  (isPlacing && placing_done) || (isPlaceTossing && placeTossing_done) || (isThrowing && tossing_done) ){
-					_releaseAndretract = true;
-				}
-      }
-      else
-      {
-    		dsThrowing._refVtoss = _desVimp;
-        _Vd_o.setZero();  // for data logging
-      }
-      // //
-      // if(isPlacing){ this->update_placing_position(y_t_min, y_t_max); }
-      // if(isPlacing || isPlaceTossing){ this->constrain_placing_position(x_t_min, x_t_max, y_t_min, y_t_max); }
-
-      // ------------------------------------------------------------------
-      // Desired object pose
-			//--------------------
-      Eigen::Vector3f xDesTask = _xDo_lifting;
+			Eigen::Vector3f xDesTask = _xDo_lifting;
 			Eigen::Vector4f qDesTask = _qDo_lifting;
 
 			// desired task position and orientation vectors
@@ -1158,52 +1218,105 @@ void dual_arm_control::computeCommands()
 			}
 			// Target to object Orientation Adaptation
 			// ----------------------------------------
-			if(_trackTargetRotation && !(isThrowing || isPlaceTossing)){  // isPlacing || 
-				this->mirror_target2object_orientation(_qt, qDesTask, _dual_angular_limit);
-			}
-			_w_H_Do = Utils<float>::pose2HomoMx(xDesTask, qDesTask);  //
+			// if(_trackTargetRotation && !(isThrowing || isPlaceTossing)){  // isPlacing || 
+			// 	this->mirror_target2object_orientation(_qt, qDesTask, _dual_angular_limit);
+			// 	dsThrowing.set_toss_pose(_tossVar.release_position, qDesTask);
+			// }
 
-      // ---------------------------------------------------------------
-      FreeMotionCtrl.getDesiredMotion(no_dual_mds_method,
-	                                    isContact, 
-	                                    isPlacing,
-	                                    isThrowing,
-	                                    isClose2Release,
-	                                    _dualTaskSelector,
-	                                    _w_H_ee, 
-	                                    _xgp_o,
-	                                    _qgp_o,
-	                                    _o_H_ee,
-	                                    _w_H_o, 
-	                                    _w_H_Do,
-	                                    _xDo_placing,
-	                                    _qDo_placing,
-	                                    _tossVar.release_position,
-	                                    _tossVar.release_orientation,
-	                                    _height_via_point,
-	                                    _Vee,
-	                                    _Vd_o,
-	                                    _BasisQ,
-	                                    _VdImpact,
-	                                    _w_H_Dgp,
-	                                    _Vd_ee, 
-	                                    _qd, 
-	                                    _release_flag);
-      // ----------------------------------------------------------------
-		
-		} // reaching and constrained motion
-		///////////////////////////////////////////////////////////
-		if(isPlacing || isThrowing || isPlaceTossing ){
-			// force feedback to grab objects
-			float f_gain = 0.02f;
-			float abs_force_correction = _nu_Wr0 *f_gain * 0.5f*( (_filteredWrench[LEFT].segment(0,3)  - CooperativeCtrl._f_applied[LEFT].head(3)).dot(_n[LEFT])  
-																	 + (_filteredWrench[RIGHT].segment(0,3) - CooperativeCtrl._f_applied[RIGHT].head(3)).dot(_n[RIGHT]) );   
-			if(fabs(abs_force_correction)  > 0.2f){
-			abs_force_correction = abs_force_correction/fabs(abs_force_correction) * 0.2f;
+			this->mirror_target2object_orientation(_qt, qDesTask, _dual_angular_limit);
+				dsThrowing.set_toss_pose(_tossVar.release_position, qDesTask);
+			
+			// 
+			Eigen::Matrix4f w_H_DesObj = Utils<float>::pose2HomoMx(xDesTask, qDesTask);
+			// Desired pose of the grasping points
+			//------------------------------------
+			for(int k=0; k<NB_ROBOTS; k++){ 
+				_w_H_Dgp[k].block(0,0,3,3)  = w_H_DesObj.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[k], _qgp_o[k]).block(0,0,3,3); 
+				if(isThrowing && isClose2Release){
+					// _w_H_Dgp[k]  = _w_H_o * _o_H_ee[k];
+				}
 			}
-			_Vd_ee[LEFT].head(3)  =  _Vd_ee[LEFT].head(3)  - 0.40*abs_force_correction * _n[LEFT];   // 0.6 (heavy objects)
-			_Vd_ee[RIGHT].head(3) =  _Vd_ee[RIGHT].head(3) - 0.40*abs_force_correction * _n[RIGHT];  // 0.6 (heavy objects)
+			// Desired object pose
+			//--------------------
+			_w_H_Do = Utils<float>::pose2HomoMx(xDesTask, qDesTask);  //
+			//
+			// Motion generation
+			//-------------------
+			FreeMotionCtrl.dual_arm_motion( _w_H_ee,  
+																			_Vee, 
+																			_w_H_Dgp,  
+																			_w_H_o, 
+																			_w_H_Do, 
+																			_Vd_o, 
+																			_BasisQ, 
+																			_VdImpact, 
+																			false, 
+																			_dualTaskSelector, 
+																			_Vd_ee, 
+																			_qd, 
+																			_release_flag); // 0=reach, 1=pick, 2=toss, 3=pick_and_toss, 4=pick_and_place
+
+			// Release and Retract condition
+			//------------------------------
+			if(  (isPlacing && placing_done) || (isPlaceTossing && placeTossing_done) || (isThrowing && tossing_done) ){
+				_releaseAndretract = true;
+			}
+
+			if(isPlacing || isThrowing || isPlaceTossing ){
+				// force feedback to grab objects
+				float f_gain = 0.02f;
+				float abs_force_correction = _nu_Wr0 *f_gain * 0.5f*( (_filteredWrench[LEFT].segment(0,3)  - CooperativeCtrl._f_applied[LEFT].head(3)).dot(_n[LEFT])  
+																		 + (_filteredWrench[RIGHT].segment(0,3) - CooperativeCtrl._f_applied[RIGHT].head(3)).dot(_n[RIGHT]) );   
+				if(fabs(abs_force_correction)  > 0.2f){
+				abs_force_correction = abs_force_correction/fabs(abs_force_correction) * 0.2f;
+				}
+				_Vd_ee[LEFT].head(3)  =  _Vd_ee[LEFT].head(3)  - 0.40*abs_force_correction * _n[LEFT];   // 0.6 (heavy objects)
+				_Vd_ee[RIGHT].head(3) =  _Vd_ee[RIGHT].head(3) - 0.40*abs_force_correction * _n[RIGHT];  // 0.6 (heavy objects)
+			}
 		}
+		//===================================================================================================================
+		else  // Unconstraint (Free) motion phase
+		//===================================================================================================================
+		{
+			FreeMotionCtrl.reachable_p = ( _w_H_ee[LEFT](0,3) >= 0.72f ||  _w_H_ee[RIGHT](0,3) >= 0.72f ) ? 0.0f : 1.0f;
+
+			if(false || _old_dual_method){
+				FreeMotionCtrl.computeCoordinatedMotion2(_w_H_ee, _w_H_gp, _w_H_o, _Vd_ee, _qd, false);
+				// FreeMotionCtrl.computeCoordinatedMotion3(_w_H_ee, _w_H_gp, _w_H_o, _Vo, _x_intercept, _Vd_ee, _qd, false);
+				//
+				Eigen::Vector3f error_p_abs     = _w_H_o.block(0,3,3,1) - Utils<float>::get_abs_3d(_w_H_ee); 
+				Eigen::Vector3f o_error_pos_abs = _w_H_o.block<3,3>(0,0).transpose() * error_p_abs;
+				Eigen::Vector3f o_error_pos_abs_paral = Eigen::Vector3f(o_error_pos_abs(0), 0.0f, o_error_pos_abs(2));
+				float cp_ap = Utils<float>::computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.17f, 1.0f, true);  // 50.0f, 0.05f, 2.8f
+				// create impact at grabbing
+				_Vd_ee[LEFT].head(3)  = _Vd_ee[LEFT].head(3)  + _dirImp[LEFT]  * cp_ap * _desVimp; //0.05f; //
+				_Vd_ee[RIGHT].head(3) = _Vd_ee[RIGHT].head(3) + _dirImp[RIGHT] * cp_ap * _desVimp; //0.05f; //
+			}
+			else{
+						FreeMotionCtrl.dual_arm_motion(_w_H_ee,  _Vee, _w_H_gp,  _w_H_o, _w_H_Do, _Vd_o, _BasisQ, _VdImpact, false, 0, _Vd_ee, _qd, _release_flag);    // 0: reach
+			}			
+			dsThrowing._refVtoss = _desVimp;
+			_Vd_o.setZero();												// for data logging
+			//
+			if(FreeMotionCtrl.a_proximity_ >= 0.2f){
+				_beta_vel_mod_unfilt = 1.0;
+			}
+		}
+
+	// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+		// ///////////////////////////////////////////////////////////
+		// if(isPlacing || isThrowing || isPlaceTossing ){
+		// 	// force feedback to grab objects
+		// 	float f_gain = 0.02f;
+		// 	float abs_force_correction = _nu_Wr0 *f_gain * 0.5f*( (_filteredWrench[LEFT].segment(0,3)  - CooperativeCtrl._f_applied[LEFT].head(3)).dot(_n[LEFT])  
+		// 															 + (_filteredWrench[RIGHT].segment(0,3) - CooperativeCtrl._f_applied[RIGHT].head(3)).dot(_n[RIGHT]) );   
+		// 	if(fabs(abs_force_correction)  > 0.2f){
+		// 	abs_force_correction = abs_force_correction/fabs(abs_force_correction) * 0.2f;
+		// 	}
+		// 	_Vd_ee[LEFT].head(3)  =  _Vd_ee[LEFT].head(3)  - 0.40*abs_force_correction * _n[LEFT];   // 0.6 (heavy objects)
+		// 	_Vd_ee[RIGHT].head(3) =  _Vd_ee[RIGHT].head(3) - 0.40*abs_force_correction * _n[RIGHT];  // 0.6 (heavy objects)
+		// }
 		////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// Adaptation
 		// ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
