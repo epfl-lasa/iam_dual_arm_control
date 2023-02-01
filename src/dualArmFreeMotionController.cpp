@@ -1303,8 +1303,8 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],
         // this->constrained_ang_vel_correction(w_H_ee, w_H_gp, w_H_o, w_H_Do, Vd_ee_nom, false);
         // this->computeDesiredOrientation(1.0f, w_H_ee, w_H_gp, w_H_o, qd_nom, false);
         // std::cout << " LLLLLLLLLLLLLLLLLLLL    Bimanaul Grasp Matrix \n" << GraspMx_obj << std::endl;
-        Vd_ee_nom[LEFT].tail(3)  = Vd_ee_nom[LEFT].tail(3)  +1.0f* _Vd_o.tail(3);
-        Vd_ee_nom[RIGHT].tail(3) = Vd_ee_nom[RIGHT].tail(3) +1.0f* _Vd_o.tail(3);
+        Vd_ee_nom[LEFT].tail(3)  = 1.0*Vd_ee_nom[LEFT].tail(3)  +1.0f* _Vd_o.tail(3);
+        Vd_ee_nom[RIGHT].tail(3) = 1.0*Vd_ee_nom[RIGHT].tail(3) +1.0f* _Vd_o.tail(3);
 
         // // ======================================================================================
         // X_bi.head(3)  = w_H_Do.block<3,1>(0,3) - w_H_o.block<3,1>(0,3)+ 0.5f*(X[LEFT] + X[RIGHT]);

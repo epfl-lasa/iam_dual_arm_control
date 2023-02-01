@@ -1030,6 +1030,10 @@ void dual_arm_control::computeCommands()
 
 	// determine the desired landing position
 	this->find_desired_landing_position(x_origin, isPlacing, isPlaceTossing, isThrowing); 	// ---> _xd_landing
+
+	this->set_2d_position_box_constraints(_xd_landing, intercep_limits);
+	std::cout << " DDDDDDDDDDDDDDDD  XD LANDING IS : \t " << _xd_landing.transpose() << std::endl;
+	
 	// Estimate the target state to go
 	this->estimate_target_state_to_go(Lp_Va_pred_bot, Lp_Va_pred_tgt, flytime_obj);  	// ---> _xt_state2go
 
@@ -1354,7 +1358,7 @@ void dual_arm_control::computeCommands()
 		  	float Damp1 = 0.5f*(_d1[LEFT]+_d1[RIGHT]);
 		  	_desired_object_wrench.head(3) = 0.0*Damp1*(Utils<float>::get_abs_3d(_Vee, true) - Utils<float>::get_abs_3d(_Vd_ee, true)) - _objectMass * _gravity;
 		  }
-			_desired_object_wrench.tail(3) = -0.0*15.0f*(_wo - FreeMotionCtrl.get_des_object_motion().tail(3));
+			_desired_object_wrench.tail(3) = -25.0f*(_wo - FreeMotionCtrl.get_des_object_motion().tail(3));
 
 		  // Generate grasping force and apply it in velocity space
 	  	//--------------------------------------------------------
@@ -1362,7 +1366,7 @@ void dual_arm_control::computeCommands()
 
 		  // applied force in velocity space
 		  for(int i=0; i<NB_ROBOTS; i++){
-		  	_fxc[i] = 1.0f/_d1[i] * CooperativeCtrl._f_applied[i].head(3);
+		  	_fxc[i] = 0.0f/_d1[i] * CooperativeCtrl._f_applied[i].head(3);
 		  }
 	}
 	// compute the velocity to avoid EE collision
@@ -1387,6 +1391,7 @@ void dual_arm_control::computeCommands()
 
 	std::cout << "[dual_arm_control]: _w_H_o: \n" << _w_H_o << std::endl; 
 	std::cout << "[dual_arm_control]: _w_H_Do: \n" <<  _w_H_Do << std::endl;
+	std::cout << "[dual_arm_control]: _w_H_t: \n" <<  Utils<float>::quaternionToRotationMatrix(_qt) << std::endl;
 	std::cout << "[dual_arm_control]: _w_H_ee[LEFT]: \n" <<  _w_H_ee[0] << std::endl;
 	std::cout << "[dual_arm_control]: _w_H_Dgp[LEFT]: \n" << _w_H_Dgp[0] << std::endl;
 	std::cout << "[dual_arm_control]: _w_H_ee[RIGHT]: \n" << _w_H_ee[1] << std::endl;
@@ -1728,6 +1733,9 @@ Eigen::Vector3f dual_arm_control::compute_intercept_with_target(const Eigen::Vec
   float x_coord_land	 = x_target(0);
 	float y_coord_land	 = x_target(1);
 	float tang_phi_throw = std::tan(phi_i);
+
+	std::cout << " TTTTTTTTTTTTTTTTT PHI Throw  TTTTTTTTTTTis  -----------> : \t " << 180.f/M_PI *phi_i << std::endl;
+
 
 	if(v_target.head(2).norm()> 1e-2){
 		float phi_conveyor = std::atan2(v_target(1), v_target(0));
