@@ -240,6 +240,7 @@ dual_arm_control::dual_arm_control(	ros::NodeHandle &n, double frequency, 	//std
 	_isSimulation 		= true;
 	_adaptationActive = false;
 	_isTargetFixed 		= true;
+	userSelect_ 			= true;
 
 	_feasibleAlgo = false;
 	_pickupBased  = true;
@@ -364,7 +365,8 @@ bool dual_arm_control::init()
 	while(!nh_.getParam("dual_arm_task/isNorm_impact_vel", isNorm_impact_vel)){ROS_INFO("Waitinng for param:  isNorm_impact_vel");}
 	while(!nh_.getParam("dual_arm_task/isQP_wrench_generation", isQP_wrench_generation)){ROS_INFO("Waitinng for param:  isQP_wrench_generation");}
 	while(!nh_.getParam("dual_arm_task/objCtrlKey", _objCtrlKey)){ROS_INFO("Waitinng for param:  objCtrlKey");}
-	while(!nh_.getParam("dual_arm_task/isTargetFixed", _isTargetFixed)){ROS_INFO("Waitinng for param:  isTargetFixed");}
+	while(!nh_.getParam("dual_arm_task/isTargetFixed", _isTargetFixed)){ROS_INFO("Waitinng for param:  isTargetFixed");} 
+	while(!nh_.getParam("dual_arm_task/userSelect", userSelect_)){ROS_INFO("Waitinng for param:  userSelect");}
 
 	while(!nh_.getParam("conveyor_belt/control_mode", _ctrl_mode_conveyor_belt)){ROS_INFO("Waitinng for param: conveyor_belt/control_mode ");}
 	while(!nh_.getParam("conveyor_belt/nominal_speed", _nominalSpeed_conveyor_belt)){ROS_INFO("Waitinng for param: conveyor_belt/nominal_speed");}
@@ -1031,9 +1033,9 @@ void dual_arm_control::computeCommands()
 	// determine the desired landing position
 	this->find_desired_landing_position(x_origin, isPlacing, isPlaceTossing, isThrowing); 	// ---> _xd_landing
 
-	this->set_2d_position_box_constraints(_xd_landing, intercep_limits);
+	// this->set_2d_position_box_constraints(_xd_landing, intercep_limits);
 	std::cout << " DDDDDDDDDDDDDDDD  XD LANDING IS : \t " << _xd_landing.transpose() << std::endl;
-	
+
 	// Estimate the target state to go
 	this->estimate_target_state_to_go(Lp_Va_pred_bot, Lp_Va_pred_tgt, flytime_obj);  	// ---> _xt_state2go
 
@@ -1366,7 +1368,7 @@ void dual_arm_control::computeCommands()
 
 		  // applied force in velocity space
 		  for(int i=0; i<NB_ROBOTS; i++){
-		  	_fxc[i] = 0.0f/_d1[i] * CooperativeCtrl._f_applied[i].head(3);
+		  	_fxc[i] = 1.0f/_d1[i] * CooperativeCtrl._f_applied[i].head(3);
 		  }
 	}
 	// compute the velocity to avoid EE collision
@@ -1436,6 +1438,7 @@ void dual_arm_control::computeCommands()
 	std::cout << " AAAA  TRACKING FACTOR AAAAA is  \t " << _trackingFactor << std::endl; 
 	std::cout << " AAAA  ADAPTATION STATUS AAAAA is  -----------> : \t " << _adaptationActive << std::endl; 
 	std::cout << " PPPPPPPPPPPPPPP _xDo_placing PPPPPPPPPP  is  -----------> : \t " << _xDo_placing.transpose() << std::endl; 
+	std::cout << " TTTTTTTTTTTTTTT _xTarget TTTTTTTTTTT  is  -----------> : \t " << _xt.transpose() << std::endl; 
 	//-------------------------------------
 	
 	// -------------------------------------------------------------------------------
@@ -1809,25 +1812,56 @@ void dual_arm_control::estimate_moving_average_target_velocity(){
 
 
 void dual_arm_control::find_desired_landing_position(Eigen::Vector3f x_origin, bool isPlacing, bool isPlaceTossing, bool isThrowing){
-	// determine the throwing/placing direction 
-	float feas_yaw_target = this->get_desired_yaw_angle_target(_qt, _dual_angular_limit);
-	float phi_throwing    = feas_yaw_target; 
+	// // determine the throwing/placing direction 
+	// float feas_yaw_target = this->get_desired_yaw_angle_target(_qt, _dual_angular_limit);
+	// float phi_throwing    = feas_yaw_target; 
+
+	// // determine the intercept or desired landing position  
+	// // ----------------------------------------------------
+	// if(_isTargetFixed){
+	//   if( isPlacing || isPlaceTossing ){
+	//     phi_throwing = std::atan2(_xDo_placing(1), _xDo_placing(0));
+	//   }
+	//   if( isThrowing ){
+	//     phi_throwing = std::atan2(_tossVar.release_position(1), _tossVar.release_position(0));
+	//   }
+	//   _xd_landing = this->compute_intercept_with_target(x_origin, _xt,  _vt, phi_throwing);
+	// }
+	// else{
+	//   _xd_landing = this->compute_intercept_with_target(x_origin, _xt,  _vt, feas_yaw_target);
+
+	// }
+	// ----------------------------------------------------------------------------------------
+	Eigen::Vector3f xd_land = _xt;
+	float phi_throwing      = 0.0; 	
 
 	// determine the intercept or desired landing position  
-	// ----------------------------------------------------
-	if(_isTargetFixed){
-	  if( isPlacing || isPlaceTossing ){
-	    phi_throwing = std::atan2(_xDo_placing(1), _xDo_placing(0));
-	  }
-	  if( isThrowing ){
-	    phi_throwing = std::atan2(_tossVar.release_position(1), _tossVar.release_position(0));
-	  }
-	  _xd_landing = this->compute_intercept_with_target(x_origin, _xt,  _vt, phi_throwing);
-	}
-	else{
-	  _xd_landing = this->compute_intercept_with_target(x_origin, _xt,  _vt, feas_yaw_target);
+	// ----------------------------------------------------------------------------------------
+	if(userSelect_){
+		//
+		if( isPlacing || isPlaceTossing ){
+			xd_land.head(2) = _xDo_placing.head(2);
+		}
+		if(isThrowing){
+			xd_land.head(2) = _tossVar.release_position.head(2);
+		}
+		//
+		phi_throwing = std::atan2(xd_land(1), xd_land(0));
 
+		if(_isTargetFixed){
+			_xd_landing = xd_land;
+		}
+		else{
+			_xd_landing = this->compute_intercept_with_target(x_origin, _xt,  _vt, phi_throwing);
+		}
 	}
+	else{ // autoSelect_
+		phi_throwing = this->get_desired_yaw_angle_target(_qt, _dual_angular_limit);
+		//
+		_xd_landing  = this->compute_intercept_with_target(x_origin, _xt,  _vt, phi_throwing);
+	}
+	// -----------------------------------------------------------------------------------------
+
 
 }
 

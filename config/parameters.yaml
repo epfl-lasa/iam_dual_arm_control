@@ -88,6 +88,7 @@ dual_arm_task:
   isQP_wrench_generation: true
   objCtrlKey: true
   isTargetFixed: false
+  userSelect: false
   # coordination
   coordination:
     # Bimanual DS gains
@@ -131,7 +132,7 @@ dual_arm_task:
     restPos:            [0.50, 0.15, 0.30]
     restOrient:         [1.00, 0.00, 0.00, 0.00] 
     increment_release_pos: false
-    dual_angular_limit: [0.30, 0.30, 0.30] # 0.39
+    dual_angular_limit: [0.20, 0.20, 0.20] # 0.39
 
 # converyor-belt
 conveyor_belt:

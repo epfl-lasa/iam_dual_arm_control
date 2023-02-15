@@ -374,6 +374,7 @@ class dual_arm_control
 		// int _winCounterAvgSpeedEE;
 		bool _adaptationActive = false;
 		bool _isTargetFixed = true;
+		bool userSelect_ = true;
 
 		bool _feasibleAlgo = false;
 		bool _pickupBased  = true;
