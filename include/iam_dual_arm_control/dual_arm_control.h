@@ -99,8 +99,8 @@ class object_to_grasp{
 		Eigen::Matrix4f _w_H_Dgp[NB_ROBOTS];
 		Eigen::Vector3f _vo;
 		Eigen::Vector3f _wo;
-		Vector6f 				_Vo;
-		Vector6f 				_Vd_o;   													// desired object velocity (toss)
+		// Vector6f 				_Vo;
+		// Vector6f 				_Vd_o;   													// desired object velocity (toss)
 		// Vector6f  			_desired_object_wrench; 
 		Eigen::Vector3f _n[NB_ROBOTS];               			// Normal vector to surface object for each robot (3x1)
 		Vector6f        _V_gpo[NB_ROBOTS];
@@ -120,7 +120,7 @@ class object_to_grasp{
 			_Vo.setZero();
 			_xo.setZero(); 
 			_xDo.setZero(); 
-			_Vd_o.setZero();
+			// _Vd_o.setZero();
 			_xoC.setZero();
 			_xoD.setZero();
 			_qo  << 1.0f, 0.0f, 0.0f, 0.0f;
@@ -130,8 +130,8 @@ class object_to_grasp{
 			_qgp_o[0] = Utils<float>::rotationMatrixToQuaternion(o_R_gpl); //
 			_qgp_o[1] = Utils<float>::rotationMatrixToQuaternion(o_R_gpr); //
 			// normal to contact surfaces
-			_n[LEFT]  = o_R_gpl.col(2);
-			_n[RIGHT] = o_R_gpr.col(2);
+			_n[0] = o_R_gpl.col(2);
+			_n[1] = o_R_gpr.col(2);
 
 			//
 			_xo_filtered = std::make_unique<SGF::SavitzkyGolayFilter>(sgf_p[0], sgf_p[1], sgf_p[2], dt); //(3,3,6,_dt);
@@ -140,6 +140,79 @@ class object_to_grasp{
 			// //
 			// _xo_KF_filtered.init(_dt, Eigen::Vector2f(0.004, 0.1), 0.004, _xo);
 			// _xo_KF_filtered.update(_xo);
+		}
+
+		void get_HmgTransform(){
+				_w_H_o = Utils<float>::pose2HomoMx(_xo, _qo);
+		}
+
+		void get_desiredHmgTransform(){
+				_w_H_Do = Utils<float>::pose2HomoMx(_xDo, _qDo);
+		}
+
+		void get_estimated_state(){
+			// filtered object position
+			SGF::Vec temp(3), temp_o(4);
+		 _xo_filtered->AddData(_xo);
+		 _xo_filtered->GetOutput(0,temp);
+		 _xo = temp;
+		 _xo_filtered->GetOutput(1,temp);
+		 _vo = temp;	
+			//
+			_qo_filtered->AddData(_qo);
+			_qo_filtered->GetOutput(0,temp_o);
+			_qo = temp_o;
+			// normalizing the quaternion
+			_qo.normalize();
+			//
+			if(_qo.norm() <= 1e-8){
+				_qo = Eigen::Vector4f(1.0, 0.0, 0.0, 0.0);
+			}
+			//
+			// ===========================================================
+			_qo_filtered->GetOutput(1,temp_o);
+			Eigen::Vector4f qo_dot = temp_o;
+			//
+			Eigen::MatrixXf wQ_map(3,4);
+			wQ_map << -_qo(1), -_qo(0), -_qo(3),  _qo(2),
+								-_qo(2),  _qo(3),  _qo(0), -_qo(1),
+								-_qo(3), -_qo(2),  _qo(1),  _qo(0);
+			_wo = 0.0*wQ_map*qo_dot;
+
+		}
+
+		void get_grasp_point_HTransform(){
+			_w_H_gp[0]  = _w_H_o * Utils<float>::pose2HomoMx(_xgp_o[0],  _qgp_o[0]);
+			_w_H_gp[1]  = _w_H_o * Utils<float>::pose2HomoMx(_xgp_o[1],  _qgp_o[1]);
+		}
+
+		void get_grasp_point_desiredHTransform(){
+			_w_H_Dgp[0] = _w_H_Do * Utils<float>::pose2HomoMx(_xgp_o[0],  _qgp_o[0]);
+			_w_H_Dgp[1] = _w_H_Do * Utils<float>::pose2HomoMx(_xgp_o[1],  _qgp_o[1]);
+		}
+
+		void update_grasp_normals(){
+			_n[0]       = _w_H_gp[0].block(0,0,3,3).col(2);
+			_n[1]       = _w_H_gp[1].block(0,0,3,3).col(2);
+		}
+
+		void get_grasp_point_velocity(){
+			//velocity of grasp points on the object
+		  for(int i=0; i<NB_ROBOTS; i++)
+		  {
+		    Eigen::Vector3f t = _w_H_o.block<3,3>(0,0) * _xgp_o[i];
+		    Eigen::Matrix3f skew_Mx_gpo;
+		    skew_Mx_gpo <<   0.0f,  -t(2),     t(1),
+		                     t(2),   0.0f,    -t(0),
+		                    -t(1),   t(0),     0.0f;             
+		    // velocity
+		    _V_gpo[i].head(3) = _vo - 0*skew_Mx_gpo * _wo;
+		    _V_gpo[i].tail(3) = 0*_wo;
+		    //
+		    _V_gpo[i].head(3) *= 0.0f;
+		    _V_gpo[i].tail(3) *= 0.0f;
+		  }
+		  
 		}
 
 };

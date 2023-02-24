@@ -124,14 +124,14 @@ dual_arm_control::dual_arm_control(	ros::NodeHandle &n, double frequency, 	//std
 	//
 	// _vo.setZero();
 	// _wo.setZero();
-	// _Vo.setZero();
+	_Vo.setZero();
 	// _xo.setZero(); 
 	// _xDo.setZero(); 
 	// _qo  << 1.0f, 0.0f, 0.0f, 0.0f;
 	// _qDo << 1.0f, 0.0f, 0.0f, 0.0f;
 	// _w_H_o  = Utils<float>::pose2HomoMx(_xo, _qo);	
 	// _w_H_Do = Utils<float>::pose2HomoMx(_xDo, _qDo);	
-	// _Vd_o.setZero();
+	_Vd_o.setZero();
 
 	_initPoseCount  = 0;
 	_objecPoseCount = 0;
@@ -518,7 +518,8 @@ bool dual_arm_control::init()
  	//-------------------------------------------------------------------------------------------------
 	// Motion and Force generation: DS
 	//-------------------------------------------------------------------------------------------------
-	_w_H_Do = Utils<float>::pose2HomoMx(_xo, _qo);
+	// _w_H_Do = Utils<float>::pose2HomoMx(object_._xo, object_._qo);
+	object_.get_desiredHmgTransform();
 	_w_H_eeStandby[LEFT]  = Utils<float>::pose2HomoMx(_xrbStandby[LEFT],  _qrbStandby[LEFT]);			// WITH EE pose wrt. the world TO BE CHANGED
 	_w_H_eeStandby[RIGHT] = Utils<float>::pose2HomoMx(_xrbStandby[RIGHT],  _qrbStandby[RIGHT]);		// WITH EE pose wrt. the world
 
@@ -554,7 +555,7 @@ bool dual_arm_control::init()
 	//------------------
 	target_._xd_landing  = Eigen::Vector3f(1.0f, 0.0f, 0.0f);
 	target_._x_intercept = target_._xd_landing;
-	target_._x_pickup 	 = _xo;
+	target_._x_pickup 	 = object_._xo;
 
 	// _tossVar.release_position = _xDo_placing + Eigen::Vector3f(0.0, 0.0, _height_via_point);
 
@@ -571,9 +572,9 @@ bool dual_arm_control::init()
 	// 				_tossVar.rest_position, _tossVar.rest_orientation);
 	// _desVtoss = tossParamEstimator.get_release_linear_velocity().norm();
 	//
-	dsThrowing.set_pickup_object_pose(_xo, _qo);
-	// Eigen::Vector3f new_toss_velocity = _desVtoss * (_tossVar.release_position -_xo).normalized();
-	_tossVar.release_linear_velocity = _desVtoss * (_tossVar.release_position -_xo).normalized();
+	dsThrowing.set_pickup_object_pose(object_._xo, object_._qo);
+	// Eigen::Vector3f new_toss_velocity = _desVtoss * (_tossVar.release_position -object_._xo).normalized();
+	_tossVar.release_linear_velocity = _desVtoss * (_tossVar.release_position -object_._xo).normalized();
 	dsThrowing.set_toss_linear_velocity(_tossVar.release_linear_velocity);
 	dsThrowing._refVtoss = _desVimp;
 
@@ -887,12 +888,15 @@ void dual_arm_control::updatePoses()
 		FreeMotionCtrl._w_H_eeStandby[LEFT]  = _w_H_eeStandby[LEFT];
 		FreeMotionCtrl._w_H_eeStandby[RIGHT] = _w_H_eeStandby[RIGHT];
 		//
-		_xDo    = Eigen::Vector3f(_xo(0), _xo(1), _xDo_lifting(2));   // set attractor of lifting task   
-		_qDo    = _qo; 																								// _qDo_lifting
-		_w_H_Do = Utils<float>::pose2HomoMx(_xDo, _qDo);
-		target_._x_intercept = Eigen::Vector3f(_xo(0), 0.0, _xo(2));
+		object_._xDo    = Eigen::Vector3f(object_._xo(0), object_._xo(1), _xDo_lifting(2));   // set attractor of lifting task   
+		object_._qDo    = object_._qo; 																								// _qDo_lifting
+		// _w_H_Do = Utils<float>::pose2HomoMx(_xDo, _qDo);
+		object_.get_desiredHmgTransform();
+
+
+		target_._x_intercept = Eigen::Vector3f(object_._xo(0), 0.0, object_._xo(2));
 		// for catching
-		FreeMotionCtrl.set_virtual_object_frame(Utils<float>::pose2HomoMx(target_._x_intercept, _qo));
+		FreeMotionCtrl.set_virtual_object_frame(Utils<float>::pose2HomoMx(target_._x_intercept, object_._qo));
 
 		_initPoseCount ++;
 	}
@@ -912,16 +916,20 @@ void dual_arm_control::updatePoses()
 	// homogeneous transformations associated with the reaching task
 	for(int k=0; k<NB_ROBOTS; k++){
 		_w_H_ee[k]  = Utils<float>::pose2HomoMx(_x[k],  _q[k]);			// WITH EE pose wrt. the world
-		_w_H_gp[k]  = _w_H_o * Utils<float>::pose2HomoMx(_xgp_o[k],  _qgp_o[k]);
-		_w_H_Dgp[k] = _w_H_Do * Utils<float>::pose2HomoMx(_xgp_o[k],  _qgp_o[k]);
-		_n[k]       = _w_H_gp[k].block(0,0,3,3).col(2);
-		_err[k]     = (_w_H_ee[k].block(0,3,3,1)  - _w_H_gp[k].block(0,3,3,1)).norm();
-		_o_H_ee[k]  = _w_H_o.inverse() * _w_H_ee[k];
+		// _w_H_gp[k]  = object_._w_H_o * Utils<float>::pose2HomoMx(object_._xgp_o[k],  object_._qgp_o[k]);
+		// _w_H_Dgp[k] = object_._w_H_Do * Utils<float>::pose2HomoMx(object_._xgp_o[k],  object_._qgp_o[k]);
+		// _n[k]       = _w_H_gp[k].block(0,0,3,3).col(2);
+		object_.get_grasp_point_HTransform();
+		object_.get_grasp_point_desiredHTransform();
+		object_.update_grasp_normals();
+
+		_err[k]     = (_w_H_ee[k].block(0,3,3,1)  - object_._w_H_gp[k].block(0,3,3,1)).norm();
+		_o_H_ee[k]  = object_._w_H_o.inverse() * _w_H_ee[k];
 
 		if(CooperativeCtrl._ContactConfidence == 1.0)
 		{
 			_o_H_ee[k](1,3) *= 0.95f; 
-			_w_H_Dgp[k]  = _w_H_Do * _o_H_ee[k];
+			object_._w_H_Dgp[k]  = object_._w_H_Do * _o_H_ee[k];
 			// _w_H_gp[k]  = _w_H_o * _o_H_ee[k];
 		}
 	}
@@ -960,13 +968,13 @@ void dual_arm_control::computeCommands()
 	bool isPlaceTossing 		= _isPlaceTossing || (_dualTaskSelector == PLACE_TOSSING);
 	bool isClose2Release    = (dsThrowing.a_tangent_> 0.99f);
 	//
-	bool isPlacingCommand 	= (_release_flag) || ((_w_H_o.block<3,1>(0,3)-_xDo_placing).norm()<=0.07); // 0.07 0.05
-	bool isTossingCommand 	= (_release_flag) || ((_w_H_o.block<3,1>(0,3)-_tossVar.release_position).norm()<=0.035);
+	bool isPlacingCommand 	= (_release_flag) || ((object_._w_H_o.block<3,1>(0,3)-_xDo_placing).norm()<=0.07); // 0.07 0.05
+	bool isTossingCommand 	= (_release_flag) || ((object_._w_H_o.block<3,1>(0,3)-_tossVar.release_position).norm()<=0.035);
 	//
-	bool placing_done 			= (_release_flag) || ((_w_H_o.block<3,1>(0,3)-_xDo_placing).norm()<=0.08); //0.05
-	bool placeTossing_done 	= (_release_flag) || (((_w_H_o.block<3,1>(0,3)-_tossVar.release_position).norm()<=0.07) 
-																						|| ((_w_H_o.block<2,1>(0,3)-_xDo_placing.head(2)).norm() <= 0.05 ) );
-	bool tossing_done 			= (_release_flag) || ( ((_w_H_o.block<3,1>(0,3)-_tossVar.release_position).norm()<=0.035) );
+	bool placing_done 			= (_release_flag) || ((object_._w_H_o.block<3,1>(0,3)-_xDo_placing).norm()<=0.08); //0.05
+	bool placeTossing_done 	= (_release_flag) || (((object_._w_H_o.block<3,1>(0,3)-_tossVar.release_position).norm()<=0.07) 
+																						|| ((object_._w_H_o.block<2,1>(0,3)-_xDo_placing.head(2)).norm() <= 0.05 ) );
+	bool tossing_done 			= (_release_flag) || ( ((object_._w_H_o.block<3,1>(0,3)-_tossVar.release_position).norm()<=0.035) );
 	bool isForceDetected 		= (_normalForceAverage[LEFT] > _forceThreshold || _normalForceAverage[RIGHT] > _forceThreshold);
 
 
@@ -1031,7 +1039,7 @@ void dual_arm_control::computeCommands()
 	// Application
 	// ===========================================================================================================
 	if( (!_releaseAndretract) && (fmod(_cycle_count, 20)==0)){
-		_dual_PathLen_AvgSpeed = FreeMotionCtrlEstim.predictRobotTranslation( _w_H_ee, _w_H_gp,  _w_H_eeStandby, _w_H_o, _tossVar.release_position, _desVtoss, 0.05f, 0.100f, _initSpeedScaling);
+		_dual_PathLen_AvgSpeed = FreeMotionCtrlEstim.predictRobotTranslation( _w_H_ee, _w_H_gp,  _w_H_eeStandby, object_._w_H_o, _tossVar.release_position, _desVtoss, 0.05f, 0.100f, _initSpeedScaling);
 	}
 	// -------------------------------------------------------------
 	Eigen::Vector2f Lp_Va_pred_bot = {_dual_PathLen_AvgSpeed(0), _trackingFactor *_dual_PathLen_AvgSpeed(1)}; 							
@@ -1070,8 +1078,8 @@ void dual_arm_control::computeCommands()
 			_isPickupSet = true;
 		}
 		else{
-			target_._x_pickup = _xo;
-			dsThrowing.set_pickup_object_pose(target_._x_pickup, _qo);
+			target_._x_pickup = object_._xo;
+			dsThrowing.set_pickup_object_pose(target_._x_pickup, object_._qo);
 		}
 	}
 
@@ -1086,9 +1094,9 @@ void dual_arm_control::computeCommands()
 		// ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 	{
 		//
-		FreeMotionCtrl.computeAsyncMotion(_w_H_ee, _w_H_eeStandby, _w_H_o, _Vd_ee, _qd, true);		
-		_Vd_o  = dsThrowing.apply(_xo, _qo, _vo, Eigen::Vector3f(0.0f, 0.0f, 0.0f), 1);  												// 	Function to call in a loop
-		Eigen::Vector3f obj_dir = this->get_object_desired_direction(_dualTaskSelector, _w_H_o.block(0,3,3,1));
+		FreeMotionCtrl.computeAsyncMotion(_w_H_ee, _w_H_eeStandby, object_._w_H_o, _Vd_ee, _qd, true);		
+		_Vd_o  = dsThrowing.apply(object_._xo, object_._qo, object_._vo, Eigen::Vector3f(0.0f, 0.0f, 0.0f), 1);  												// 	Function to call in a loop
+		Eigen::Vector3f obj_dir = this->get_object_desired_direction(_dualTaskSelector, object_._w_H_o.block(0,3,3,1));
 
 		std::cout << "[dual_arm_control]: OBJECT MOTION DIRECTION : \t"  << obj_dir.transpose() << std::endl;
 		//
@@ -1123,7 +1131,7 @@ void dual_arm_control::computeCommands()
 			if(_releaseAndretract) //  release_and_retract || release
 			////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 			{
-				FreeMotionCtrl.computeReleaseAndRetractMotion(_w_H_ee, _w_H_Dgp,  _w_H_o, _Vd_ee, _qd, true);
+				FreeMotionCtrl.computeReleaseAndRetractMotion(_w_H_ee, _w_H_Dgp,  object_._w_H_o, _Vd_ee, _qd, true);
 				_isThrowing 		= false;
 				_isPlacing 			= false;
 				_isPickupSet 		= false;
@@ -1141,7 +1149,7 @@ void dual_arm_control::computeCommands()
 	      }
 
 	      if(isContact){
-	        _Vd_o  = dsThrowing.apply(_xo, _qo, _vo, Eigen::Vector3f(0.0f, 0.0f, 0.0f), 1);  // Function to call in a loop
+	        _Vd_o  = dsThrowing.apply(object_._xo, object_._qo, object_._vo, Eigen::Vector3f(0.0f, 0.0f, 0.0f), 1);  // Function to call in a loop
 	        _releaseAndretract = dsThrowing.get_release_flag();
 	        			// Release and Retract condition
 					//------------------------------
@@ -1201,11 +1209,11 @@ void dual_arm_control::computeCommands()
 		                                    isClose2Release,
 		                                    _dualTaskSelector,
 		                                    _w_H_ee, 
-		                                    _xgp_o,
-		                                    _qgp_o,
+		                                    object_._xgp_o,
+		                                    object_._qgp_o,
 		                                    _o_H_ee,
-		                                    _w_H_o, 
-		                                    _w_H_Do,
+		                                    object_._w_H_o, 
+		                                    object_._w_H_Do,
 		                                    _xDo_placing,
 		                                    qDesTask, //_qDo_placing,
 		                                    _tossVar.release_position,
@@ -1259,17 +1267,17 @@ void dual_arm_control::computeCommands()
 			// Desired object's task wrench
 		  if(true){
 		  	// _desired_object_wrench.head(3) = -40.0f * (_w_H_o.block(0,3,3,1) - _w_H_Do.block(0,3,3,1))- object_._objectMass * _gravity;
-		  	_desired_object_wrench.head(3) = -12.64f * (_vo - FreeMotionCtrl.get_des_object_motion().head(3)) - object_._objectMass * _gravity;
+		  	_desired_object_wrench.head(3) = -12.64f * (object_._vo - FreeMotionCtrl.get_des_object_motion().head(3)) - object_._objectMass * _gravity;
 		  }
 		  else{
 		  	float Damp1 = 0.5f*(_d1[LEFT]+_d1[RIGHT]);
 		  	_desired_object_wrench.head(3) = 0.0*Damp1*(Utils<float>::get_abs_3d(_Vee, true) - Utils<float>::get_abs_3d(_Vd_ee, true)) - object_._objectMass * _gravity;
 		  }
-			_desired_object_wrench.tail(3) = -25.0f*(_wo - FreeMotionCtrl.get_des_object_motion().tail(3));
+			_desired_object_wrench.tail(3) = -25.0f*(object_._wo - FreeMotionCtrl.get_des_object_motion().tail(3));
 
 		  // Generate grasping force and apply it in velocity space
 	  	//--------------------------------------------------------
-		  CooperativeCtrl.getAppliedWrenches(_goHome, _contactState, _w_H_o, _w_H_ee, _w_H_gp, _desired_object_wrench, object_._objectMass, _qp_wrench_generation, isForceDetected);
+		  CooperativeCtrl.getAppliedWrenches(_goHome, _contactState, object_._w_H_o, _w_H_ee, object_._w_H_gp, _desired_object_wrench, object_._objectMass, _qp_wrench_generation, isForceDetected);
 
 		  // applied force in velocity space
 		  for(int i=0; i<NB_ROBOTS; i++){
@@ -1296,13 +1304,13 @@ void dual_arm_control::computeCommands()
 	std::cout << " MEASURED HAND WRENCH _filteredWrench  LEFT \t " << _filteredWrench[LEFT].transpose() << std::endl;
 	std::cout << " MEASURED HAND WRENCH _filteredWrench RIGHT \t " << _filteredWrench[RIGHT].transpose() << std::endl; 
 
-	std::cout << "[dual_arm_control]: _w_H_o: \n" << _w_H_o << std::endl; 
-	std::cout << "[dual_arm_control]: _w_H_Do: \n" <<  _w_H_Do << std::endl;
+	std::cout << "[dual_arm_control]: _w_H_o: \n" << object_._w_H_o << std::endl; 
+	std::cout << "[dual_arm_control]: _w_H_Do: \n" <<  object_._w_H_Do << std::endl;
 	std::cout << "[dual_arm_control]: _w_H_t: \n" <<  Utils<float>::quaternionToRotationMatrix(target_._qt) << std::endl;
 	std::cout << "[dual_arm_control]: _w_H_ee[LEFT]: \n" <<  _w_H_ee[0] << std::endl;
-	std::cout << "[dual_arm_control]: _w_H_Dgp[LEFT]: \n" << _w_H_Dgp[0] << std::endl;
+	std::cout << "[dual_arm_control]: _w_H_Dgp[LEFT]: \n" << object_._w_H_Dgp[0] << std::endl;
 	std::cout << "[dual_arm_control]: _w_H_ee[RIGHT]: \n" << _w_H_ee[1] << std::endl;
-	std::cout << "[dual_arm_control]: _w_H_Dgp[RIGHT]: \n" << _w_H_Dgp[1] << std::endl;
+	std::cout << "[dual_arm_control]: _w_H_Dgp[RIGHT]: \n" << object_._w_H_Dgp[1] << std::endl;
 
 	std::cout << "[dual_arm_control]: 3D STATE 2 GO : \t"  << target_._xt_state2go.transpose() << std::endl;
 	std::cout << "[dual_arm_control]:  ------------- _sensedContact: \t" << _sensedContact << std::endl;
@@ -1412,21 +1420,22 @@ void dual_arm_control::prepareCommands(Vector6f Vd_ee[], Eigen::Vector4f qd[], V
 //
 void dual_arm_control::getGraspPointsVelocity()    // in object struct or object
 {
-  //velocity of grasp points on the object
-  for(int i=0; i<NB_ROBOTS; i++)
-  {
-    Eigen::Vector3f t = _w_H_o.block<3,3>(0,0) * _xgp_o[i];
-    Eigen::Matrix3f skew_Mx_gpo;
-    skew_Mx_gpo <<   0.0f,  -t(2),     t(1),
-                     t(2),   0.0f,    -t(0),
-                    -t(1),   t(0),     0.0f;             
-    // velocity
-    _V_gpo[i].head(3) = _vo - 0*skew_Mx_gpo * _wo;
-    _V_gpo[i].tail(3) = 0*_wo;
-    //
-    _V_gpo[i].head(3) *= 0.0f;
-    _V_gpo[i].tail(3) *= 0.0f;
-  }
+  // //velocity of grasp points on the object
+  // for(int i=0; i<NB_ROBOTS; i++)
+  // {
+  //   Eigen::Vector3f t = object_._w_H_o.block<3,3>(0,0) * _xgp_o[i];
+  //   Eigen::Matrix3f skew_Mx_gpo;
+  //   skew_Mx_gpo <<   0.0f,  -t(2),     t(1),
+  //                    t(2),   0.0f,    -t(0),
+  //                   -t(1),   t(0),     0.0f;             
+  //   // velocity
+  //   _V_gpo[i].head(3) = object_._vo - 0*skew_Mx_gpo * object_._wo;
+  //   _V_gpo[i].tail(3) = 0*object_._wo;
+  //   //
+  //   _V_gpo[i].head(3) *= 0.0f;
+  //   _V_gpo[i].tail(3) *= 0.0f;
+  // }
+  object_.get_grasp_point_velocity();
 }
 
 void dual_arm_control::Keyboard_reference_object_control()   // control of attractor position through keyboad
@@ -1495,14 +1504,14 @@ void dual_arm_control::mirror_target2object_orientation(Eigen::Vector4f qt, Eige
 void dual_arm_control::Keyboard_virtual_object_control()		// control of object position through keyboad
 {
 	// object2grasp.States_Object.pose.head(3) = ioSM->w_H_absF.block<3,3>(0,0) * init_obj_aF + ioSM->w_H_absF.block<3,1>(0,3); //
-	_w_H_o(0,3) += _delta_pos(0);
-	_w_H_o(1,3) += _delta_pos(1);
-	_w_H_o(2,3) += _delta_pos(2); // _delta_ang
+	object_._w_H_o(0,3) += _delta_pos(0);
+	object_._w_H_o(1,3) += _delta_pos(1);
+	object_._w_H_o(2,3) += _delta_pos(2); // _delta_ang
 
-  Eigen::Vector3f ang_o = Utils<float>::getEulerAnglesXYZ_FixedFrame(_w_H_o.block<3,3>(0,0)); // psi theta phi
+  Eigen::Vector3f ang_o = Utils<float>::getEulerAnglesXYZ_FixedFrame(object_._w_H_o.block<3,3>(0,0)); // psi theta phi
   // 
   // ang_o += _delta_ang;
-  // _w_H_o.block<3,3>(0,0) = Utils<float>::eulerAnglesToRotationMatrix(	ang_o(2), ang_o(1), ang_o(0)); // phi theta psi
+  // object_._w_H_o.block<3,3>(0,0) = Utils<float>::eulerAnglesToRotationMatrix(	ang_o(2), ang_o(1), ang_o(0)); // phi theta psi
 
 }
 //
@@ -1550,12 +1559,12 @@ void dual_arm_control::reset_variables(){
 	_isIntercepting = false;
 	//
 	// _xDo    = Eigen::Vector3f(0.35f, 0.00f, 0.50f);   // set attractor of placing task
-	_w_H_Do = Utils<float>::pose2HomoMx(_xDo_lifting, _qDo);
+	object_._w_H_Do = Utils<float>::pose2HomoMx(_xDo_lifting, object_._qDo);
 }
 
 Eigen::Vector3f dual_arm_control::get_object_desired_direction(int task_type, Eigen::Vector3f object_pos){
 	// 0=reach, 1=pick, 2=toss, 3=pick_and_toss, 4=pick_and_place
-	Eigen::Vector3f des_object_pos = _xDo;
+	Eigen::Vector3f des_object_pos = object_._xDo;
 	switch(task_type){
 		case 1:  des_object_pos = _xDo_lifting; 		break;
 		case 2:  des_object_pos = dsThrowing.Xt_; 	break;
@@ -1564,7 +1573,7 @@ Eigen::Vector3f dual_arm_control::get_object_desired_direction(int task_type, Ei
 						 des_object_pos(2)=_xDo_placing(2) + _height_via_point; 		break;
 		case 5:  des_object_pos = 0.5f*(object_pos + _xDo_placing);
 						 des_object_pos(2)=_xDo_placing(2) + _height_via_point; 		break;
-		default: des_object_pos = _xDo; 						break;
+		default: des_object_pos = object_._xDo; 						break;
 	}
 	//
 	Eigen::Vector3f error_obj_pos = des_object_pos - object_pos;
@@ -1820,7 +1829,7 @@ void dual_arm_control::set_release_state(){
 	//-------------------------------------------------------
 	dsThrowing.set_toss_pose(_tossVar.release_position, _tossVar.release_orientation);
 	dsThrowing.set_toss_linear_velocity(_tossVar.release_linear_velocity);
-	dsThrowing.set_pickup_object_pose(target_._x_pickup, _qo);
+	dsThrowing.set_pickup_object_pose(target_._x_pickup, object_._qo);
 }
 
 //
@@ -1892,43 +1901,43 @@ void dual_arm_control::objectPoseCallback(const geometry_msgs::Pose::ConstPtr& m
 		t_xo_xom << 0.0f, 0.0f, 0.0f;
 	}
 	xom << msg->position.x, 	msg->position.y, 	msg->position.z;
-	_qo << msg->orientation.w, 	msg->orientation.x, msg->orientation.y, msg->orientation.z;
+	object_._qo << msg->orientation.w, 	msg->orientation.x, msg->orientation.y, msg->orientation.z;
 	// _w_H_o = Utils<float>::pose2HomoMx(_xo, _qo);
-	Eigen::Matrix3f w_R_o = Utils<float>::quaternionToRotationMatrix(_qo);
-	_xo = xom + w_R_o*t_xo_xom;
+	Eigen::Matrix3f w_R_o = Utils<float>::quaternionToRotationMatrix(object_._qo);
+	object_._xo = xom + w_R_o*t_xo_xom;
 
-	// filtered object position
-	SGF::Vec temp(3), temp_o(4);
- _xo_filtered->AddData(_xo);
- _xo_filtered->GetOutput(0,temp);
- _xo = temp;
- _xo_filtered->GetOutput(1,temp);
- _vo = temp;	
-	//
-	_qo_filtered->AddData(_qo);
-	_qo_filtered->GetOutput(0,temp_o);
-	_qo = temp_o;
-	// normalizing the quaternion
-	_qo.normalize();
-	//
-	if(_qo.norm() <= 1e-8){
-		_qo = Eigen::Vector4f(1.0, 0.0, 0.0, 0.0);
-	}
-	//
-	// ===========================================================
-	_qo_filtered->GetOutput(1,temp_o);
-	Eigen::Vector4f qo_dot = temp_o;
-	//
-	Eigen::MatrixXf wQ_map(3,4);
-	wQ_map << -_qo(1), -_qo(0), -_qo(3),  _qo(2),
-						-_qo(2),  _qo(3),  _qo(0), -_qo(1),
-						-_qo(3), -_qo(2),  _qo(1),  _qo(0);
-	_wo = 0.0*wQ_map*qo_dot;
+// 	// filtered object position
+// 	SGF::Vec temp(3), temp_o(4);
+ // _xo_filtered->AddData(_xo);
+ // _xo_filtered->GetOutput(0,temp);
+ // _xo = temp;
+ // _xo_filtered->GetOutput(1,temp);
+ // _vo = temp;	
+// 	//
+// 	_qo_filtered->AddData(_qo);
+// 	_qo_filtered->GetOutput(0,temp_o);
+// 	_qo = temp_o;
+// 	// normalizing the quaternion
+// 	_qo.normalize();
+// 	//
+// 	if(_qo.norm() <= 1e-8){
+// 		_qo = Eigen::Vector4f(1.0, 0.0, 0.0, 0.0);
+// 	}
+// 	//
+// 	// ===========================================================
+// 	_qo_filtered->GetOutput(1,temp_o);
+// 	Eigen::Vector4f qo_dot = temp_o;
+// 	//
+// 	Eigen::MatrixXf wQ_map(3,4);
+// 	wQ_map << -_qo(1), -_qo(0), -_qo(3),  _qo(2),
+// 						-_qo(2),  _qo(3),  _qo(0), -_qo(1),
+// 						-_qo(3), -_qo(2),  _qo(1),  _qo(0);
+// 	_wo = 0.0*wQ_map*qo_dot;
 
-	_Vo.head(3) = _vo;
-	_Vo.tail(3) = _wo;
-
-	_w_H_o = Utils<float>::pose2HomoMx(_xo, _qo);
+	_Vo.head(3) = object_._vo;
+	_Vo.tail(3) = object_._wo;
+	// _w_H_o = Utils<float>::pose2HomoMx(_xo, _qo);
+	object_.get_HmgTransform();
 }
 
 void dual_arm_control::targetPoseCallback(const geometry_msgs::Pose::ConstPtr& msg)
@@ -2242,8 +2251,8 @@ void dual_arm_control::saveData()
 		datalog._OutRecord_pose			<< (float)(_cycle_count * _dt) << ", ";																																																						// cycle time
 		datalog._OutRecord_pose			<< _x[LEFT].transpose().format(CSVFormat)  	<< " , " << _q[LEFT].transpose().format(CSVFormat) 	<< " , ";																					// left end-effector
 		datalog._OutRecord_pose   	<< _x[RIGHT].transpose().format(CSVFormat) 	<< " , " << _q[RIGHT].transpose().format(CSVFormat) << " , ";																					// right end-effector
-		datalog._OutRecord_pose   	<< _xo.transpose().format(CSVFormat) 			 	<< " , " << _qo.transpose().format(CSVFormat) 			<< " , ";																					// object
-		datalog._OutRecord_pose   	<< _w_H_Do(0,3) << " , " << _w_H_Do(1,3) 		<< " , " << _w_H_Do(2,3) << " , ";																																		// desired object
+		datalog._OutRecord_pose   	<< object_._xo.transpose().format(CSVFormat) 			 	<< " , " << object_._qo.transpose().format(CSVFormat) 			<< " , ";																					// object
+		datalog._OutRecord_pose   	<< object_._w_H_Do(0,3) << " , " << object_._w_H_Do(1,3) 		<< " , " << object_._w_H_Do(2,3) << " , ";																																		// desired object
 		datalog._OutRecord_pose   	<< xgrL.transpose().format(CSVFormat) 			<< " , " << qgrL.transpose().format(CSVFormat) 			<< " , ";																					// left  grasping point
 		datalog._OutRecord_pose   	<< xgrR.transpose().format(CSVFormat) 			<< " , " << qgrR.transpose().format(CSVFormat) 			<< " , ";																					// right grasping point
 		datalog._OutRecord_pose   	<< _tossVar.release_position.transpose().format(CSVFormat) 	<< " , " << _tossVar.release_orientation.transpose().format(CSVFormat) << " , ";			// release pose
@@ -2257,7 +2266,7 @@ void dual_arm_control::saveData()
 		datalog._OutRecord_velo			<< _Vee[LEFT].transpose().format(CSVFormat) 	<< " , " << _Vee[RIGHT].transpose().format(CSVFormat) 	<< " , ";
 		datalog._OutRecord_velo			<< _vd[LEFT].transpose().format(CSVFormat) 		<< " , " << _vd[RIGHT].transpose().format(CSVFormat) 		<< " , ";
 		datalog._OutRecord_velo			<< _omegad[LEFT].transpose().format(CSVFormat)<< " , " << _omegad[RIGHT].transpose().format(CSVFormat)<< " , ";
-		datalog._OutRecord_velo			<< _vo.transpose().format(CSVFormat) 					<< " , " << _wo.transpose().format(CSVFormat) 					<< " , ";
+		datalog._OutRecord_velo			<< object_._vo.transpose().format(CSVFormat) 					<< " , " << object_._wo.transpose().format(CSVFormat) 					<< " , ";
 		datalog._OutRecord_velo			<< _Vd_o.transpose().format(CSVFormat) << " , ";
 		datalog._OutRecord_velo			<< _tossVar.release_linear_velocity.transpose().format(CSVFormat) << " , " <<  _tossVar.release_angular_velocity .transpose().format(CSVFormat) << " , ";
 		datalog._OutRecord_velo			<< target_._vt.transpose().format(CSVFormat) << std::endl;
