@@ -78,6 +78,122 @@ struct spherical_position{
 	}
 };
 
+class object_to_grasp{
+
+	public:
+
+		// object
+		float 					_objectMass;
+		Eigen::Vector3f _objectDim;                  			// Object dimensions [m] (3x1)
+		Eigen::Vector3f _xo;
+		Eigen::Vector4f _qo;
+		Eigen::Vector3f _xDo; 
+		Eigen::Vector4f _qDo;
+		Eigen::Matrix4f _w_H_o;
+		Eigen::Matrix4f _w_H_Do;
+		Eigen::Vector3f _xoC;                             // Measured object center position [m] (3x1)
+		Eigen::Vector3f _xoD;                             // Measured object dimension vector [m] (3x1)
+		Eigen::Vector3f _xgp_o[NB_ROBOTS];
+		Eigen::Vector4f _qgp_o[NB_ROBOTS];
+		Eigen::Matrix4f _w_H_gp[NB_ROBOTS];
+		Eigen::Matrix4f _w_H_Dgp[NB_ROBOTS];
+		Eigen::Vector3f _vo;
+		Eigen::Vector3f _wo;
+		Vector6f 				_Vo;
+		Vector6f 				_Vd_o;   													// desired object velocity (toss)
+		// Vector6f  			_desired_object_wrench; 
+		Eigen::Vector3f _n[NB_ROBOTS];               			// Normal vector to surface object for each robot (3x1)
+		Vector6f        _V_gpo[NB_ROBOTS];
+
+		std::unique_ptr<SGF::SavitzkyGolayFilter> _xo_filtered;
+		std::unique_ptr<SGF::SavitzkyGolayFilter> _qo_filtered;
+		// KF_3DVeloFromPosEstimator 								_xo_KF_filtered; //
+		// KF_3DVeloFromPosEstimator 								_wo_KF_filtered; //
+
+		object_to_grasp(){};
+		~object_to_grasp(){};
+
+		void init_object(int sgf_p[], int sgf_o[], float dt, Eigen::Matrix3f o_R_gpl, Eigen::Matrix3f o_R_gpr){
+			// object
+			_vo.setZero();
+			_wo.setZero();
+			_Vo.setZero();
+			_xo.setZero(); 
+			_xDo.setZero(); 
+			_Vd_o.setZero();
+			_xoC.setZero();
+			_xoD.setZero();
+			_qo  << 1.0f, 0.0f, 0.0f, 0.0f;
+			_qDo << 1.0f, 0.0f, 0.0f, 0.0f;
+			_w_H_o  = Utils<float>::pose2HomoMx(_xo, _qo);	
+			_w_H_Do = Utils<float>::pose2HomoMx(_xDo, _qDo);	
+			_qgp_o[0] = Utils<float>::rotationMatrixToQuaternion(o_R_gpl); //
+			_qgp_o[1] = Utils<float>::rotationMatrixToQuaternion(o_R_gpr); //
+			// normal to contact surfaces
+			_n[LEFT]  = o_R_gpl.col(2);
+			_n[RIGHT] = o_R_gpr.col(2);
+
+			//
+			_xo_filtered = std::make_unique<SGF::SavitzkyGolayFilter>(sgf_p[0], sgf_p[1], sgf_p[2], dt); //(3,3,6,_dt);
+			_qo_filtered = std::make_unique<SGF::SavitzkyGolayFilter>(sgf_o[0], sgf_o[1], sgf_o[2], dt); //(4,3,10,_dt);
+
+			// //
+			// _xo_KF_filtered.init(_dt, Eigen::Vector2f(0.004, 0.1), 0.004, _xo);
+			// _xo_KF_filtered.update(_xo);
+		}
+
+};
+
+class tossing_target{
+
+	public:
+
+	// target (tossing)
+	Eigen::Vector3f _xt;
+	Eigen::Vector4f _qt;
+	Eigen::Vector3f _vt;
+	Eigen::Vector3f _wt;
+
+	Eigen::Vector3f _xd_landing;
+	Eigen::Vector3f _x_pickup;
+	Eigen::Vector3f _x_intercept;   // intercept point of the moving object
+	Eigen::Vector3f _xt_state2go;
+
+	std::unique_ptr<SGF::SavitzkyGolayFilter> _xt_filtered; // target
+	KF_3DVeloFromPosEstimator 								_xt_KF_filtered; //
+
+	tossing_target(){};
+	~tossing_target(){};
+
+	void init_target(int dim, int order, int win_l, float dt){
+		// target
+		_xt.setZero();
+		_qt.setZero();
+		_vt.setZero();
+		_wt.setZero();
+		_qt  << 1.0f, 0.0f, 0.0f, 0.0f;
+		_x_pickup.setZero();
+		_xt_state2go.setZero();
+		//
+		_xt_filtered = std::make_unique<SGF::SavitzkyGolayFilter>(dim, order, win_l, dt); //(3,3,10,dt);
+		_xt_KF_filtered.init(dt, Eigen::Vector2f(0.004, 0.1), 0.004, _xt);
+		_xt_KF_filtered.update(_xt);
+	}
+
+	void get_filtered_state(){
+		// filtered target position
+		SGF::Vec temp(3);
+	  _xt_filtered->AddData(_xt);
+	  _xt_filtered->GetOutput(0,temp);
+	  _xt = temp;
+	  _xt_filtered->GetOutput(1,temp);
+	  _vt = temp;	
+	  _xt_KF_filtered.update(_vt);
+		_vt = _xt_KF_filtered.get_estimate_position();
+	}
+
+};
+
 
 class dual_arm_control
 {
@@ -205,6 +321,7 @@ class dual_arm_control
 		bool _firstRobotPose[NB_ROBOTS];
 		bool _firstRobotTwist[NB_ROBOTS];
 		bool _firstWrenchReceived[NB_ROBOTS];
+		// ------------------------------------------------------------------------------------
 		bool _sensedContact;
 
 		bool _startlogging;
@@ -226,7 +343,9 @@ class dual_arm_control
 		bool 						_objCtrlKey;
 
 		//---------------------------------------------------------------------------------
-		// object
+		// object to grasp
+		object_to_grasp object_;
+
 		float 					_objectMass;
 		Eigen::Vector3f _objectDim;                  			// Object dimensions [m] (3x1)
 		Eigen::Vector3f _xo;
@@ -248,16 +367,19 @@ class dual_arm_control
 		Vector6f  			_desired_object_wrench; 
 
 		// -------------------------------
-		// target (tossing)
-		Eigen::Vector3f _xt;
-		Eigen::Vector4f _qt;
-		Eigen::Vector3f _vt;
-		Eigen::Vector3f _wt;
+		// tossing target
+		tossing_target target_;
 
-		Eigen::Vector3f _xd_landing;
-		Eigen::Vector3f _x_pickup;
-		Eigen::Vector3f _x_intercept;   // intercept point of the moving object
-		Eigen::Vector3f _xt_state2go;
+		// // target (tossing)
+		// Eigen::Vector3f _xt;
+		// Eigen::Vector4f _qt;
+		// Eigen::Vector3f _vt;
+		// Eigen::Vector3f _wt;
+
+		// Eigen::Vector3f _xd_landing;
+		// Eigen::Vector3f _x_pickup;
+		// Eigen::Vector3f _x_intercept;   // intercept point of the moving object
+		// Eigen::Vector3f _xt_state2go;
 
 		//-------------------------------------------------------------------------------------------------
 		Eigen::Matrix4f _o_H_ee[NB_ROBOTS];
@@ -439,10 +561,10 @@ class dual_arm_control
 		std::unique_ptr<SGF::SavitzkyGolayFilter> _sgf_ddq_filtered_l;
 		std::unique_ptr<SGF::SavitzkyGolayFilter> _sgf_ddq_filtered_r;
 		// SGF::SavitzkyGolayFilter _x_filtered;    			// Filter used for the object's dimension vector
-		std::unique_ptr<SGF::SavitzkyGolayFilter> _xt_filtered; // target
+		// std::unique_ptr<SGF::SavitzkyGolayFilter> _xt_filtered; // target
 		KF_3DVeloFromPosEstimator 								_xo_KF_filtered; //
 		KF_3DVeloFromPosEstimator 								_wo_KF_filtered; //
-		KF_3DVeloFromPosEstimator 								_xt_KF_filtered; //
+		// KF_3DVeloFromPosEstimator 								_xt_KF_filtered; //
 
 		tossingTaskVariables _tossVar;
 
