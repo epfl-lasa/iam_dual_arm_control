@@ -92,14 +92,12 @@ class robot_var{
 		std::deque<float> _normalForceWindow[NB_ROBOTS];  	// Moving window saving the robots' measured normal force to the object's surface [N]  
 		float _normalForceAverage[NB_ROBOTS];             	// Average normal force measured through the force windows [N]
 		float _normalForce[NB_ROBOTS];                    	// Normal force to the surface [N] 
-		// float _c;                                         	// Contact value (1 = CONTACT, 0 otherwise)
+		// float _c;                                        // Contact value (1 = CONTACT, 0 otherwise)
 		bool _wrenchBiasOK[NB_ROBOTS];                 			// Check if computation of force/torque sensor bias is OK
-		// float _eD;                                        	// Error to desired distance vector [m]                       
-		// float _eoD;                                       	// Error to object dimension vector [m]                       
-		// float _eC;                                        	// Error to desired center position [m]
-		// float _eoC;                                       	// Error to object center position [m]  
-
-		
+		// float _eD;                                       // Error to desired distance vector [m]                       
+		// float _eoD;                                      // Error to object dimension vector [m]                       
+		// float _eC;                                       // Error to desired center position [m]
+		// float _eoC;                                      // Error to object center position [m]  
 		Eigen::Vector3f _xdC;                             	// Desired center position [m] (3x1)
 		Eigen::Vector3f _xdD;                             	// Desired distance vector [m] (3x1)
 		// --------------------------------------------------------------------------------
@@ -626,22 +624,22 @@ class dual_arm_control
 		Eigen::Vector3f _xdC;                             	// Desired center position [m] (3x1)
 		Eigen::Vector3f _xdD;                             	// Desired distance vector [m] (3x1)
 		// --------------------------------------------------------------------------------
-		Eigen::Vector3f _x[NB_ROBOTS];
-		Eigen::Vector4f _q[NB_ROBOTS];
-		Eigen::Matrix3f _wRb[NB_ROBOTS]; 										// Orientation matrix (3x3)
-		Eigen::Vector3f _xd[NB_ROBOTS];
-		Eigen::Vector4f _qd[NB_ROBOTS];
-		Eigen::Vector3f _aad[NB_ROBOTS];										// desired axis angle 
+		// Eigen::Vector3f _x[NB_ROBOTS];
+		// Eigen::Vector4f _q[NB_ROBOTS];
+		// Eigen::Matrix3f _wRb[NB_ROBOTS]; 										// Orientation matrix (3x3)
+		// Eigen::Vector3f _xd[NB_ROBOTS];
+		// Eigen::Vector4f _qd[NB_ROBOTS];
+		// Eigen::Vector3f _aad[NB_ROBOTS];										// desired axis angle 
 
-		Eigen::Vector3f _vd[NB_ROBOTS];
-		Eigen::Vector3f _omegad[NB_ROBOTS];
-		Eigen::Vector3f _v[NB_ROBOTS];
-		Eigen::Vector3f _w[NB_ROBOTS];
-		Vector6f 				_Vd_ee[NB_ROBOTS];									// desired velocity twist
-		Eigen::Vector3f _fxc[NB_ROBOTS];     								// Desired conservative parts of the nominal DS [m/s] (3x1)
-		Vector6f  			_wrench[NB_ROBOTS];          				// Wrench [N and Nm] (6x1)
-		Vector6f 				_wrenchBias[NB_ROBOTS];							// Wrench bias [N and Nm] (6x1)
-		Vector6f        _filteredWrench[NB_ROBOTS];  				// Filtered wrench [N and Nm] (6x1)
+		// Eigen::Vector3f _vd[NB_ROBOTS];
+		// Eigen::Vector3f _omegad[NB_ROBOTS];
+		// Eigen::Vector3f _v[NB_ROBOTS];
+		// Eigen::Vector3f _w[NB_ROBOTS];
+		// Vector6f 				_Vd_ee[NB_ROBOTS];									// desired velocity twist
+		// Eigen::Vector3f _fxc[NB_ROBOTS];     								// Desired conservative parts of the nominal DS [m/s] (3x1)
+		// Vector6f  			_wrench[NB_ROBOTS];          				// Wrench [N and Nm] (6x1)
+		// Vector6f 				_wrenchBias[NB_ROBOTS];							// Wrench bias [N and Nm] (6x1)
+		// Vector6f        _filteredWrench[NB_ROBOTS];  				// Filtered wrench [N and Nm] (6x1)
 
 		float _Fd[NB_ROBOTS];                								// Desired force profiles [N]
 		float _targetForce;                  								// Target force in contact [N]
@@ -656,12 +654,12 @@ class dual_arm_control
 
 		bool _startlogging;
 
-		Eigen::Matrix4f _w_H_ee[NB_ROBOTS];								// Homogenenous transform of the End-effectors poses (4x4)
-		Eigen::Matrix4f _w_H_eeStandby[NB_ROBOTS];				// Homogenenous transform of Standby pose of the End-effectors (4x4)
-		Eigen::Matrix4f _w_H_rb[NB_ROBOTS];								// Homogenenous transform of robots base frame (4x4)
-		Eigen::Matrix4f _rb_H_eeStandby[NB_ROBOTS];				// Homogenenous transform of EE standby poses relatve to robots base (4x4)
-		Eigen::Vector3f _xrbStandby[NB_ROBOTS];		    		// quaternion orientation of EE standby poses relatve to robots base (3x1)
-		Eigen::Vector4f _qrbStandby[NB_ROBOTS];		    		// quaternion orientation of EE standby poses relatve to robots base (4x1)
+		// Eigen::Matrix4f _w_H_ee[NB_ROBOTS];								// Homogenenous transform of the End-effectors poses (4x4)
+		// Eigen::Matrix4f _w_H_eeStandby[NB_ROBOTS];				// Homogenenous transform of Standby pose of the End-effectors (4x4)
+		// Eigen::Matrix4f _w_H_rb[NB_ROBOTS];								// Homogenenous transform of robots base frame (4x4)
+		// Eigen::Matrix4f _rb_H_eeStandby[NB_ROBOTS];				// Homogenenous transform of EE standby poses relatve to robots base (4x4)
+		// Eigen::Vector3f _xrbStandby[NB_ROBOTS];		    		// quaternion orientation of EE standby poses relatve to robots base (3x1)
+		// Eigen::Vector4f _qrbStandby[NB_ROBOTS];		    		// quaternion orientation of EE standby poses relatve to robots base (4x1)
 
 		// Eigen::Vector3f _n[NB_ROBOTS];               			// Normal vector to surface object for each robot (3x1)
 		// Vector6f        _V_gpo[NB_ROBOTS];

@@ -319,8 +319,6 @@ bool dual_arm_control::init()
 	Eigen::Vector3f graspOffset_L    	= Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_graspOffset_L.data(), param_graspOffset_L.size());
 	Eigen::Vector3f graspOffset_R    	= Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_graspOffset_R.data(), param_graspOffset_R.size());
 	
-	_toolOffsetFromEE[0]  			  		= _isSimulation ? param_toolOffset_sim_left :  param_toolOffset_real_left;
-	_toolOffsetFromEE[1]  			  		= _isSimulation ? param_toolOffset_sim_right :  param_toolOffset_real_right;
 	_tossVar.release_position      	  = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_releasePos.data(), param_releasePos.size());
 	_tossVar.release_orientation      = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_releaseOrient.data(), param_releaseOrient.size());
 	_tossVar.release_linear_velocity  = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_releaseLinVel_dir.data(), param_releaseLinVel_dir.size());
@@ -328,12 +326,14 @@ bool dual_arm_control::init()
 	_tossVar.rest_position      	  	= Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_restPos.data(), param_restPos.size());
 	_tossVar.rest_orientation      	  = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_restOrient.data(), param_restOrient.size());
 
-	robot_._xrbStandby[LEFT]  	= Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_stanbyPosition[LEFT].data(), param_stanbyPosition[LEFT].size());
-	robot_._qrbStandby[LEFT]  	= Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_stanbyOrientation[LEFT].data(), param_stanbyOrientation[LEFT].size());
-	robot_._xrbStandby[RIGHT] 	= Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_stanbyPosition[RIGHT].data(), param_stanbyPosition[RIGHT].size());
-	robot_._qrbStandby[RIGHT] 	= Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_stanbyOrientation[RIGHT].data(), param_stanbyOrientation[RIGHT].size());
-	// _gain_abs.diagonal()= Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_abs_gains.data(), param_abs_gains.size());
-	_gain_rel.diagonal() = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_rel_gains.data(), param_rel_gains.size());
+	robot_._toolOffsetFromEE[0]  			= _isSimulation ? param_toolOffset_sim_left :  param_toolOffset_real_left;
+	robot_._toolOffsetFromEE[1]  			= _isSimulation ? param_toolOffset_sim_right :  param_toolOffset_real_right;
+	robot_._xrbStandby[LEFT]  				= Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_stanbyPosition[LEFT].data(), param_stanbyPosition[LEFT].size());
+	robot_._qrbStandby[LEFT]  				= Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_stanbyOrientation[LEFT].data(), param_stanbyOrientation[LEFT].size());
+	robot_._xrbStandby[RIGHT] 				= Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_stanbyPosition[RIGHT].data(), param_stanbyPosition[RIGHT].size());
+	robot_._qrbStandby[RIGHT] 				= Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_stanbyOrientation[RIGHT].data(), param_stanbyOrientation[RIGHT].size());
+	_gain_abs.diagonal()							= Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_abs_gains.data(), param_abs_gains.size());
+	_gain_rel.diagonal() 							= Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_rel_gains.data(), param_rel_gains.size());
 
 	_xDo_lifting = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_xDo_lifting.data(), param_xDo_lifting.size());
 	_qDo_lifting = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_qDo_lifting.data(), param_qDo_lifting.size());
@@ -341,7 +341,6 @@ bool dual_arm_control::init()
 	_qDo_placing = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_qDo_placing.data(), param_qDo_placing.size());
 	_dual_angular_limit = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_dual_angular_limit.data(), param_dual_angular_limit.size());
 	
-
 	// relative grasping positons
 	object_._xgp_o[0] = Eigen::Vector3f(0.0f, -object_._objectDim(1)/2.0f,  0.0f) + graspOffset_L;   // left  
 	object_._xgp_o[1] = Eigen::Vector3f(0.0f,  object_._objectDim(1)/2.0f,  0.0f) + graspOffset_R; 	 // right 
@@ -580,9 +579,9 @@ void dual_arm_control::run()
 	}
 	// Send zero command
 	for(int k = 0; k < NB_ROBOTS; k++){
-		_vd[k].setZero();
-		_omegad[k].setZero();
-		_qd[k] = _q[k];
+		robot_._vd[k].setZero();
+		robot_._omegad[k].setZero();
+		robot_._qd[k] = robot_._q[k];
 	}
 	publish_commands();
 	//
@@ -797,7 +796,6 @@ void dual_arm_control::updatePoses()
 		// _w_H_Do = Utils<float>::pose2HomoMx(_xDo, _qDo);
 		object_.get_desiredHmgTransform();
 
-
 		target_._x_intercept = Eigen::Vector3f(object_._xo(0), 0.0, object_._xo(2));
 		// for catching
 		FreeMotionCtrl.set_virtual_object_frame(Utils<float>::pose2HomoMx(target_._x_intercept, object_._qo));
@@ -1000,7 +998,7 @@ void dual_arm_control::computeCommands()
 	
 	// ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 	if(_goHome)
-		// ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+	// ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 	{
 		//
 		FreeMotionCtrl.computeAsyncMotion(robot_._w_H_ee, robot_._w_H_eeStandby, object_._w_H_o, robot_._Vd_ee, robot_._qd, true);		
@@ -1010,7 +1008,7 @@ void dual_arm_control::computeCommands()
 		std::cout << "[dual_arm_control]: OBJECT MOTION DIRECTION : \t"  << obj_dir.transpose() << std::endl;
 		//
 		for(int i=0; i<NB_ROBOTS; i++){
-			_dirImp[i]  		 	= this->get_impact_direction(_Vd_o.head(3), object_._n[i], _friction_angle);								//  impact direction
+			_dirImp[i]  		 	= this->get_impact_direction(_Vd_o.head(3), object_._n[i], _friction_angle);				//  impact direction
 			_VdImpact[LEFT]  	= _desVimp * _dirImp[LEFT]; 																												//	impact velocity [LEFT];
 			_VdImpact[RIGHT]	= _desVimp * _dirImp[RIGHT]; 																												//	impact velocity [RIGHT];
 			_BasisQ[i] 				= Utils<float>::create3dOrthonormalMatrixFromVector(_dirImp[i]);										//  Orthogonal Basis of Modulated Dual-arm DS
@@ -1145,8 +1143,8 @@ void dual_arm_control::computeCommands()
 			if(isPlacing || isThrowing || isPlaceTossing ){
 				// force feedback to grab objects
 				float f_gain = 0.02f;
-				float abs_force_correction = _nu_Wr0 *f_gain * 0.5f*( (_filteredWrench[LEFT].segment(0,3)  - CooperativeCtrl._f_applied[LEFT].head(3)).dot(object_._n[LEFT])  
-																		 + (_filteredWrench[RIGHT].segment(0,3) - CooperativeCtrl._f_applied[RIGHT].head(3)).dot(object_._n[RIGHT]) );   
+				float abs_force_correction = _nu_Wr0 *f_gain * 0.5f*( (robot_._filteredWrench[LEFT].segment(0,3)  - CooperativeCtrl._f_applied[LEFT].head(3)).dot(object_._n[LEFT])  
+																		 + (robot_._filteredWrench[RIGHT].segment(0,3) - CooperativeCtrl._f_applied[RIGHT].head(3)).dot(object_._n[RIGHT]) );   
 				if(fabs(abs_force_correction)  > 0.2f){
 				abs_force_correction = abs_force_correction/fabs(abs_force_correction) * 0.2f;
 				}
@@ -1202,7 +1200,7 @@ void dual_arm_control::computeCommands()
 
 		  // applied force in velocity space
 		  for(int i=0; i<NB_ROBOTS; i++){
-		  	_fxc[i] = 1.0f/_d1[i] * CooperativeCtrl._f_applied[i].head(3);
+		  	robot_._fxc[i] = 1.0f/_d1[i] * CooperativeCtrl._f_applied[i].head(3);
 		  }
 	}
 	// compute the velocity to avoid EE collision
@@ -1223,15 +1221,15 @@ void dual_arm_control::computeCommands()
 	}
 	
 
-	std::cout << " MEASURED HAND WRENCH _filteredWrench  LEFT \t " << _filteredWrench[LEFT].transpose() << std::endl;
-	std::cout << " MEASURED HAND WRENCH _filteredWrench RIGHT \t " << _filteredWrench[RIGHT].transpose() << std::endl; 
+	std::cout << " MEASURED HAND WRENCH _filteredWrench  LEFT \t " << robot_._filteredWrench[LEFT].transpose() << std::endl;
+	std::cout << " MEASURED HAND WRENCH _filteredWrench RIGHT \t " << robot_._filteredWrench[RIGHT].transpose() << std::endl; 
 
 	std::cout << "[dual_arm_control]: _w_H_o: \n" << object_._w_H_o << std::endl; 
 	std::cout << "[dual_arm_control]: _w_H_Do: \n" <<  object_._w_H_Do << std::endl;
 	std::cout << "[dual_arm_control]: _w_H_t: \n" <<  Utils<float>::quaternionToRotationMatrix(target_._qt) << std::endl;
 	std::cout << "[dual_arm_control]: robot_._w_H_ee[LEFT]: \n" <<  robot_._w_H_ee[0] << std::endl;
 	std::cout << "[dual_arm_control]: _w_H_Dgp[LEFT]: \n" << object_._w_H_Dgp[0] << std::endl;
-	std::cout << "[dual_arm_control]: robot_._w_H_ee[RIGHT]: \n" << robot_._w_H_ee[1] << std::endl;
+	std::cout << "[dual_arm_control]: robot_._w_H_ee[RIGHT]: \n" << robot_._w_H_ee[1] << std::endl;  // robot_._w_H_eeStandby
 	std::cout << "[dual_arm_control]: _w_H_Dgp[RIGHT]: \n" << object_._w_H_Dgp[1] << std::endl;
 
 	std::cout << "[dual_arm_control]: 3D STATE 2 GO : \t"  << target_._xt_state2go.transpose() << std::endl;
@@ -1242,8 +1240,8 @@ void dual_arm_control::computeCommands()
 	std::cout << "[dual_arm_control]: _vd[LEFT]:  \t" << robot_._vd[LEFT].transpose() << std::endl;
 	std::cout << "[dual_arm_control]: _vd[RIGHT]: \t" << robot_._vd[RIGHT].transpose() << std::endl;
 	std::cout << " ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ " <<  std::endl;
-	std::cout << " COMPUTED HAND WRENCH _fxc  LEFT \t " << _fxc[LEFT].transpose() << std::endl;
-	std::cout << " COMPUTED HAND WRENCH _fxc RIGHT \t " << _fxc[RIGHT].transpose() << std::endl; 
+	std::cout << " COMPUTED HAND WRENCH _fxc  LEFT \t " << robot_._fxc[LEFT].transpose() << std::endl;
+	std::cout << " COMPUTED HAND WRENCH _fxc RIGHT \t " << robot_._fxc[RIGHT].transpose() << std::endl; 
 	// std::cout << " [dual_arm_control]: _dirImp[LEFT] \t " << _dirImp[LEFT].transpose()   << " normal LEFT  \t " << _n[LEFT].transpose()<< std::endl;
 	// std::cout << " [dual_arm_control]: _dirImp[RIGHT] \t " << _dirImp[RIGHT].transpose() << " normal RIGHT \t " << _n[RIGHT].transpose()<< std::endl;
 	std::cout << " EEEE----------- EEEPPP   _desVtoss IIIIIIII ----------- ONNNNNNNN \t " << _desVtoss << std::endl; 
@@ -1283,6 +1281,10 @@ void dual_arm_control::computeCommands()
 	std::cout << " PPPPPPPPPPPPPPP _dxEE_dual_avg PPPPPPPPPP  is  -----------> : \t " << _dxEE_dual_avg_pcycle << std::endl;  
 	std::cout << " PPPPPPPPPPPPPPP _counter_pickup PPPPPPPPPP  is  -----------> : \t " << _counter_pickup << std::endl;
 
+
+	std::cout << "[dual_arm_control]: robot_._w_H_eeStandby[LEFT]: \n" << robot_._w_H_eeStandby[0] << std::endl;  // robot_._w_H_eeStandby
+	std::cout << "[dual_arm_control]: robot_._w_H_eeStandby[RIGHT]: \n" << robot_._w_H_eeStandby[1] << std::endl;  // robot_._w_H_eeStandby
+
 	
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1294,15 +1296,15 @@ void dual_arm_control::prepareCommands(Vector6f Vd_ee[], Eigen::Vector4f qd[], V
 	Eigen::Matrix<float,3,1> axis_d[NB_ROBOTS];	float angle_d[NB_ROBOTS];
   for(int i=0; i<NB_ROBOTS; i++)
   {
-  	// _vd[i]      = Vd_ee[i].head(3)  + _V_gpo[i].head(3);  
-  	// _omegad[i]  = Vd_ee[i].tail(3)  + _V_gpo[i].tail(3);  
+  	// robot_._vd[i]      = Vd_ee[i].head(3)  + _V_gpo[i].head(3);  
+  	// robot_._omegad[i]  = Vd_ee[i].tail(3)  + _V_gpo[i].tail(3);  
   	Vector6f VdEE  = robot_._tcp_W_EE[i].inverse() * (Vd_ee[i]  + object_._V_gpo[i]);
   	//
-  	_vd[i]     = VdEE.head(3) + 1.0*robot_._VEE_oa[i].head(3);
-		_omegad[i] = VdEE.tail(3);
+  	robot_._vd[i]     = VdEE.head(3) + 1.0*robot_._VEE_oa[i].head(3);
+		robot_._omegad[i] = VdEE.tail(3);
 
   	Utils<float>::quaternionToAxisAngle(qd[i], axis_d[i], angle_d[i]);
-  	_aad[i] = angle_d[i] * axis_d[i];
+  	robot_._aad[i] = angle_d[i] * axis_d[i];
   }
 
   // --------------------------------------------------------
@@ -1318,8 +1320,8 @@ void dual_arm_control::prepareCommands(Vector6f Vd_ee[], Eigen::Vector4f qd[], V
   }
 
   if(_releaseAndretract){
-			_fxc[0].setZero();
-			_fxc[1].setZero();
+			robot_._fxc[0].setZero();
+			robot_._fxc[1].setZero();
 			_nu_Wr0 = 0.0f;
 	  	_nu_Wr1 = 0.0f;
 		}
@@ -1451,7 +1453,7 @@ void dual_arm_control::reset_variables(){
 
 	for(int i=0; i<NB_ROBOTS; i++){
 		object_._V_gpo[i].setZero();
-		_fxc[i].setZero();
+		robot_._fxc[i].setZero();
 	}
 	_releaseAndretract 	= false;
 	_isThrowing 				= false;
@@ -1999,7 +2001,7 @@ void dual_arm_control::updateContactState()
   // Compute errors to object center position and dimension vector
 	Eigen::Matrix4f le_H_re     =  robot_._w_H_ee[LEFT].inverse() * robot_._w_H_ee[RIGHT];
 	Eigen::Matrix4f lgp_H_rgp   =  object_._w_H_gp[LEFT].inverse() * object_._w_H_gp[RIGHT];
-	Eigen::Vector3f t_o_absEE   =  Utils<float>::get_abs_3d(object_._w_H_gp) - Utils<float>::get_abs_3d(_w_H_ee);
+	Eigen::Vector3f t_o_absEE   =  Utils<float>::get_abs_3d(object_._w_H_gp) - Utils<float>::get_abs_3d(robot_._w_H_ee);
 	_eoD = fabs(le_H_re(2,3)) - fabs(lgp_H_rgp(2,3)); 
 	_eoC = t_o_absEE.norm(); 
 
