@@ -236,8 +236,6 @@ bool dual_arm_control::init()
 
 	bool gotParam = true;
 
-	std::cout << " INIT FUNCTION is -----------> : \t " << 1.0 << std::endl; 
-
 	while(!nh_.getParam("dual_system/simulation", _isSimulation)){ROS_INFO("Waitinng for param: dual_system/simulation ");}
 	while(!nh_.getParam("dual_system/passiveDS/dampingTopic/CustomController/left", param_damping_topic_CustomCtrl_left)){ROS_INFO("Waitinng for param : CustomController/left");}
 	while(!nh_.getParam("dual_system/passiveDS/dampingTopic/CustomController/right", param_damping_topic_CustomCtrl_right)){ROS_INFO("Waitinng for param : CustomController/right");}
@@ -299,9 +297,6 @@ bool dual_arm_control::init()
 	while(!nh_.getParam("conveyor_belt/nominal_speed", _nominalSpeed_conveyor_belt)){ROS_INFO("Waitinng for param: conveyor_belt/nominal_speed");}
 	while(!nh_.getParam("conveyor_belt/magnitude_perturbation", _magniture_pert_conveyor_belt)){ROS_INFO("Waitinng for param: conveyor_belt/magnitude_perturbation");}
 
-	std::cout << " INIT FUNCTION is -----------> : \t " << 2.0 << std::endl; 
-
-
 	if (!gotParam) {
     ROS_ERROR("Couldn't the retrieve one or many parameters. ");
 		return false;
@@ -320,23 +315,17 @@ bool dual_arm_control::init()
 		_dsDampingTopic[RIGHT] = param_damping_topic_CustomCtrl_right;
 	}
 
-	std::cout << " INIT FUNCTION is -----------> : \t " << 3.0 << std::endl; 
-
 	object_._objectMass 					  	= param_objectMass;
 	object_._objectDim 						  	= Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_objectDim.data(), param_objectDim.size());
 	Eigen::Vector3f graspOffset_L    	= Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_graspOffset_L.data(), param_graspOffset_L.size());
 	Eigen::Vector3f graspOffset_R    	= Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_graspOffset_R.data(), param_graspOffset_R.size());
 
-	std::cout << " INIT FUNCTION is -----------> : \t " << 4.0 << std::endl; 
-	
 	_tossVar.release_position      	  = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_releasePos.data(), param_releasePos.size());
 	_tossVar.release_orientation      = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_releaseOrient.data(), param_releaseOrient.size());
 	_tossVar.release_linear_velocity  = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_releaseLinVel_dir.data(), param_releaseLinVel_dir.size());
 	_tossVar.release_angular_velocity = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_releaseAngVel.data(), param_releaseAngVel.size());
 	_tossVar.rest_position      	  	= Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_restPos.data(), param_restPos.size());
 	_tossVar.rest_orientation      	  = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_restOrient.data(), param_restOrient.size());
-
-	std::cout << " INIT FUNCTION is -----------> : \t " << 5.0 << std::endl; 
 
 	robot_._toolOffsetFromEE[0]  			= _isSimulation ? param_toolOffset_sim_left :  param_toolOffset_real_left;
 	robot_._toolOffsetFromEE[1]  			= _isSimulation ? param_toolOffset_sim_right :  param_toolOffset_real_right;
@@ -347,21 +336,15 @@ bool dual_arm_control::init()
 	_gain_abs.diagonal()							= Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_abs_gains.data(), param_abs_gains.size());
 	_gain_rel.diagonal() 							= Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_rel_gains.data(), param_rel_gains.size());
 
-	std::cout << " INIT FUNCTION is -----------> : \t " << 6.0 << std::endl; 
-
 	_xDo_lifting = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_xDo_lifting.data(), param_xDo_lifting.size());
 	_qDo_lifting = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_qDo_lifting.data(), param_qDo_lifting.size());
 	_xDo_placing = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_xDo_placing.data(), param_xDo_placing.size());
 	_qDo_placing = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_qDo_placing.data(), param_qDo_placing.size());
 	_dual_angular_limit = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_dual_angular_limit.data(), param_dual_angular_limit.size());
 
-	std::cout << " INIT FUNCTION is -----------> : \t " << 7.0 << std::endl; 
-	
 	// relative grasping positons
 	object_._xgp_o[0] = Eigen::Vector3f(0.0f, -object_._objectDim(1)/2.0f,  0.0f) + graspOffset_L;   // left  
 	object_._xgp_o[1] = Eigen::Vector3f(0.0f,  object_._objectDim(1)/2.0f,  0.0f) + graspOffset_R; 	 // right 
-
-	std::cout << " INIT FUNCTION is -----------> : \t " << 8.0 << std::endl; 
 
 	// conveyor belt
 	_desSpeed_conveyor_belt = _nominalSpeed_conveyor_belt;
@@ -369,8 +352,6 @@ bool dual_arm_control::init()
 	Eigen::Matrix3f RDo_lifting = Utils<float>::quaternionToRotationMatrix(_qDo_lifting);
 	_filt_delta_ang = Utils<float>::getEulerAnglesXYZ_FixedFrame(RDo_lifting);
 	_filt_delta_ang_mir = Utils<float>::getEulerAnglesXYZ_FixedFrame(RDo_lifting);
-
-	std::cout << " INIT FUNCTION is -----------> : \t " << 9.0 << std::endl; 
 
 	// ======================================================================================================
 	// ROS TOPICS
@@ -894,7 +875,7 @@ void dual_arm_control::computeCommands()
 	bool placeTossing_done 	= (_release_flag) || (((object_._w_H_o.block<3,1>(0,3)-_tossVar.release_position).norm()<=0.07) 
 																						|| ((object_._w_H_o.block<2,1>(0,3)-_xDo_placing.head(2)).norm() <= 0.05 ) );
 	bool tossing_done 			= (_release_flag) || ( ((object_._w_H_o.block<3,1>(0,3)-_tossVar.release_position).norm()<=0.035) );
-	bool isForceDetected 		= (_normalForceAverage[LEFT] > _forceThreshold || _normalForceAverage[RIGHT] > _forceThreshold);
+	bool isForceDetected 		= (robot_._normalForceAverage[LEFT] > _forceThreshold || robot_._normalForceAverage[RIGHT] > _forceThreshold);
 
 
 	// ----------------------------------------------------------------------------------------------------------------------------------------
@@ -1253,7 +1234,8 @@ void dual_arm_control::computeCommands()
 	std::cout << "[dual_arm_control]: _w_H_Dgp[RIGHT]: \n" << object_._w_H_Dgp[1] << std::endl;
 
 	std::cout << "[dual_arm_control]: 3D STATE 2 GO : \t"  << target_._xt_state2go.transpose() << std::endl;
-	std::cout << "[dual_arm_control]:  ------------- _sensedContact: \t" << _sensedContact << std::endl;
+	std::cout << "[dual_arm_control]:  ------------- _sensedContact: \t" << _sensedContact << std::endl;  
+	std::cout << "[dual_arm_control]:  ------------- isContact: \t" << isContact << std::endl;
 	std::cout << "[dual_arm_control]: _Vd_ee[LEFT]:  \t" << robot_._Vd_ee[LEFT].transpose() << std::endl;
 	std::cout << "[dual_arm_control]: _Vd_ee[RIGHT]: \t" << robot_._Vd_ee[RIGHT].transpose() << std::endl;
 	std::cout << " vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv " <<  std::endl;
@@ -1300,11 +1282,9 @@ void dual_arm_control::computeCommands()
 	std::cout << " PPPPPPPPPPPPPPP _Del_xEE_dual_avg PPPPPPPPPP  is  -----------> : \t " << _Del_xEE_dual_avg << std::endl; 
 	std::cout << " PPPPPPPPPPPPPPP _dxEE_dual_avg PPPPPPPPPP  is  -----------> : \t " << _dxEE_dual_avg_pcycle << std::endl;  
 	std::cout << " PPPPPPPPPPPPPPP _counter_pickup PPPPPPPPPP  is  -----------> : \t " << _counter_pickup << std::endl;
-
-
-	std::cout << "[dual_arm_control]: robot_._w_H_eeStandby[LEFT]: \n" << robot_._w_H_eeStandby[0] << std::endl;  // robot_._w_H_eeStandby
-	std::cout << "[dual_arm_control]: robot_._w_H_eeStandby[RIGHT]: \n" << robot_._w_H_eeStandby[1] << std::endl;  // robot_._w_H_eeStandby
-
+	// std::cout << "[dual_arm_control]: robot_._w_H_eeStandby[LEFT]: \n" << robot_._w_H_eeStandby[0] << std::endl;  // robot_._w_H_eeStandby
+	// std::cout << "[dual_arm_control]: robot_._w_H_eeStandby[RIGHT]: \n" << robot_._w_H_eeStandby[1] << std::endl;  // robot_._w_H_eeStandby
+	std::cout << "[dual_arm_control]: _desired_object_wrench:  WWWWWWWW  \t" << _desired_object_wrench.transpose() << std::endl;  //
 	
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

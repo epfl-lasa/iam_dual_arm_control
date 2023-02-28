@@ -113,8 +113,9 @@ void dualArmCooperativeController::check_contact_proximity(	Eigen::Matrix4f w_H_
 		_ContactConfidence = 0.0;
 	}
 	std::cout << " _ContactConfidence 	aaaaaaaaaaaaaaaaaa	---------- is  \t" << _ContactConfidence << std::endl;
-	// std::cout << " _dist2contact[LEFT] 	aaaaaaaaaaaaaaaaaa	---------- is  \t" << _dist2contact[LEFT] << std::endl;
-	// std::cout << " _dist2contact[RIGHT] aaaaaaaaaaaaaaaaaa	---------- is  \t" << _dist2contact[RIGHT] << std::endl;
+	std::cout << " _dist2contact[LEFT] 	aaaaaaaaaaaaaaaaaa	---------- is  \t" << _dist2contact[LEFT] << std::endl;
+	std::cout << " _dist2contact[RIGHT] aaaaaaaaaaaaaaaaaa	---------- is  \t" << _dist2contact[RIGHT] << std::endl;
+	std::cout << " isForceDetected 			dddddddddddddddddd	---------- is  \t" << isForceDetected << std::endl;
 	// std::cout << " _lh_er.head(2).norm()aaaaaaaaaaaaaaaaaa	---------- is  \t" << lh_er.head(2).norm() << std::endl;
 	// std::cout << " _rh_er.head(2).norm()aaaaaaaaaaaaaaaaaa	---------- is  \t" << rh_er.head(2).norm() << std::endl;
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -442,7 +443,15 @@ void dualArmCooperativeController::getPredefinedContactForceProfile(bool goHome,
 	std::cout << " APPLIED HAND WRENCH RIGHT \t " << _f_applied[RIGHT].transpose() << std::endl;
 }
 
-void dualArmCooperativeController::getAppliedWrenches(bool goHome, int contactState, Eigen::Matrix4f w_H_o, Eigen::Matrix4f w_H_ee[], Eigen::Matrix4f w_H_cp[], Vector6f desired_object_wrench, float object_mass, bool qp_wrench_generation, bool isForceDetected)
+void dualArmCooperativeController::getAppliedWrenches(bool goHome, 
+																											int contactState, 
+																											Eigen::Matrix4f w_H_o, 
+																											Eigen::Matrix4f w_H_ee[], 
+																											Eigen::Matrix4f w_H_cp[], 
+																											Vector6f desired_object_wrench, 
+																											float object_mass, 
+																											bool qp_wrench_generation, 
+																											bool isForceDetected)
 {
 	if(qp_wrench_generation){
 	  	this->computeControlWrench(w_H_o, w_H_ee, w_H_cp, desired_object_wrench, isForceDetected);
