@@ -36,6 +36,7 @@ dual_arm_control::dual_arm_control(	ros::NodeHandle &n, double frequency, 	//std
 	// _toolOffsetFromEE[1] = 0.115f; //0.15f;
 	_toolMass = 0.2f;    // TO CHANGE !!!!
 	_toolComPositionFromSensor << 0.0f,0.0f,0.035f;
+
 	//
 	for(int k= 0; k < NB_ROBOTS; k++)
 	{
@@ -79,8 +80,8 @@ dual_arm_control::dual_arm_control(	ros::NodeHandle &n, double frequency, 	//std
 	int sgf_p[3];
 	int sgf_o[3];
 	sgf_dq[0]= 7; 	sgf_dq[1]= 3; 	sgf_dq[2]= 6;
-	sgf_p[3] = 3; 	sgf_p[3] = 3; 	sgf_p[3] = 6;
-	sgf_o[3] = 4; 	sgf_o[3] = 3; 	sgf_o[3] = 10;
+	sgf_p[0] = 3; 	sgf_p[1] = 3; 	sgf_p[2] = 6;
+	sgf_o[0] = 4; 	sgf_o[1] = 3; 	sgf_o[2] = 10;
 
 	// initialize robot
 	robot_.init_robot(sgf_dq, _dt, _gravity);
@@ -186,6 +187,7 @@ dual_arm_control::dual_arm_control(	ros::NodeHandle &n, double frequency, 	//std
 	_xEE_dual.setZero();
 	_xEE_dual_0.setZero(); 
 	_dual_angular_limit.setZero();
+
 }
 //
 dual_arm_control::~dual_arm_control(){}
@@ -233,6 +235,8 @@ bool dual_arm_control::init()
 	std::string param_damping_topic_TorqueCtrl_right = "/iiwa_blue/control/lambda_Pos";
 
 	bool gotParam = true;
+
+	std::cout << " INIT FUNCTION is -----------> : \t " << 1.0 << std::endl; 
 
 	while(!nh_.getParam("dual_system/simulation", _isSimulation)){ROS_INFO("Waitinng for param: dual_system/simulation ");}
 	while(!nh_.getParam("dual_system/passiveDS/dampingTopic/CustomController/left", param_damping_topic_CustomCtrl_left)){ROS_INFO("Waitinng for param : CustomController/left");}
@@ -295,6 +299,8 @@ bool dual_arm_control::init()
 	while(!nh_.getParam("conveyor_belt/nominal_speed", _nominalSpeed_conveyor_belt)){ROS_INFO("Waitinng for param: conveyor_belt/nominal_speed");}
 	while(!nh_.getParam("conveyor_belt/magnitude_perturbation", _magniture_pert_conveyor_belt)){ROS_INFO("Waitinng for param: conveyor_belt/magnitude_perturbation");}
 
+	std::cout << " INIT FUNCTION is -----------> : \t " << 2.0 << std::endl; 
+
 
 	if (!gotParam) {
     ROS_ERROR("Couldn't the retrieve one or many parameters. ");
@@ -314,10 +320,14 @@ bool dual_arm_control::init()
 		_dsDampingTopic[RIGHT] = param_damping_topic_CustomCtrl_right;
 	}
 
+	std::cout << " INIT FUNCTION is -----------> : \t " << 3.0 << std::endl; 
+
 	object_._objectMass 					  	= param_objectMass;
 	object_._objectDim 						  	= Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_objectDim.data(), param_objectDim.size());
 	Eigen::Vector3f graspOffset_L    	= Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_graspOffset_L.data(), param_graspOffset_L.size());
 	Eigen::Vector3f graspOffset_R    	= Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_graspOffset_R.data(), param_graspOffset_R.size());
+
+	std::cout << " INIT FUNCTION is -----------> : \t " << 4.0 << std::endl; 
 	
 	_tossVar.release_position      	  = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_releasePos.data(), param_releasePos.size());
 	_tossVar.release_orientation      = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_releaseOrient.data(), param_releaseOrient.size());
@@ -325,6 +335,8 @@ bool dual_arm_control::init()
 	_tossVar.release_angular_velocity = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_releaseAngVel.data(), param_releaseAngVel.size());
 	_tossVar.rest_position      	  	= Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_restPos.data(), param_restPos.size());
 	_tossVar.rest_orientation      	  = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_restOrient.data(), param_restOrient.size());
+
+	std::cout << " INIT FUNCTION is -----------> : \t " << 5.0 << std::endl; 
 
 	robot_._toolOffsetFromEE[0]  			= _isSimulation ? param_toolOffset_sim_left :  param_toolOffset_real_left;
 	robot_._toolOffsetFromEE[1]  			= _isSimulation ? param_toolOffset_sim_right :  param_toolOffset_real_right;
@@ -335,15 +347,21 @@ bool dual_arm_control::init()
 	_gain_abs.diagonal()							= Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_abs_gains.data(), param_abs_gains.size());
 	_gain_rel.diagonal() 							= Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_rel_gains.data(), param_rel_gains.size());
 
+	std::cout << " INIT FUNCTION is -----------> : \t " << 6.0 << std::endl; 
+
 	_xDo_lifting = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_xDo_lifting.data(), param_xDo_lifting.size());
 	_qDo_lifting = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_qDo_lifting.data(), param_qDo_lifting.size());
 	_xDo_placing = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_xDo_placing.data(), param_xDo_placing.size());
 	_qDo_placing = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_qDo_placing.data(), param_qDo_placing.size());
 	_dual_angular_limit = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_dual_angular_limit.data(), param_dual_angular_limit.size());
+
+	std::cout << " INIT FUNCTION is -----------> : \t " << 7.0 << std::endl; 
 	
 	// relative grasping positons
 	object_._xgp_o[0] = Eigen::Vector3f(0.0f, -object_._objectDim(1)/2.0f,  0.0f) + graspOffset_L;   // left  
 	object_._xgp_o[1] = Eigen::Vector3f(0.0f,  object_._objectDim(1)/2.0f,  0.0f) + graspOffset_R; 	 // right 
+
+	std::cout << " INIT FUNCTION is -----------> : \t " << 8.0 << std::endl; 
 
 	// conveyor belt
 	_desSpeed_conveyor_belt = _nominalSpeed_conveyor_belt;
@@ -351,6 +369,8 @@ bool dual_arm_control::init()
 	Eigen::Matrix3f RDo_lifting = Utils<float>::quaternionToRotationMatrix(_qDo_lifting);
 	_filt_delta_ang = Utils<float>::getEulerAnglesXYZ_FixedFrame(RDo_lifting);
 	_filt_delta_ang_mir = Utils<float>::getEulerAnglesXYZ_FixedFrame(RDo_lifting);
+
+	std::cout << " INIT FUNCTION is -----------> : \t " << 9.0 << std::endl; 
 
 	// ======================================================================================================
 	// ROS TOPICS

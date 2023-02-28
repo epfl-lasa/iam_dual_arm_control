@@ -166,6 +166,8 @@ class robot_var{
 				_xrbStandby[k].setZero();
 				_qrbStandby[k].setZero();
 
+				std::cout << " INIT_ROBOT FUNCTION is -----------> : \t " << 1.0 << std::endl; 
+
 				// desired values
 				_Vd_ee[k].setZero();
 				_Vee[k].setZero();
@@ -177,6 +179,8 @@ class robot_var{
 				_omegad[k].setZero();
 				_qd[k].setZero();
 				_aad[k].setZero();
+
+				std::cout << " INIT_ROBOT FUNCTION is -----------> : \t " << 2.0 << std::endl; 
 
 				// forces control variables
 				_fxc[k].setZero();
@@ -192,6 +196,8 @@ class robot_var{
 				// _wrenchBiasOK[k] 		= false;
 				// _firstRobotPose[k] 	= false;
 				// _firstRobotTwist[k] = false;
+
+				std::cout << " INIT_ROBOT FUNCTION is -----------> : \t " << 3.0 << std::endl; 
 				
 				// joinr variables
 				_joints_positions[k].setZero();
@@ -200,10 +206,14 @@ class robot_var{
 				_joints_torques[k].setZero();
 
 				_VEE_oa[k].setZero();
+
+				std::cout << " INIT_ROBOT FUNCTION is -----------> : \t " << 4.0 << std::endl; 
 			}
 			// Filtered variable (SG)
 			_sgf_ddq_filtered_l = std::make_unique<SGF::SavitzkyGolayFilter>(sgf_q[0], sgf_q[1], sgf_q[2], dt); //(7,3,6,_dt); // dim, order. window lenght
 			_sgf_ddq_filtered_r = std::make_unique<SGF::SavitzkyGolayFilter>(sgf_q[0], sgf_q[1], sgf_q[2], dt); //(7,3,6,_dt); // dim, order. window lenght
+
+			std::cout << " INIT_ROBOT FUNCTION is -----------> : \t " << 5.0 << std::endl; 
 
 		}
 
@@ -347,8 +357,8 @@ class object_to_grasp{
 		Eigen::Vector3f _vo;
 		Eigen::Vector3f _wo;
 		// Vector6f 		_Vo;
-		// Vector6f 		_Vd_o;   											// desired object velocity (toss)
-		// Vector6f  			_desired_object_wrench; 
+		// Vector6f 		_Vd_o;   													// desired object velocity (toss)
+		// Vector6f  		_desired_object_wrench; 
 		Eigen::Vector3f _n[NB_ROBOTS];               			// Normal vector to surface object for each robot (3x1)
 		Vector6f        _V_gpo[NB_ROBOTS];
 
@@ -369,12 +379,14 @@ class object_to_grasp{
 			// _Vd_o.setZero();
 			_xoC.setZero();
 			_xoD.setZero();
+
 			_qo  << 1.0f, 0.0f, 0.0f, 0.0f;
 			_qDo << 1.0f, 0.0f, 0.0f, 0.0f;
 			_w_H_o  = Utils<float>::pose2HomoMx(_xo, _qo);	
 			_w_H_Do = Utils<float>::pose2HomoMx(_xDo, _qDo);	
 			_qgp_o[0] = Utils<float>::rotationMatrixToQuaternion(o_R_gpl); //
 			_qgp_o[1] = Utils<float>::rotationMatrixToQuaternion(o_R_gpr); //
+
 			// normal to contact surfaces
 			_n[0] = o_R_gpl.col(2);
 			_n[1] = o_R_gpr.col(2);
@@ -383,7 +395,7 @@ class object_to_grasp{
 
 			//
 			_xo_filtered = std::make_unique<SGF::SavitzkyGolayFilter>(sgf_p[0], sgf_p[1], sgf_p[2], dt); //(3,3,6,_dt);
-			_qo_filtered = std::make_unique<SGF::SavitzkyGolayFilter>(sgf_o[0], sgf_o[1], sgf_o[2], dt); //(4,3,10,_dt);
+			_qo_filtered = std::make_unique<SGF::SavitzkyGolayFilter>(sgf_o[0], sgf_o[1], sgf_o[2], dt); //(4,3,10,_dt); dim, order, win_l, dt
 
 			// //
 			// _xo_KF_filtered.init(_dt, Eigen::Vector2f(0.004, 0.1), 0.004, _xo);
@@ -410,6 +422,7 @@ class object_to_grasp{
 			_qo_filtered->AddData(_qo);
 			_qo_filtered->GetOutput(0,temp_o);
 			_qo = temp_o;
+
 			// normalizing the quaternion
 			_qo.normalize();
 			//
@@ -501,7 +514,7 @@ class tossing_target{
 		_x_pickup.setZero();
 		_xt_state2go.setZero();
 		//
-		_xt_filtered = std::make_unique<SGF::SavitzkyGolayFilter>(dim, order, win_l, dt); //(3,3,10,dt);
+		_xt_filtered = std::make_unique<SGF::SavitzkyGolayFilter>(dim, order, win_l, dt); //(3,3,10,dt); dim, order, win_l, dt
 		_xt_KF_filtered.init(dt, Eigen::Vector2f(0.004, 0.1), 0.004, _xt);
 		_xt_KF_filtered.update(_xt);
 	}
@@ -885,10 +898,10 @@ class dual_arm_control
 		// SG Filter variables //
 		/////////////////////
 		// SGF::SavitzkyGolayFilter _xo_filtered;    			// Filter used for the object's center position
-		std::unique_ptr<SGF::SavitzkyGolayFilter> _xo_filtered;
-		std::unique_ptr<SGF::SavitzkyGolayFilter> _qo_filtered;
-		std::unique_ptr<SGF::SavitzkyGolayFilter> _sgf_ddq_filtered_l;
-		std::unique_ptr<SGF::SavitzkyGolayFilter> _sgf_ddq_filtered_r;
+		// std::unique_ptr<SGF::SavitzkyGolayFilter> _xo_filtered;
+		// std::unique_ptr<SGF::SavitzkyGolayFilter> _qo_filtered;
+		// std::unique_ptr<SGF::SavitzkyGolayFilter> _sgf_ddq_filtered_l;
+		// std::unique_ptr<SGF::SavitzkyGolayFilter> _sgf_ddq_filtered_r;
 		// SGF::SavitzkyGolayFilter _x_filtered;    			// Filter used for the object's dimension vector
 		// std::unique_ptr<SGF::SavitzkyGolayFilter> _xt_filtered; // target
 		KF_3DVeloFromPosEstimator 								_xo_KF_filtered; //
