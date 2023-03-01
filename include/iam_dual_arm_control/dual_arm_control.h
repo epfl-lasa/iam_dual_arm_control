@@ -83,45 +83,45 @@ class robot_var{
 	public:
 
 		// --------------------------------------------------------------------------------
-		int _nb_joints[NB_ROBOTS];
-		float _toolMass;                             				// Tool mass [kg]
-		float _toolOffsetFromEE[NB_ROBOTS];          				// Tool offset along z axis of end effector [m]   
 		Eigen::Vector3f _gravity;
-		Eigen::Vector3f _toolComPositionFromSensor;
-		int _wrenchCount[NB_ROBOTS];                      	// Counter used to pre-process the force data
-		std::deque<float> _normalForceWindow[NB_ROBOTS];  	// Moving window saving the robots' measured normal force to the object's surface [N]  
-		float _normalForceAverage[NB_ROBOTS];             	// Average normal force measured through the force windows [N]
-		float _normalForce[NB_ROBOTS];                    	// Normal force to the surface [N] 
-		// float _c;                                        // Contact value (1 = CONTACT, 0 otherwise)
-		bool _wrenchBiasOK[NB_ROBOTS];                 			// Check if computation of force/torque sensor bias is OK
-		// float _eD;                                       // Error to desired distance vector [m]                       
-		// float _eoD;                                      // Error to object dimension vector [m]                       
-		// float _eC;                                       // Error to desired center position [m]
-		// float _eoC;                                      // Error to object center position [m]  
-		Eigen::Vector3f _xdC;                             	// Desired center position [m] (3x1)
-		Eigen::Vector3f _xdD;                             	// Desired distance vector [m] (3x1)
+		int _nb_joints[NB_ROBOTS];
+		float _toolMass[NB_ROBOTS];                         				// Tool mass [kg]
+		float _toolOffsetFromEE[NB_ROBOTS];          								// Tool offset along z axis of end effector [m]   
+		Eigen::Vector3f _toolComPositionFromSensor[NB_ROBOTS];      // Tool CoM offset along z axis of end effector [m]
+		int _wrenchCount[NB_ROBOTS];                      					// Counter used to pre-process the force data
+		std::deque<float> _normalForceWindow[NB_ROBOTS];  					// Moving window saving the robots' measured normal force to the object's surface [N]  
+		float _normalForceAverage[NB_ROBOTS];             					// Average normal force measured through the force windows [N]
+		float _normalForce[NB_ROBOTS];                    					// Normal force to the surface [N] 
+		// float _c;                                        				// Contact value (1 = CONTACT, 0 otherwise)
+		bool _wrenchBiasOK[NB_ROBOTS];                 							// Check if computation of force/torque sensor bias is OK
+		// float _eD;                                       				// Error to desired distance vector [m]                       
+		// float _eoD;                                      				// Error to object dimension vector [m]                       
+		// float _eC;                                       				// Error to desired center position [m]
+		// float _eoC;                                      				// Error to object center position [m]  
+		Eigen::Vector3f _xdC;                             					// Desired center position [m] (3x1)
+		Eigen::Vector3f _xdD;                             					// Desired distance vector [m] (3x1)
 		// --------------------------------------------------------------------------------
 		Eigen::Vector3f _x[NB_ROBOTS];
 		Eigen::Vector4f _q[NB_ROBOTS];
-		Eigen::Matrix3f _wRb[NB_ROBOTS]; 										// Orientation matrix (3x3)
+		Eigen::Matrix3f _wRb[NB_ROBOTS]; 														// Orientation matrix (3x3)
 		Eigen::Vector3f _xd[NB_ROBOTS];
 		Eigen::Vector4f _qd[NB_ROBOTS];
-		Eigen::Vector3f _aad[NB_ROBOTS];										// desired axis angle 
+		Eigen::Vector3f _aad[NB_ROBOTS];														// desired axis angle 
 
 		Eigen::Vector3f _vd[NB_ROBOTS];
 		Eigen::Vector3f _omegad[NB_ROBOTS];
 		Eigen::Vector3f _v[NB_ROBOTS];
 		Eigen::Vector3f _w[NB_ROBOTS];
 		Vector6f 				_Vee[NB_ROBOTS];
-		Vector6f 				_Vd_ee[NB_ROBOTS];									// desired velocity twist
-		Matrix6f 				_tcp_W_EE[NB_ROBOTS];								// Velocity Twist transformation between the robot EE and the tool center point (tcp)
-		Vector6f 				_VEE_oa[NB_ROBOTS]; 								// self collision (obstacle) avoidance
-		Eigen::Vector3f _fxc[NB_ROBOTS];     								// Desired conservative parts of the nominal DS [m/s] (3x1)
-		Vector6f  			_wrench[NB_ROBOTS];          				// Wrench [N and Nm] (6x1)
-		Vector6f 				_wrenchBias[NB_ROBOTS];							// Wrench bias [N and Nm] (6x1)
-		Vector6f        _filteredWrench[NB_ROBOTS];  				// Filtered wrench [N and Nm] (6x1)
+		Vector6f 				_Vd_ee[NB_ROBOTS];													// desired velocity twist
+		Matrix6f 				_tcp_W_EE[NB_ROBOTS];												// Velocity Twist transformation between the robot EE and the tool center point (tcp)
+		Vector6f 				_VEE_oa[NB_ROBOTS]; 												// self collision (obstacle) avoidance
+		Eigen::Vector3f _fxc[NB_ROBOTS];     												// Desired conservative parts of the nominal DS [m/s] (3x1)
+		Vector6f  			_wrench[NB_ROBOTS];          								// Wrench [N and Nm] (6x1)
+		Vector6f 				_wrenchBias[NB_ROBOTS];											// Wrench bias [N and Nm] (6x1)
+		Vector6f        _filteredWrench[NB_ROBOTS];  								// Filtered wrench [N and Nm] (6x1)
 
-		float _targetForce;                  								// Target force in contact [N]
+		float _targetForce;                  												// Target force in contact [N]
 		// float _d1[NB_ROBOTS];
 		// float _err[NB_ROBOTS];
 		// bool _qp_wrench_generation;
@@ -129,12 +129,12 @@ class robot_var{
 		bool _firstRobotTwist[NB_ROBOTS];
 		bool _firstWrenchReceived[NB_ROBOTS];
 
-		Eigen::Matrix4f _w_H_ee[NB_ROBOTS];									// Homogenenous transform of the End-effectors poses (4x4)
-		Eigen::Matrix4f _w_H_eeStandby[NB_ROBOTS];					// Homogenenous transform of Standby pose of the End-effectors (4x4)
-		Eigen::Matrix4f _w_H_rb[NB_ROBOTS];									// Homogenenous transform of robots base frame (4x4)
-		Eigen::Matrix4f _rb_H_eeStandby[NB_ROBOTS];					// Homogenenous transform of EE standby poses relatve to robots base (4x4)
-		Eigen::Vector3f _xrbStandby[NB_ROBOTS];		    			// quaternion orientation of EE standby poses relatve to robots base (3x1)
-		Eigen::Vector4f _qrbStandby[NB_ROBOTS];		    			// quaternion orientation of EE standby poses relatve to robots base (4x1)
+		Eigen::Matrix4f _w_H_ee[NB_ROBOTS];													// Homogenenous transform of the End-effectors poses (4x4)
+		Eigen::Matrix4f _w_H_eeStandby[NB_ROBOTS];									// Homogenenous transform of Standby pose of the End-effectors (4x4)
+		Eigen::Matrix4f _w_H_rb[NB_ROBOTS];													// Homogenenous transform of robots base frame (4x4)
+		Eigen::Matrix4f _rb_H_eeStandby[NB_ROBOTS];									// Homogenenous transform of EE standby poses relatve to robots base (4x4)
+		Eigen::Vector3f _xrbStandby[NB_ROBOTS];		    							// quaternion orientation of EE standby poses relatve to robots base (3x1)
+		Eigen::Vector4f _qrbStandby[NB_ROBOTS];		    							// quaternion orientation of EE standby poses relatve to robots base (4x1)
 
 		std::unique_ptr<SGF::SavitzkyGolayFilter> _sgf_ddq_filtered_l;
 		std::unique_ptr<SGF::SavitzkyGolayFilter> _sgf_ddq_filtered_r;
@@ -166,8 +166,6 @@ class robot_var{
 				_xrbStandby[k].setZero();
 				_qrbStandby[k].setZero();
 
-				std::cout << " INIT_ROBOT FUNCTION is -----------> : \t " << 1.0 << std::endl; 
-
 				// desired values
 				_Vd_ee[k].setZero();
 				_Vee[k].setZero();
@@ -179,8 +177,6 @@ class robot_var{
 				_omegad[k].setZero();
 				_qd[k].setZero();
 				_aad[k].setZero();
-
-				std::cout << " INIT_ROBOT FUNCTION is -----------> : \t " << 2.0 << std::endl; 
 
 				// forces control variables
 				_fxc[k].setZero();
@@ -196,9 +192,7 @@ class robot_var{
 				// _wrenchBiasOK[k] 		= false;
 				// _firstRobotPose[k] 	= false;
 				// _firstRobotTwist[k] = false;
-
-				std::cout << " INIT_ROBOT FUNCTION is -----------> : \t " << 3.0 << std::endl; 
-				
+		
 				// joinr variables
 				_joints_positions[k].setZero();
 				_joints_velocities[k].setZero();
@@ -206,15 +200,10 @@ class robot_var{
 				_joints_torques[k].setZero();
 
 				_VEE_oa[k].setZero();
-
-				std::cout << " INIT_ROBOT FUNCTION is -----------> : \t " << 4.0 << std::endl; 
 			}
 			// Filtered variable (SG)
 			_sgf_ddq_filtered_l = std::make_unique<SGF::SavitzkyGolayFilter>(sgf_q[0], sgf_q[1], sgf_q[2], dt); //(7,3,6,_dt); // dim, order. window lenght
 			_sgf_ddq_filtered_r = std::make_unique<SGF::SavitzkyGolayFilter>(sgf_q[0], sgf_q[1], sgf_q[2], dt); //(7,3,6,_dt); // dim, order. window lenght
-
-			std::cout << " INIT_ROBOT FUNCTION is -----------> : \t " << 5.0 << std::endl; 
-
 		}
 
 		void get_StandbyHmgTransformInBase(){
@@ -272,9 +261,9 @@ class robot_var{
 			//
 			if(!wrenchBiasOK[k])
 		  {
-		    Eigen::Vector3f loadForce 	 = _wRb[k].transpose()*_toolMass*_gravity;
+		    Eigen::Vector3f loadForce 	 = _wRb[k].transpose()*_toolMass[k]*_gravity;
 		    _wrenchBias[k].segment(0,3) -= loadForce;
-		    _wrenchBias[k].segment(3,3) -= _toolComPositionFromSensor.cross(loadForce);
+		    _wrenchBias[k].segment(3,3) -= _toolComPositionFromSensor[k].cross(loadForce);
 		    _wrenchBias[k] += raw; 
 		    _wrenchCount[k]++;
 
@@ -289,9 +278,9 @@ class robot_var{
 		  if(wrenchBiasOK[k])
 		  {
 		    _wrench[k] = raw -_wrenchBias[k];
-		    Eigen::Vector3f loadForce = _wRb[k].transpose()*_toolMass*_gravity;
+		    Eigen::Vector3f loadForce = _wRb[k].transpose()*_toolMass[k]*_gravity;
 		    _wrench[k].segment(0,3)  -= loadForce;
-		    _wrench[k].segment(3,3)  -= _toolComPositionFromSensor.cross(loadForce);
+		    _wrench[k].segment(3,3)  -= _toolComPositionFromSensor[k].cross(loadForce);
 		    _wrench[k].head(3) = _wRb[k] * _wrench[k].head(3);
 				_wrench[k].tail(3) = _wRb[k] * _wrench[k].tail(3);
 		    _filteredWrench[k] = filteredForceGain*_filteredWrench[k]+(1.0f-filteredForceGain)*_wrench[k];
@@ -331,6 +320,23 @@ class robot_var{
 		      _normalForceAverage[k] /= MOVING_FORCE_WINDOW_SIZE;
 		    }
 		  }
+		}
+
+		void set_init_parameters(	float toolMass_param[],     
+															float toolOffsetFromEE_param[],
+															Eigen::Vector3f toolComPositionFromSensor_param[],
+															Eigen::Vector3f xrbStandby_param[],
+															Eigen::Vector4f qrbStandby_param[]){
+			//
+			memcpy(_toolMass, 									&toolMass_param[0], 									NB_ROBOTS * sizeof *toolMass_param); 
+			memcpy(_toolOffsetFromEE, 					&toolOffsetFromEE_param[0], 					NB_ROBOTS * sizeof *toolOffsetFromEE_param); 
+			memcpy(_toolComPositionFromSensor, 	&toolComPositionFromSensor_param[0], 	NB_ROBOTS * sizeof *toolComPositionFromSensor_param); 
+			memcpy(_xrbStandby, 								&xrbStandby_param[0], 								NB_ROBOTS * sizeof *xrbStandby_param); 
+			memcpy(_qrbStandby, 								&qrbStandby_param[0], 								NB_ROBOTS * sizeof *qrbStandby_param); 
+
+			// get stanby transformation of the EEs wrt. the dual-robot Base frame
+			this->get_StandbyHmgTransformInBase();
+
 		}
 
 };
@@ -400,6 +406,8 @@ class object_to_grasp{
 			// //
 			// _xo_KF_filtered.init(_dt, Eigen::Vector2f(0.004, 0.1), 0.004, _xo);
 			// _xo_KF_filtered.update(_xo);
+
+			this->get_desiredHmgTransform();
 		}
 
 		void get_HmgTransform(){
