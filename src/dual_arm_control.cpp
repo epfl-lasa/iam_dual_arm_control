@@ -65,33 +65,6 @@ dual_arm_control::dual_arm_control(	ros::NodeHandle &n, double frequency, 	//std
 	_objecPoseCount = 0;
 	_desired_object_wrench.setZero();
 
-	// //----------------------------------------------------------------
-	// // object desired grasping points
-	// Eigen::Matrix3f o_R_gpl;	o_R_gpl.setZero();		
-	// Eigen::Matrix3f o_R_gpr;	o_R_gpr.setZero();	
-	// o_R_gpl(0,0) =  1.0f;	o_R_gpl(2,1) = -1.0f; 	o_R_gpl(1,2) = 1.0f;
-	// o_R_gpr(0,0) =  1.0f;	o_R_gpr(2,1) =  1.0f; 	o_R_gpr(1,2) =-1.0f;
-	// //
-	// int sgf_dq[3];
-	// int sgf_p[3];
-	// int sgf_o[3];
-	// sgf_dq[0]= 7; 	sgf_dq[1]= 3; 	sgf_dq[2]= 6;
-	// sgf_p[0] = 3; 	sgf_p[1] = 3; 	sgf_p[2] = 6;
-	// sgf_o[0] = 4; 	sgf_o[1] = 3; 	sgf_o[2] = 10;
-
-	// // initialize robot
-	// //-----------------
-	// robot_.init_robot(sgf_dq, _dt, _gravity);
-
-	// // object_to_grasp
-	// //-----------------
-	// object_.init_object(sgf_p, sgf_o, _dt, o_R_gpl, o_R_gpr);
-
-	// // target
-	// //-------
-	// target_.init_target(3,3,10,_dt);
-	// //------------------------------------------------------------------
-
 	_c   = 0.0f;
 	_v_max = 1.50f;     // velocity limits
 	_w_max = 4.0f;     	// velocity limits
@@ -397,8 +370,7 @@ bool dual_arm_control::init()
 	_pubFilteredWrench[RIGHT] 	 	= nh_.advertise<geometry_msgs::WrenchStamped>("/dual_arm_control/robot_right/filteredWrenc0hRight", 1);
 	_pubNormalForce[LEFT] 		  	= nh_.advertise<std_msgs::Float64>("/dual_arm_control/robot_left/normalForceLeft", 1);
 	_pubNormalForce[RIGHT] 		 		= nh_.advertise<std_msgs::Float64>("/dual_arm_control/robot_right/normalForceRight", 1);
-
-	// Desired command for the dual iiwa toolkit
+	// Desired command for the dual
 	_pubDesiredVel_Quat[LEFT]   	= nh_.advertise<geometry_msgs::Pose>("/dual_arm_control/iiwa1/vel_quat", 1);     // "/passive_control/iiwa1/vel_quat" 
 	_pubDesiredVel_Quat[RIGHT]  	= nh_.advertise<geometry_msgs::Pose>("/dual_arm_control/iiwa_blue/vel_quat", 1);
 	// _pubDesiredTwist[LEFT] 		= nh_.advertise<geometry_msgs::Twist>("/dual_arm_control/robot_left/desired/ee_velocity", 1);  // /passive_control/iiwa1/des_twist
