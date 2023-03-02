@@ -47,6 +47,17 @@ struct tossDsParam{
 };
 
 
+struct tossingTaskVariables{
+
+	Eigen::Vector3f release_position;
+	Eigen::Vector4f release_orientation;
+	Eigen::Vector3f release_linear_velocity;
+	Eigen::Vector3f release_angular_velocity;
+	Eigen::Vector3f rest_position;
+	Eigen::Vector4f rest_orientation;
+};
+
+
 class throwingDS
 {
 	public:
@@ -75,11 +86,9 @@ class throwingDS
 		bool is2ndOrder_;
 
 		Eigen::Matrix4f w_H_de_; 
-		Eigen::Matrix4f w_H_re_; 	
+		Eigen::Matrix4f w_H_re_; 
+		Eigen::Matrix4f w_H_po_;	
 		// Vector6f Vee_;
-
-		Eigen::Vector3f v_toss_;
-		Eigen::Vector3f w_toss_;
 		Eigen::Matrix3f BasisQp_;
 		Eigen::Matrix3f BasisQo_;
 		//
@@ -89,7 +98,11 @@ class throwingDS
 
 
 
+
 	public:
+		//
+		Eigen::Vector3f v_toss_;
+		Eigen::Vector3f w_toss_;
 		//
 		tossDsParam ds_param_;
 		//
@@ -98,6 +111,12 @@ class throwingDS
 		float a_tangent_;
 		float a_retract_;
 		float coupling_;
+		float _refVtoss;
+		float a_toss_;
+		float _v_max;
+		float _w_max;
+		bool _stop_and_toss = false;
+		Eigen::Vector3f Xt_;
 
 
 		throwingDS();
@@ -126,7 +145,7 @@ class throwingDS
 																						Eigen::Matrix4f w_H_d, Eigen::Matrix3f Ko, Eigen::Matrix3f Do, bool is2ndOrder);
 		Eigen::MatrixXf createOrthonormalMatrixFromVector(Eigen::VectorXf inVec);
 
-		Vector6f apply(Eigen::Vector3f curPos, Eigen::Vector4f curOrient, Eigen::Vector3f curLinVel, Eigen::Vector3f curAngVel);
+		Vector6f apply(Eigen::Vector3f curPos, Eigen::Vector4f curOrient, Eigen::Vector3f curLinVel, Eigen::Vector3f curAngVel, int task_type);
 		//
 		bool set_gains(int taskId, int motionId, Eigen::Matrix3f K, Eigen::Matrix3f D);
 		bool set_modulationParameters(float new_modul_param[]);
@@ -135,6 +154,8 @@ class throwingDS
 		bool set_toss_pose(Eigen::Vector3f new_releasePos, Eigen::Vector4f new_releaseOrient);
 		bool set_rest_pose(Eigen::Vector3f new_restPos, Eigen::Vector4f new_restOrient);
 		bool get_release_flag();
+		bool set_pickup_object_pose(Eigen::Vector3f pickup_Pos, Eigen::Vector4f pickup_Orient);
+		bool reset_release_flag();
 };
 
 #endif

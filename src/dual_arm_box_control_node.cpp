@@ -1,6 +1,6 @@
 
 #include "ros/ros.h"
-#include "dual_arm_control.h"
+#include "iam_dual_arm_control/dual_arm_control.h"
 
 int main(int argc, char **argv)
 {
