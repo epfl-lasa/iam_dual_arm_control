@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 ######################
 # Translation
 ######################
@@ -11,3 +12,157 @@ releaseOrient: [1.00, 0.00, 0.00, 0.00]
 # releaseAngVel
 # restPos
 # restOrient
+=======
+
+
+dual_system:
+  # Simulation or Real robot
+  simulation: true
+  # End-effector tool
+  tool:
+    offset2end_effector:
+      real:
+        left:  0.175 #0.175
+        right: 0.195 #0.200
+      sim:
+        left:  0.115
+        right: 0.115
+    com_position_from_sensor:
+      left: [0.0, 0.0, 0.035]
+      right: [0.0, 0.0, 0.035]
+    mass:
+      left:  0.2
+      right: 0.2
+  # DS Damping gains
+  passiveDS:
+    dampingTopic:
+      CustomController:
+        left : "/iiwa1/CustomControllers/controllers/PassiveDS/params"      # "/control/lambda_Pos" #
+        right: "/iiwa_blue/CustomControllers/controllers/PassiveDS/params"  #"/control/lambda_Pos"  #
+      TorqueController:
+        left : "/iiwa1/control/lambda_Pos"      #
+        right: "/iiwa_blue/control/lambda_Pos"  #
+
+# object
+object:
+  name : "cubicBoxSim2"
+  graspOffset_L: [0.01, 0.00, 0.0] # [0.01, 0.00, 0.02] # [-0.04, 0.00, 0.03] # [-0.0, 0.00, 0.015] #[-0.06, 0.00, 0.03] #
+  graspOffset_R: [0.01, 0.00, 0.0] # [0.01, 0.00, 0.02] # [-0.04, 0.00, 0.03] # [-0.0, 0.00, 0.015] #[-0.06, 0.00, 0.03] #
+  # Object type
+  cubicBoxSim :       
+    dimension:  [0.16, 0.16, 0.16]
+    graspOffset_L: [-0.0, 0.00, 0.0]
+    graspOffset_R: [-0.0, 0.00, -0.0]
+    mass: 1
+  cubicBoxSim2 :       
+    dimension:  [0.20, 0.20, 0.20]
+    graspOffset_L: [-0.0, 0.00, 0.0]
+    graspOffset_R: [-0.0, 0.00, -0.0]
+    mass: 1
+
+  cubicBoxReal :       
+    dimension:  [0.26, 0.26, 0.26]
+    graspOffset_L: [0.0, 0.00,  0.0]
+    graspOffset_R: [0.0, 0.00,  0.0]
+    mass: 3
+    #graspOffset: [-0.04, 0.00, 0.03]
+  smallCubicBox :       
+    dimension:  [0.18, 0.19, 0.18]
+    graspOffset_L: [0.01, 0.00, 0.02]
+    graspOffset_R: [0.0, 0.00,  0.0]
+    mass: 1
+    #graspOffset: [-0.02, 0.00, 0.01]
+  coronaBottePack: 
+    dimension:  [0.13, 0.19, 0.14]
+    graspOffset_L: [0.0, 0.00,  0.0]
+    graspOffset_R: [0.0, 0.00,  0.0]
+    mass: 3.5
+    #graspOffset: [-0.0, 0.00, 0.015] [-0.02, 0.00, -0.00]:full glass bottles
+  openBox:         
+    dimension:  [0.20, 0.30, 0.20]
+    graspOffset_L: [0.0, 0.00,  0.0]
+    graspOffset_R: [0.0, 0.00,  0.0]
+    mass: 4.5
+  bottlesPack:     
+    dimension:  [0.25, 0.19, 0.20]
+    graspOffset_L: [0.0, 0.00,  0.0]
+    graspOffset_R: [0.0, 0.00,  0.0]
+    mass: 6
+  drGabsPack:      
+    dimension:  [0.13, 0.14, 0.15]
+    graspOffset_L: [0.0, 0.00,  0.0]
+    graspOffset_R: [0.0, 0.00,  0.0]
+    mass: 1.5
+  smallOpenBox:    
+    dimension:  [0.16, 0.29, 0.14]
+    graspOffset_L: [0.0, 0.00,  0.0]
+    graspOffset_R: [0.0, 0.00,  0.0]
+    mass: 3.5
+  optitrackBox:    
+    dimension:  [0.18, 0.19, 0.18]
+    graspOffset_L: [0.0, 0.00,  0.0]
+    graspOffset_R: [0.0, 0.00,  0.0]
+    mass: 1.0
+
+
+
+# dual arm task
+dual_arm_task:
+  dualTaskSelector: 3
+  old_dual_method: false
+  modulated_reaching: false
+  isNorm_impact_vel: false
+  isQP_wrench_generation: true
+  objCtrlKey: true
+  isTargetFixed: false
+  userSelect: false
+  # coordination
+  coordination:
+    # Bimanual DS gains
+    ds_absolute_gains: [1.5, 1.5, 1.5, 1.0, 1.0, 1.0] # 2.5 orient [2.25, 2.25, 2.25, 1.0, 1.0, 1.0] #
+    ds_relative_gains: [2.0, 2.0, 2.0, 1.0, 1.0, 1.0] 
+
+  # coordinated reaching motion
+  reach_to_grasp:
+    desVreach: 0.85
+    impact:
+      desVimp:   0.45
+      impact_direction: # impact direction (angle in degree) 
+        friction_angle: 20 #36
+        max_friction_angle: 40
+        impact_dir_preset: false
+  # robot home pose
+  standby_pose:
+    robot_left:
+      position:    [0.35,  0.20, 0.80]
+      orientation: [0.3827, -0.9239, 0.0, 0.0]
+    robot_right:
+      position:    [0.35,  -0.20, 0.80]
+      orientation: [0.3827, 0.9239, 0.0, 0.0]
+  # lifting task parameters (user defined)
+  lifting: 
+    position: [0.45, -0.00, 0.45] #[0.45, 0.00, 0.70]
+    orientation: [1.00, 0.00, 0.00, 0.00] #[0.9436, 0, 0, 0.3310] #[0.9820, 0, 0, 0.1891] #
+    increment_lift_pos: false
+  # placing task parameters (user defined)
+  placing: 
+    position: [0.70, -0.12, 0.25] #[0.675, 0.0, 0.25]  [0.72, 0.0, 0.25]
+    orientation: [1.00, 0.00, 0.00, 0.00]
+    height_via_point: 0.05
+  # tossing task parameters (user defined)
+  tossing:
+    desVtoss:           0.85
+    releasePos:         [0.68, -0.0, 0.37] #[0.70, 0.00, 0.60] [0.70, 0.00, 0.40]
+    releaseOrient:      [1.00, 0.00, 0.00, 0.00] # [0.9436, 0, 0, 0.3310] #[0.9820, 0, 0, 0.1891] #
+    releaseLinVel_dir:  [1.00, -0.0, 0.50] # [1.00, 0.00, 1.00]
+    releaseAngVel:      [0.00, 0.00, 0.00]
+    restPos:            [0.50, 0.15, 0.30]
+    restOrient:         [1.00, 0.00, 0.00, 0.00] 
+    increment_release_pos: false
+    dual_angular_limit: [0.20, 0.20, 0.20] # 0.39
+
+# converyor-belt
+conveyor_belt:
+  control_mode: true
+  nominal_speed: 300
+  magnitude_perturbation: 150

@@ -1,6 +1,6 @@
 
-#include "dual_arm_control.h"
-#include "Utils.hpp"
+#include "iam_dual_arm_control/dual_arm_control.h"
+#include "iam_dual_arm_control/Utils.hpp"
 
 using namespace std;
 using namespace Eigen;
@@ -481,7 +481,7 @@ void dual_arm_control::updatePoses()
   // Update trajectory of the object
   // Update the desired object pose through keyboard
   if(_objCtrlKey && false){
-  	this->Keyboard_object_control(); 
+  	this->Keyboard_virtual_object_control(); 
   }
   else{
   	this->Keyboard_reference_object_control();
@@ -910,7 +910,7 @@ void dual_arm_control::Keyboard_reference_object_control()
 
 
 // //
-void dual_arm_control::Keyboard_object_control()
+void dual_arm_control::Keyboard_virtual_object_control()
 {
 	// object2grasp.States_Object.pose.head(3) = ioSM->w_H_absF.block<3,3>(0,0) * init_obj_aF + ioSM->w_H_absF.block<3,1>(0,3); //
 	_w_H_o(0,3) += _delta_pos(0);
