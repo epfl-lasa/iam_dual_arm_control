@@ -94,12 +94,6 @@ class robot_var{
 		float _normalForce[NB_ROBOTS];                    					// Normal force to the surface [N] 
 		// float _c;                                        				// Contact value (1 = CONTACT, 0 otherwise)
 		bool _wrenchBiasOK[NB_ROBOTS];                 							// Check if computation of force/torque sensor bias is OK
-		// float _eD;                                       				// Error to desired distance vector [m]                       
-		// float _eoD;                                      				// Error to object dimension vector [m]                       
-		// float _eC;                                       				// Error to desired center position [m]
-		// float _eoC;                                      				// Error to object center position [m]  
-		Eigen::Vector3f _xdC;                             					// Desired center position [m] (3x1)
-		Eigen::Vector3f _xdD;                             					// Desired distance vector [m] (3x1)
 		// --------------------------------------------------------------------------------
 		Eigen::Vector3f _x[NB_ROBOTS];
 		Eigen::Vector4f _q[NB_ROBOTS];
@@ -362,6 +356,7 @@ class object_to_grasp{
 		Eigen::Matrix4f _w_H_Dgp[NB_ROBOTS];
 		Eigen::Vector3f _vo;
 		Eigen::Vector3f _wo;
+		Eigen::Vector3f _x_pickup;
 		// Vector6f 		_Vo;
 		// Vector6f 		_Vd_o;   													// desired object velocity (toss)
 		// Vector6f  		_desired_object_wrench; 
@@ -385,6 +380,7 @@ class object_to_grasp{
 			// _Vd_o.setZero();
 			_xoC.setZero();
 			_xoD.setZero();
+			_x_pickup.setZero();
 
 			_qo  << 1.0f, 0.0f, 0.0f, 0.0f;
 			_qDo << 1.0f, 0.0f, 0.0f, 0.0f;
@@ -502,7 +498,7 @@ class tossing_target{
 	Eigen::Vector3f _wt;
 
 	Eigen::Vector3f _xd_landing;
-	Eigen::Vector3f _x_pickup;
+	// Eigen::Vector3f _x_pickup;
 	Eigen::Vector3f _x_intercept;   // intercept point of the moving object
 	Eigen::Vector3f _xt_state2go;
 
@@ -519,7 +515,7 @@ class tossing_target{
 		_vt.setZero();
 		_wt.setZero();
 		_qt  << 1.0f, 0.0f, 0.0f, 0.0f;
-		_x_pickup.setZero();
+		// _x_pickup.setZero();
 		_xt_state2go.setZero();
 		//
 		_xt_filtered = std::make_unique<SGF::SavitzkyGolayFilter>(dim, order, win_l, dt); //(3,3,10,dt); dim, order, win_l, dt
@@ -636,31 +632,10 @@ class dual_arm_control
 		float _normalForce[NB_ROBOTS];                    	// Normal force to the surface [N] 
 		float _c;                                         	// Contact value (1 = CONTACT, 0 otherwise)
 		bool _wrenchBiasOK[NB_ROBOTS];                 			// Check if computation of force/torque sensor bias is OK
-
-		float _eD;                                        	// Error to desired distance vector [m]                       
+                
 		float _eoD;                                       	// Error to object dimension vector [m]                       
-		float _eC;                                        	// Error to desired center position [m]
 		float _eoC;                                       	// Error to object center position [m]  
-		
-		Eigen::Vector3f _xdC;                             	// Desired center position [m] (3x1)
-		Eigen::Vector3f _xdD;                             	// Desired distance vector [m] (3x1)
 		// --------------------------------------------------------------------------------
-		// Eigen::Vector3f _x[NB_ROBOTS];
-		// Eigen::Vector4f _q[NB_ROBOTS];
-		// Eigen::Matrix3f _wRb[NB_ROBOTS]; 										// Orientation matrix (3x3)
-		// Eigen::Vector3f _xd[NB_ROBOTS];
-		// Eigen::Vector4f _qd[NB_ROBOTS];
-		// Eigen::Vector3f _aad[NB_ROBOTS];										// desired axis angle 
-
-		// Eigen::Vector3f _vd[NB_ROBOTS];
-		// Eigen::Vector3f _omegad[NB_ROBOTS];
-		// Eigen::Vector3f _v[NB_ROBOTS];
-		// Eigen::Vector3f _w[NB_ROBOTS];
-		// Vector6f 				_Vd_ee[NB_ROBOTS];									// desired velocity twist
-		// Eigen::Vector3f _fxc[NB_ROBOTS];     								// Desired conservative parts of the nominal DS [m/s] (3x1)
-		// Vector6f  			_wrench[NB_ROBOTS];          				// Wrench [N and Nm] (6x1)
-		// Vector6f 				_wrenchBias[NB_ROBOTS];							// Wrench bias [N and Nm] (6x1)
-		// Vector6f        _filteredWrench[NB_ROBOTS];  				// Filtered wrench [N and Nm] (6x1)
 
 		float _Fd[NB_ROBOTS];                								// Desired force profiles [N]
 		float _targetForce;                  								// Target force in contact [N]
@@ -675,16 +650,6 @@ class dual_arm_control
 
 		bool _startlogging;
 
-		// Eigen::Matrix4f _w_H_ee[NB_ROBOTS];								// Homogenenous transform of the End-effectors poses (4x4)
-		// Eigen::Matrix4f _w_H_eeStandby[NB_ROBOTS];				// Homogenenous transform of Standby pose of the End-effectors (4x4)
-		// Eigen::Matrix4f _w_H_rb[NB_ROBOTS];								// Homogenenous transform of robots base frame (4x4)
-		// Eigen::Matrix4f _rb_H_eeStandby[NB_ROBOTS];				// Homogenenous transform of EE standby poses relatve to robots base (4x4)
-		// Eigen::Vector3f _xrbStandby[NB_ROBOTS];		    		// quaternion orientation of EE standby poses relatve to robots base (3x1)
-		// Eigen::Vector4f _qrbStandby[NB_ROBOTS];		    		// quaternion orientation of EE standby poses relatve to robots base (4x1)
-
-		// Eigen::Vector3f _n[NB_ROBOTS];               			// Normal vector to surface object for each robot (3x1)
-		// Vector6f        _V_gpo[NB_ROBOTS];
-
 		Eigen::Vector3f _delta_pos; 											// variation of object position
 		Eigen::Vector3f _delta_ang; 											// variation of object orientation euler angles
 		Eigen::Vector3f _filt_delta_ang;
@@ -695,23 +660,7 @@ class dual_arm_control
 		// object to grasp
 		object_to_grasp object_;
 
-		// float 					_objectMass;
-		// Eigen::Vector3f _objectDim;                  			// Object dimensions [m] (3x1)
-		// Eigen::Vector3f _xo;
-		// Eigen::Vector4f _qo;
-		// Eigen::Vector3f _xDo; 
-		// Eigen::Vector4f _qDo;
-		// Eigen::Matrix4f _w_H_o;
-		// Eigen::Matrix4f _w_H_Do;
-		// Eigen::Vector3f _xoC;                             // Measured object center position [m] (3x1)
-		// Eigen::Vector3f _xoD;                             // Measured object dimension vector [m] (3x1)
-		// Eigen::Vector3f _xgp_o[NB_ROBOTS];
-		// Eigen::Vector4f _qgp_o[NB_ROBOTS];
-		// Eigen::Matrix4f _w_H_gp[NB_ROBOTS];
-		// Eigen::Matrix4f _w_H_Dgp[NB_ROBOTS];
-		// Eigen::Vector3f _vo;
-		// Eigen::Vector3f _wo;
-		Vector6f 		_Vo;
+		Vector6f 				_Vo;
 		Vector6f 				_Vd_o;   													// desired object velocity (toss)
 		Vector6f  			_desired_object_wrench; 
 

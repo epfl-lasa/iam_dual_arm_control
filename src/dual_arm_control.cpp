@@ -69,11 +69,7 @@ dual_arm_control::dual_arm_control(	ros::NodeHandle &n, double frequency, 	//std
 	_v_max = 1.50f;     // velocity limits
 	_w_max = 4.0f;     	// velocity limits
 	// coordination errors
-	_xdC.setZero();
-	_xdD.setZero();
-	_eD  = 0.0f;
 	_eoD = 0.0f;
-	_eC  = 0.0f;
 	_eoC = 0.0f;
 	// coordination motion gains
 	_gain_abs.setZero();
@@ -233,26 +229,21 @@ bool dual_arm_control::init()
 
 	while(!nh_.getParam("dual_arm_task/coordination/ds_absolute_gains", param_abs_gains)){ROS_INFO("Waitinng for param: ds_absolute_gains ");}
 	while(!nh_.getParam("dual_arm_task/coordination/ds_relative_gains", param_rel_gains)){ROS_INFO("Waitinng for param: ds_relative_gains ");}
-
 	while(!nh_.getParam("dual_arm_task/reach_to_grasp/impact/desVimp", _desVimp)){ROS_INFO("Waitinng for param: impact/desVimp");}
 	while(!nh_.getParam("dual_arm_task/reach_to_grasp/desVreach", _desVreach)){ROS_INFO("Waitinng for param: reach_to_grasp/desVreach");}
 	while(!nh_.getParam("dual_arm_task/reach_to_grasp/impact/impact_direction/friction_angle", _friction_angle)){ROS_INFO("Waitinng for param: impact_direction/friction_angl");}
 	while(!nh_.getParam("dual_arm_task/reach_to_grasp/impact/impact_direction/max_friction_angle", _max_friction_angle)){ROS_INFO("Waitinng for param: impact_direction/max_friction_angle");}
 	while(!nh_.getParam("dual_arm_task/reach_to_grasp/impact/impact_direction/impact_dir_preset", _impact_dir_preset)){ROS_INFO("Waitinng for param: impact_direction/impact_dir_preset");}
-
 	while(!nh_.getParam("dual_arm_task/standby_pose/robot_left/position", param_stanbyPosition[LEFT])){ROS_INFO("Waitinng for param: robot_left/position ");}
 	while(!nh_.getParam("dual_arm_task/standby_pose/robot_left/orientation", param_stanbyOrientation[LEFT])){ROS_INFO("Waitinng for param: robot_left/orientation ");}
 	while(!nh_.getParam("dual_arm_task/standby_pose/robot_right/position", param_stanbyPosition[RIGHT])){ROS_INFO("Waitinng for param: robot_right/position ");}
 	while(!nh_.getParam("dual_arm_task/standby_pose/robot_right/orientation", param_stanbyOrientation[RIGHT])){ROS_INFO("Waitinng for param: robot_right/orientation ");}
-
 	while(!nh_.getParam("dual_arm_task/lifting/position", param_xDo_lifting)){ROS_INFO("Waitinng for param: lifting/position");}
 	while(!nh_.getParam("dual_arm_task/lifting/orientation", param_qDo_lifting)){ROS_INFO("Waitinng for param: lifting/orientation");}
 	while(!nh_.getParam("dual_arm_task/lifting/increment_lift_pos", _increment_lift_pos)){ROS_INFO("Waitinng for param: increment_lift_pos");}
-
 	while(!nh_.getParam("dual_arm_task/placing/position", param_xDo_placing)){ROS_INFO("Waitinng for param: placing/position");}
 	while(!nh_.getParam("dual_arm_task/placing/orientation", param_qDo_placing)){ROS_INFO("Waitinng for param: placing/orientation");}
 	while(!nh_.getParam("dual_arm_task/placing/height_via_point", _height_via_point)){ROS_INFO("Waitinng for param: placing/height_via_point");}
-
 	while(!nh_.getParam("dual_arm_task/tossing/desVtoss", _desVtoss)){ROS_INFO("Waitinng for param: tossing/desVtoss ");}
 	while(!nh_.getParam("dual_arm_task/tossing/releasePos", param_releasePos)){ROS_INFO("Waitinng for param: tossing/releasePos ");}
 	while(!nh_.getParam("dual_arm_task/tossing/releaseOrient", param_releaseOrient)){ROS_INFO("Waitinng for param: tossing/releaseOrien ");}
@@ -262,7 +253,6 @@ bool dual_arm_control::init()
 	while(!nh_.getParam("dual_arm_task/tossing/restOrient", param_restOrient)){ROS_INFO("Waitinng for param: tossing/restOrient ");}
 	while(!nh_.getParam("dual_arm_task/tossing/increment_release_pos", _increment_release_pos)){ROS_INFO("Waitinng for param: tossing/increment_release_pos ");}  
 	while(!nh_.getParam("dual_arm_task/tossing/dual_angular_limit", param_dual_angular_limit)){ROS_INFO("Waitinng for param: tossing/param_dual_angular_limit ");}
-
 	while(!nh_.getParam("dual_arm_task/dualTaskSelector", _dualTaskSelector)){ROS_INFO("Waitinng for param: dualTaskSelector");}
 	while(!nh_.getParam("dual_arm_task/old_dual_method", _old_dual_method)){ROS_INFO("Waitinng for param:  old_dual_method");}
 	while(!nh_.getParam("dual_arm_task/modulated_reaching", modulated_reaching)){ROS_INFO("Waitinng for param:  modulated_reaching");}
@@ -377,10 +367,10 @@ bool dual_arm_control::init()
 	// _pubDesiredTwist[RIGHT] 	 	= nh_.advertise<geometry_msgs::Twist>("/dual_arm_control/robot_right/desired/ee_velocity", 1);
 	_pubDesiredTwist[LEFT] 		  	= nh_.advertise<geometry_msgs::Twist>("/passive_control/iiwa1/des_twist", 1);  //  "/dual_arm_control/robot_right/desired/ee_velocity"
 	_pubDesiredTwist[RIGHT] 	 		= nh_.advertise<geometry_msgs::Twist>("/passive_control/iiwa_blue/des_twist", 1);
-  _pubAttractor[LEFT] 					= nh_.advertise<geometry_msgs::Pose>("/dual_arm_control/iiwa1/attractor", 1);							// "/passive_control/iiwa1/attractor"
-	_pubAttractor[RIGHT] 					= nh_.advertise<geometry_msgs::Pose>("/dual_arm_control/iiwa_blue/attractor", 1);					// "/passive_control/iiwa_blue/attractor"
-	_pubDistAttractorEe[LEFT] 		= nh_.advertise<std_msgs::Float64>("/dual_arm_control/iiwa1/error", 1);     							// "/passive_control/iiwa1/error"
-	_pubDistAttractorEe[RIGHT] 		= nh_.advertise<std_msgs::Float64>("/dual_arm_control/iiwa_blue/error", 1);   						// "/passive_control/iiwa_blue/error"
+  _pubAttractor[LEFT] 					= nh_.advertise<geometry_msgs::Pose>("/dual_arm_control/iiwa1/attractor", 1);							
+	_pubAttractor[RIGHT] 					= nh_.advertise<geometry_msgs::Pose>("/dual_arm_control/iiwa_blue/attractor", 1);					
+	_pubDistAttractorEe[LEFT] 		= nh_.advertise<std_msgs::Float64>("/dual_arm_control/iiwa1/error", 1);     							
+	_pubDistAttractorEe[RIGHT] 		= nh_.advertise<std_msgs::Float64>("/dual_arm_control/iiwa_blue/error", 1);   						
 	_pubNormLinVel[LEFT]					= nh_.advertise<std_msgs::Float64>("/dual_arm_control/iiwa_left/lin_vel_norm", 1);
 	_pubNormLinVel[RIGHT]					= nh_.advertise<std_msgs::Float64>("/dual_arm_control/iiwa_right/lin_vel_norm", 1);
 	//
@@ -394,7 +384,6 @@ bool dual_arm_control::init()
 
 
 	// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 	// object desired grasping points
 	Eigen::Matrix3f o_R_gpl;	o_R_gpl.setZero();		
 	Eigen::Matrix3f o_R_gpr;	o_R_gpr.setZero();	
@@ -407,7 +396,10 @@ bool dual_arm_control::init()
 	sgf_dq[0]= 7; 	sgf_dq[1]= 3; 	sgf_dq[2]= 6;
 	sgf_p[0] = 3; 	sgf_p[1] = 3; 	sgf_p[2] = 6;
 	sgf_o[0] = 4; 	sgf_o[1] = 3; 	sgf_o[2] = 10;
-
+	
+	//--------------------------------------------------------------------------------------------------------------------
+	// Robot, Object and target class objects
+	//--------------------------------------------------------------------------------------------------------------------
 	//=================
 	// robot
 	//=================
@@ -433,9 +425,9 @@ bool dual_arm_control::init()
 	//=================
 	target_.init_target(3,3,10,_dt);
 
- 	//-------------------------------------------------------------------------------------------------
+ 	//--------------------------------------------------------------------------------------------------------------------
 	// Motion and Force generation: DS
-	//-------------------------------------------------------------------------------------------------
+	//--------------------------------------------------------------------------------------------------------------------
 	//=========================================
 	// initialize the Free motion generator DS
 	//=========================================
@@ -477,7 +469,7 @@ bool dual_arm_control::init()
 	//-------------------
 	target_._xd_landing  = Eigen::Vector3f(1.0f, 0.0f, 0.0f);
 	target_._x_intercept = target_._xd_landing;
-	target_._x_pickup 	 = object_._xo;
+	object_._x_pickup 	 = object_._xo;
 
 	// _tossVar.release_position = _xDo_placing + Eigen::Vector3f(0.0, 0.0, _height_via_point);
 	// if PRESET
@@ -546,6 +538,7 @@ bool dual_arm_control::init()
 // {
 //   me->_stop = true;
 // }
+
 // ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Run
 // ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -603,8 +596,11 @@ void dual_arm_control::run()
 	ros::shutdown();
 }
 // ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
 void dual_arm_control::update_states_machines(){
-	// ----------------------------------------------------
+	// ------------------------------------------
 	keyboard::Keyboard::nonblock_2(1);
     if (keyboard::Keyboard::khbit_2() !=0) {
     	char c = fgetc(stdin);
@@ -886,7 +882,7 @@ void dual_arm_control::computeCommands()
 	// ----------------------------------------------------------------------------------------------------------------------------------------
 	// limits for throwing object's yaw angle
 	// compute intercept position limits
-	Eigen::Vector3f x_origin= target_._x_pickup;
+	Eigen::Vector3f x_origin= object_._x_pickup;
 	x_origin = Eigen::Vector3f(0.35, 0, 0);
 	Eigen::Vector3f x_i_min = this->compute_intercept_with_target(x_origin, target_._xt,  target_._vt, -_dual_angular_limit(2));
 	Eigen::Vector3f x_i_max = this->compute_intercept_with_target(x_origin, target_._xt,  target_._vt,  _dual_angular_limit(2));
@@ -984,8 +980,8 @@ void dual_arm_control::computeCommands()
 			_isPickupSet = true;
 		}
 		else{
-			target_._x_pickup = object_._xo;
-			dsThrowing.set_pickup_object_pose(target_._x_pickup, object_._qo);
+			object_._x_pickup = object_._xo;
+			dsThrowing.set_pickup_object_pose(object_._x_pickup, object_._qo);
 		}
 	}
 
@@ -999,36 +995,24 @@ void dual_arm_control::computeCommands()
 	{
 		//
 		FreeMotionCtrl.computeAsyncMotion(robot_._w_H_ee, robot_._w_H_eeStandby, object_._w_H_o, robot_._Vd_ee, robot_._qd, true);		
-
-		_Vd_o  = dsThrowing.apply(object_._xo, object_._qo, object_._vo, Eigen::Vector3f(0.0f, 0.0f, 0.0f), 1);  												// 	Function to call in a loop
 		//
-		// Eigen::Vector3f obj_dir = this->get_object_desired_direction(_dualTaskSelector, object_._w_H_o.block(0,3,3,1));
-		// std::cout << "[dual_arm_control]: OBJECT MOTION DIRECTION : \t"  << obj_dir.transpose() << std::endl;
+		_Vd_o  = dsThrowing.apply(object_._xo, object_._qo, object_._vo, Eigen::Vector3f(0.0f, 0.0f, 0.0f), 1);  	// 	Function to call in a loop
 		//
 		for(int i=0; i<NB_ROBOTS; i++){
-			_dirImp[i]  		 	= this->get_impact_direction(_Vd_o.head(3), object_._n[i], _friction_angle);				//  impact direction
-			_VdImpact[LEFT]  	= _desVimp * _dirImp[LEFT]; 																												//	impact velocity [LEFT];
-			_VdImpact[RIGHT]	= _desVimp * _dirImp[RIGHT]; 																												//	impact velocity [RIGHT];
-			_BasisQ[i] 				= Utils<float>::create3dOrthonormalMatrixFromVector(_dirImp[i]);										//  Orthogonal Basis of Modulated Dual-arm DS
+			_dirImp[i]   = this->get_impact_direction(_Vd_o.head(3), object_._n[i], _friction_angle);								//  impact direction
+			_VdImpact[i] = _desVimp * _dirImp[i]; 																																	//	impact velocity [LEFT];
+			_BasisQ[i] 	 = Utils<float>::create3dOrthonormalMatrixFromVector(_dirImp[i]);														//  Orthogonal Basis of Modulated Dual-arm DS
 		}
-		// reset some controller variables
-		this->reset_variables();
-		if(_adaptationActive){
-			_tossVar.release_position(1) = 0.0f;
-			_xDo_placing(1) = 0.0f;
-		}
-		//
-		// if( ((_initPoseCount > 50) && ((xt_bar - xt2go_bar).norm() < 0.04f)) && (!_hasCaughtOnce) ) 					// 0.80     // tossing isMotionTriggered
-		// if((_initPoseCount > 50) && (fabs(_xo(1)-y_2_go) < 0.02f) && (!_hasCaughtOnce)) 											// 0.80   	// catching
-		if(_isMotionTriggered && (!_hasCaughtOnce))
-		{
+		// if( ((_initPoseCount > 50) && ((xt_bar - xt2go_bar).norm() < 0.04f)) && (!_hasCaughtOnce) )// 0.80     // tossing isMotionTriggered
+		// if((_initPoseCount > 50) && (fabs(_xo(1)-y_2_go) < 0.02f) && (!_hasCaughtOnce)) 						// 0.80   	// catching
+		if(_isMotionTriggered && (!_hasCaughtOnce)){
 			_goHome 				= false;
 			_hasCaughtOnce 	= true;
 			// _startlogging  = true;
 		}
-		//
-		_dxEE_dual_avg 		= 0.0f;
-		_Del_xEE_dual_avg = 0.0f;
+		// reset some controller variables
+		this->reset_variables();
+
 	}
 	else 
 	{
@@ -1160,7 +1144,12 @@ void dual_arm_control::computeCommands()
 			// ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 			// compute the object's grasp points velocity
 			getGraspPointsVelocity();
-		  //
+		  
+
+
+
+
+		  // -------------------------------------------------------
 		  // Generate grasping force and apply it in velocity space
 	  	//--------------------------------------------------------
 			// Desired object's task wrench
@@ -1202,7 +1191,6 @@ void dual_arm_control::computeCommands()
 	//---------------------------------------------------------------------------------------------------------------------------------------------
 	std::cout << " MEASURED HAND WRENCH _filteredWrench  LEFT \t " << robot_._filteredWrench[LEFT].transpose() << std::endl;
 	std::cout << " MEASURED HAND WRENCH _filteredWrench RIGHT \t " << robot_._filteredWrench[RIGHT].transpose() << std::endl; 
-
 	std::cout << "[dual_arm_control]: _w_H_o: \n" << object_._w_H_o << std::endl; 
 	std::cout << "[dual_arm_control]: _w_H_Do: \n" <<  object_._w_H_Do << std::endl;
 	std::cout << "[dual_arm_control]: _w_H_t: \n" <<  Utils<float>::quaternionToRotationMatrix(target_._qt) << std::endl;
@@ -1268,8 +1256,7 @@ void dual_arm_control::prepareCommands(Vector6f Vd_ee[], Eigen::Vector4f qd[], V
 	Eigen::Matrix<float,3,1> axis_d[NB_ROBOTS];	float angle_d[NB_ROBOTS];
   for(int i=0; i<NB_ROBOTS; i++)
   {
-  	Vector6f VdEE  = robot_._tcp_W_EE[i].inverse() * (Vd_ee[i]  + object_._V_gpo[i]);
-  	//
+  	Vector6f VdEE  		= robot_._tcp_W_EE[i].inverse() * (Vd_ee[i]  + V_gpo[i]);
   	robot_._vd[i]     = VdEE.head(3) + 1.0*robot_._VEE_oa[i].head(3);
 		robot_._omegad[i] = VdEE.tail(3);
 
@@ -1414,25 +1401,33 @@ Eigen::Vector3f dual_arm_control::get_impact_direction(Eigen::Vector3f des_objec
 
 void dual_arm_control::reset_variables(){
 
-	for(int i=0; i<NB_ROBOTS; i++){
-		object_._V_gpo[i].setZero();
-		robot_._fxc[i].setZero();
-	}
 	_releaseAndretract 	= false;
 	_isThrowing 				= false;
 	_isPlacing 					= false;
+	_isPlaceTossing 		= false;
 	_isPickupSet 				= false;
-	_Vd_o.setZero();
+	_isIntercepting 		= false;
 	_nu_Wr0 = _nu_Wr1 	= 0.0f;
 	this->_refVreach  	= 0.0f;
+
 	FreeMotionCtrl._refVreach[LEFT]  = 0.0f;
 	FreeMotionCtrl._refVreach[RIGHT] = 0.0f;
 	dsThrowing._refVtoss = _desVimp;
 	dsThrowing.reset_release_flag();
-	_isIntercepting = false;
+	_Vd_o.setZero();
+
+	for(int i=0; i<NB_ROBOTS; i++){
+		object_._V_gpo[i].setZero();
+		robot_._fxc[i].setZero();
+	}
 	//
-	// _xDo    = Eigen::Vector3f(0.35f, 0.00f, 0.50f);   // set attractor of placing task
-	object_._w_H_Do = Utils<float>::pose2HomoMx(_xDo_lifting, object_._qDo);
+	if(_adaptationActive){
+		_tossVar.release_position(1) = 0.0f;
+		_xDo_placing(1) = 0.0f;                   // TBC !!!!
+	}
+	//
+	_dxEE_dual_avg 		= 0.0f;
+	_Del_xEE_dual_avg = 0.0f;
 }
 
 Eigen::Vector3f dual_arm_control::get_object_desired_direction(int task_type, Eigen::Vector3f object_pos){
@@ -1680,7 +1675,7 @@ void dual_arm_control::find_release_configuration(){ // xD_landing
 		//
 		// _tossVar.release_position.head(2) = target_._xd_landing.head(2); // 
 		//
-		Eigen::Vector3f x_release_bar = _tossVar.release_position - target_._x_pickup;
+		Eigen::Vector3f x_release_bar = _tossVar.release_position - object_._x_pickup;
 		float phi_throw_bar = std::atan2(x_release_bar(1), x_release_bar(0));
 
 		_tossVar.release_linear_velocity << _tossVar.release_linear_velocity.head(2).norm() * std::cos(phi_throw_bar),
@@ -1700,7 +1695,7 @@ void dual_arm_control::set_release_state(){
 	//-------------------------------------------------------
 	dsThrowing.set_toss_pose(_tossVar.release_position, _tossVar.release_orientation);
 	dsThrowing.set_toss_linear_velocity(_tossVar.release_linear_velocity);
-	dsThrowing.set_pickup_object_pose(target_._x_pickup, object_._qo);
+	dsThrowing.set_pickup_object_pose(object_._x_pickup, object_._qo);
 }
 
 //
