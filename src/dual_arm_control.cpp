@@ -429,20 +429,20 @@ bool dual_arm_control::init()
 	object_._xgp_o[0] 	= Eigen::Vector3f(0.0f, -object_._objectDim(1)/2.0f,  0.0f) + graspOffset_L;   // left  
 	object_._xgp_o[1] 	= Eigen::Vector3f(0.0f,  object_._objectDim(1)/2.0f,  0.0f) + graspOffset_R; 	 // right 
 
-	// pregrasp re-orientation
-	if(true){
-		// relative position
-		object_._xgp_o[0] 	= Eigen::Vector3f(-(object_._objectDim(0)/2.0f+0.01f), 0.0f, 0.0f) + graspOffset_L;   // left  
-		object_._xgp_o[1] 	= Eigen::Vector3f(0.0f,  (object_._objectDim(1)/2.0f+0.01f),  0.0f) + graspOffset_R; 	 // right
-		// relative orientation
-		Eigen::Matrix3f o_R_cpl;	o_R_cpl.setZero();		
-		Eigen::Matrix3f o_R_cpr;	o_R_cpr.setZero();	
-		o_R_cpl(1,0) = -1.0f;	o_R_cpl(2,1) = -1.0f; 	o_R_cpl(0,2) = 1.0f;
-		// o_R_cpl(2,0) =  1.0f;	o_R_cpl(1,1) = -1.0f; 	o_R_cpl(0,2) = 1.0f;
-		o_R_cpr(0,0) =  1.0f;	o_R_cpr(2,1) =  1.0f; 	o_R_cpr(1,2) =-1.0f;
-		object_._qgp_o[0] = Utils<float>::rotationMatrixToQuaternion(o_R_cpl); //
-		object_._qgp_o[1] = Utils<float>::rotationMatrixToQuaternion(o_R_cpr); //
-	}
+	// // pregrasp re-orientation
+	// if(true){
+	// 	// relative position
+	// 	object_._xgp_o[0] 	= Eigen::Vector3f(-(object_._objectDim(0)/2.0f+0.03f), 0.0f, 0.0f) + graspOffset_L;   // left  
+	// 	object_._xgp_o[1] 	= Eigen::Vector3f(0.0f,  (object_._objectDim(1)/2.0f+0.01f),  0.0f) + graspOffset_R; 	 // right
+	// 	// relative orientation
+	// 	Eigen::Matrix3f o_R_cpl;	o_R_cpl.setZero();		
+	// 	Eigen::Matrix3f o_R_cpr;	o_R_cpr.setZero();	
+	// 	o_R_cpl(1,0) = -1.0f;	o_R_cpl(2,1) = -1.0f; 	o_R_cpl(0,2) = 1.0f;
+	// 	// o_R_cpl(2,0) =  1.0f;	o_R_cpl(1,1) = -1.0f; 	o_R_cpl(0,2) = 1.0f;
+	// 	o_R_cpr(0,0) =  1.0f;	o_R_cpr(2,1) =  1.0f; 	o_R_cpr(1,2) =-1.0f;
+	// 	object_._qgp_o[0] = Utils<float>::rotationMatrixToQuaternion(o_R_cpl); //
+	// 	object_._qgp_o[1] = Utils<float>::rotationMatrixToQuaternion(o_R_cpr); //
+	// }
 
 	//=================
 	// target
@@ -825,6 +825,21 @@ void dual_arm_control::updatePoses()
 		FreeMotionCtrl.set_virtual_object_frame(Utils<float>::pose2HomoMx(target_._x_intercept, object_._qo));
 
 		_initPoseCount ++;
+	}
+
+	// pregrasp re-orientation
+	if(_isDisturbTarget){
+		// relative position
+		object_._xgp_o[0] 	= Eigen::Vector3f(-(object_._objectDim(0)/2.0f+0.03f), 0.0f, 0.0f); // + graspOffset_L;   // left  
+		object_._xgp_o[1] 	= Eigen::Vector3f(0.0f,  (object_._objectDim(1)/2.0f+0.01f),  0.0f); // + graspOffset_R; 	 // right
+		// relative orientation
+		Eigen::Matrix3f o_R_cpl;	o_R_cpl.setZero();		
+		Eigen::Matrix3f o_R_cpr;	o_R_cpr.setZero();	
+		o_R_cpl(1,0) = -1.0f;	o_R_cpl(2,1) = -1.0f; 	o_R_cpl(0,2) = 1.0f;
+		// o_R_cpl(2,0) =  1.0f;	o_R_cpl(1,1) = -1.0f; 	o_R_cpl(0,2) = 1.0f;
+		o_R_cpr(0,0) =  1.0f;	o_R_cpr(2,1) =  1.0f; 	o_R_cpr(1,2) =-1.0f;
+		object_._qgp_o[0] = Utils<float>::rotationMatrixToQuaternion(o_R_cpl); //
+		object_._qgp_o[1] = Utils<float>::rotationMatrixToQuaternion(o_R_cpr); //
 	}
 	
 	// Estimation of moving average EE and target speed
@@ -1227,10 +1242,10 @@ void dual_arm_control::computeCommands()
 				// 	_releaseAndretract = true;
 				// }
 
-				// robot_._Vd_ee[0].setZero();
-				// robot_._Vd_ee[1].setZero();
+				robot_._Vd_ee[0].setZero();
+				robot_._Vd_ee[1].setZero();
 
-				if(true)
+				if(false)
 				{
 					//
 					xDesTask << 0.26f, 0.08f, object_._xo(2); 
@@ -1309,26 +1324,30 @@ void dual_arm_control::computeCommands()
 					robot_._Vd_ee[RIGHT].head(3) = robot_._Vd_ee[RIGHT].head(3) + _dirImp[RIGHT] * cp_ap * _desVimp; //0.05f; //
 				}
 				else{
-							// FreeMotionCtrl.dual_arm_motion(	robot_._w_H_ee,  
-							// 																robot_._Vee, 
-							// 																object_._w_H_gp,  
-							// 																object_._w_H_o, 
-							// 																object_._w_H_Do, 
-							// 																_Vd_o, 
-							// 																_BasisQ, 
-							// 																_VdImpact, 
-							// 																true, 
-							// 																0, 
-							// 																robot_._Vd_ee, 
-							// 																robot_._qd, 
-							// 																_release_flag);    // 0: reach
+							if(!_isDisturbTarget){
+								FreeMotionCtrl.dual_arm_motion(	robot_._w_H_ee,  
+																							robot_._Vee, 
+																							object_._w_H_gp,  
+																							object_._w_H_o, 
+																							object_._w_H_Do, 
+																							_Vd_o, 
+																							_BasisQ, 
+																							_VdImpact, 
+																							true, 
+																							0, 
+																							robot_._Vd_ee, 
+																							robot_._qd, 
+																							_release_flag);    // 0: reach
 
-							// FreeMotionCtrl.computeAsyncMotion(robot_._w_H_ee, object_._w_H_gp, object_._w_H_o, robot_._Vd_ee, robot_._qd, true);
-							float via_height[2]; 
-							via_height[0] = -0.12f;
-							via_height[1] = -0.10f;
-							FreeMotionCtrl.generateCShapeMotion(robot_._w_H_ee, object_._w_H_gp, object_._w_H_o, via_height, robot_._Vd_ee, robot_._qd, false);
-							CooperativeCtrl._tol_dist2contact = 0.055f;
+								FreeMotionCtrl.computeAsyncMotion(robot_._w_H_ee, object_._w_H_gp, object_._w_H_o, robot_._Vd_ee, robot_._qd, true);
+							}
+							else{
+								float via_height[2]; 
+								via_height[0] = -0.12f;
+								via_height[1] = -0.10f;
+								FreeMotionCtrl.generateCShapeMotion(robot_._w_H_ee, object_._w_H_gp, object_._w_H_o, via_height, robot_._Vd_ee, robot_._qd, false);
+								CooperativeCtrl._tol_dist2contact = 0.055f;
+							}
 				}			
 				dsThrowing._refVtoss = _desVimp;
 				_Vd_o.setZero();												// for data logging
