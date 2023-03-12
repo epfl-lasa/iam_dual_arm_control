@@ -23,6 +23,7 @@ int main(int argc, char **argv)
 	topic_pose_robot_ee[1]				= "/simo_track/robot_right/ee_pose";
 	topic_ee_commands[1]					= "/iiwa_blue/CustomControllers/command";
 	//
+
 	nh.getParam(nh.getNamespace() + "/dual_system/simulation", isSimulation);
 	//
 	if(isSimulation){

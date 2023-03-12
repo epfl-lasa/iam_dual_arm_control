@@ -1,5 +1,6 @@
 <?xml version="1.0" ?>
 <launch>
+
   <arg name="param_file_name"          default="parameters"/>
   <!-- Launch file for DS controller -->
   <!-- <arg name="ROBOT_NAME"                         default="icubSim" /> -->
