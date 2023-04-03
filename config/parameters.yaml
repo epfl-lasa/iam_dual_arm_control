@@ -1,20 +1,3 @@
-<<<<<<< HEAD
-######################
-# Translation
-######################
-
-desVtoss: 0.80
-desVimp:  0.5
-desVreach: 1.0
-releasePos: [0.65, 0.00, 0.65]
-releaseOrient: [1.00, 0.00, 0.00, 0.00]
-# releaseLinVel
-# releaseAngVel
-# restPos
-# restOrient
-=======
-
-
 dual_system:
   # Simulation or Real robot
   simulation: true
