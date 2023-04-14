@@ -1264,8 +1264,6 @@ void dual_arm_control::computeCommands()
 					Vector6f d_twist_l 			= GraspMx_obj.leftCols(6).transpose() *des_Twist_obj; //_Vd_o; // 
 					Vector6f d_twist_r 			= GraspMx_obj.rightCols(6).transpose()*des_Twist_obj; //_Vd_o; // 
 
-
-
 					Vector6f X_dual, Xstar_dual;
 					X_dual.head(3)      = robot_._x[LEFT];
 					X_dual.tail(3)      = robot_._x[RIGHT];
@@ -2118,9 +2116,9 @@ void dual_arm_control::publish_commands()
 		_pubVelo[k].data.push_back(robot_._aad[k](0));		// axis angle pose_x	
 		_pubVelo[k].data.push_back(robot_._aad[k](1));		// axis angle pose_y
 		_pubVelo[k].data.push_back(robot_._aad[k](2));		// axis angle pose_z
-		_pubVelo[k].data.push_back(robot_._vd[k](0));		// linear velocity v_x
-		_pubVelo[k].data.push_back(robot_._vd[k](1));		// linear velocity v_y
-		_pubVelo[k].data.push_back(robot_._vd[k](2));		// linear velocity v_z
+		_pubVelo[k].data.push_back(robot_._vd[k](0));			// linear velocity v_x
+		_pubVelo[k].data.push_back(robot_._vd[k](1));			// linear velocity v_y
+		_pubVelo[k].data.push_back(robot_._vd[k](2));			// linear velocity v_z
 	  	// desired velocity
 		vel_quat[k].position.x		= robot_._vd[k](0);
 		vel_quat[k].position.y		= robot_._vd[k](1);
