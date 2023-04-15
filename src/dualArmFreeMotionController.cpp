@@ -111,7 +111,7 @@ bool dualArmFreeMotionController::init(Eigen::Matrix4f w_H_eeStandby[], Matrix6f
   // _w_max = 2.0f;
   // _v_max = 2.0f;     // velocity limits
   // _w_max = 4.0f;     // velocity limits
-  _v_max      = 1.1f; //0.1
+  _v_max      = 1.5f; //0.1
   _w_max      = 3.0f;
 
   gain_p_abs = gain_abs_.topLeftCorner(3,3);
@@ -511,7 +511,7 @@ void dualArmFreeMotionController::computeReleaseAndRetractMotion(Eigen::Matrix4f
   _error_rel.head(3) = lr_H_rr.block<3,1>(0,3) - d_p_rel;
 
   // computing the velocity
-  _V_rel.head(3) = -4.0f*gain_p_rel * _error_rel.head(3);
+  _V_rel.head(3) = -8.0f*gain_p_rel * _error_rel.head(3);
   _V_rel.tail(3) = -jacMuTheta_rel.inverse() * gain_o_rel * _error_rel.tail(3);
 
   // =======================================
@@ -538,7 +538,7 @@ void dualArmFreeMotionController::computeReleaseAndRetractMotion(Eigen::Matrix4f
 
   // computing the velocity
   // ~~~~~~~~~~~~~~~~~~~~~~~
-  _V_abs.head(3) = -gain_p_abs * _error_abs.head(3);
+  _V_abs.head(3) = -4.0f*gain_p_abs * _error_abs.head(3);
   _V_abs.tail(3) = -jacMuTheta_abs.inverse() * gain_o_abs * _error_abs.tail(3);
 
   // ========================================

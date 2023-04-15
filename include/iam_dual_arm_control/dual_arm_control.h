@@ -845,6 +845,9 @@ class dual_arm_control
 		throwingDS 										dsThrowingEstim;				//
 		bool 													_isSimulation;
 
+		int _RegraspCount;
+		bool _Regrasping;
+
 
 		// Callbacks
 		void objectPoseCallback(const geometry_msgs::Pose::ConstPtr& msg);

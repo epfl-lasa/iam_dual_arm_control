@@ -291,6 +291,9 @@ class dual_arm_control
 		Vector7f _joints_accelerations[NB_ROBOTS];
 		Vector7f _joints_torques[NB_ROBOTS];
 
+		int _RegraspCount;
+		bool _Regrasping;
+
 
 		void updateObjectsPoseCallback(const geometry_msgs::Pose::ConstPtr& msg , int k);
 
