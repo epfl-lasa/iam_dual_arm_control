@@ -1214,27 +1214,27 @@ void dual_arm_control::computeCommands()
 
 			// =================================================================================================================
 			else if(_Regrasping && _regrasp_nb_step <=1){
-				float regraspOpenOffset = 0.13;
+				float regraspOpenOffset = 0.015;
 				Eigen::Matrix4f w_H_release[NB_ROBOTS];
 				Eigen::Matrix4f w_H_regrasp[NB_ROBOTS];
 				for(int i=0; i<NB_ROBOTS; i++){
 				 	w_H_release[i] = object_._w_H_gp[i];
-				 	w_H_release[i].block(0,3,3,1) = -object_._n[i] * regraspOpenOffset;
+				 	w_H_release[i].block(0,3,3,1) = w_H_release[i].block(0,3,3,1) - object_._n[i] * regraspOpenOffset;
 				 	w_H_regrasp[i] = object_._w_H_gp[i];
-				 	w_H_regrasp[i].block(0,3,3,1) = object_._n[i]  * 0.015;
+				 	w_H_regrasp[i].block(0,3,3,1) = w_H_regrasp[i].block(0,3,3,1) + object_._n[i]  * 0.015;
 				}
 
 				int nSamples_regrasp = 10;
 				if(_RegraspCount <= nSamples_regrasp){
 
 					// FreeMotionCtrl.computeReleaseAndRetractMotion(robot_._w_H_ee, object_._w_H_Dgp,  object_._w_H_o, robot_._Vd_ee, robot_._qd, true);
-					FreeMotionCtrl.computeFastReleaseMotion(robot_._w_H_ee, w_H_release, object_._w_H_o, robot_._Vd_ee, robot_._qd, true);
+					FreeMotionCtrl.computeFastReleaseMotion(robot_._w_H_ee, w_H_release, object_._w_H_o, robot_._Vd_ee, robot_._qd, false);
 					// _goToAttractors = false;
 					
 				}
 				else if((_RegraspCount > nSamples_regrasp) && (_RegraspCount <= 2*nSamples_regrasp)){
 
-					FreeMotionCtrl.computeFastCoordinatedMotion(robot_._w_H_ee,  object_._w_H_gp, object_._w_H_o, robot_._Vd_ee, robot_._qd, true);
+					FreeMotionCtrl.computeFastCoordinatedMotion(robot_._w_H_ee,  object_._w_H_gp, object_._w_H_o, robot_._Vd_ee, robot_._qd, false);
 
 					// FreeMotionCtrl.dual_arm_motion(	robot_._w_H_ee,  
 					// 																robot_._Vee, 
