@@ -562,7 +562,9 @@ class dual_arm_control
     // TaskType
     // enum TASK_TYPE {GOHOME = 0, RELEASE_AND_RETRACT = 1, PICK_AND_LIFT = 2, PICK_AND_THROW = 3, PICK_AND_PLACE = 4, 
     // 								PICK_AND_HANDOVER = 5, THROWING = 6, HANDINGOVER = 7, PAUSE_MOTION = 8};
-    enum TASK_TYPE {REACH = 0, PICK_AND_LIFT = 1, TOSSING = 2, PICK_AND_TOSS = 3, PICK_AND_PLACE = 4, PLACE_TOSSING = 5, THROWING = 6, HANDINGOVER = 7, PAUSE_MOTION = 8};
+    enum TASK_TYPE {REACH = 0, PICK_AND_LIFT = 1, TOSSING = 2, PICK_AND_TOSS = 3, 
+    								PICK_AND_PLACE = 4, PLACE_TOSSING = 5, THROWING = 6, 
+    								HANDINGOVER = 7, PAUSE_MOTION = 8, VERTICAL_TOSS = 9};
 
 		// 0=reach, 1=pick, 2=toss, 3=pick_and_toss, 4=pick_and_place
 
@@ -744,6 +746,7 @@ class dual_arm_control
 		bool _impact_dir_preset = true;
 		int  _dualTaskSelector  = 1;
 		bool _old_dual_method   = false;
+		bool _isRegraspTossing = false;
  
 		// data logging
 		std::string   _DataID;
@@ -845,6 +848,10 @@ class dual_arm_control
 		throwingDS 										dsThrowingEstim;				//
 		bool 													_isSimulation;
 
+		int _RegraspCount;
+		int _regrasp_nb_step;
+		bool _Regrasping;
+
 
 		// Callbacks
 		void objectPoseCallback(const geometry_msgs::Pose::ConstPtr& msg);
@@ -927,7 +934,7 @@ class dual_arm_control
 		void set_release_state();
 		void estimate_target_state_to_go(Eigen::Vector2f Lp_Va_pred_bot, Eigen::Vector2f Lp_Va_pred_tgt, float flytime_obj);
 		void compute_adaptation_factors(Eigen::Vector2f Lp_Va_pred_bot, Eigen::Vector2f Lp_Va_pred_tgt, float flytime_obj);
-		
+				
 };
 
 #endif // DUAL_ARM_CONTROL_H

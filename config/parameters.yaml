@@ -8,8 +8,8 @@ dual_system:
         left:  0.175 #0.175
         right: 0.195 #0.200
       sim:
-        left:  0.115
-        right: 0.115
+        left:  0.135
+        right: 0.135
     com_position_from_sensor:
       left: [0.0, 0.0, 0.035]
       right: [0.0, 0.0, 0.035]
@@ -107,9 +107,9 @@ dual_arm_task:
 
   # coordinated reaching motion
   reach_to_grasp:
-    desVreach: 0.85
+    desVreach: 1.0
     impact:
-      desVimp:   0.45
+      desVimp:   0.55
       impact_direction: # impact direction (angle in degree) 
         friction_angle: 20 #36
         max_friction_angle: 40
@@ -124,20 +124,20 @@ dual_arm_task:
       orientation: [0.3827, 0.9239, 0.0, 0.0]
   # lifting task parameters (user defined)
   lifting: 
-    position: [0.45, -0.00, 0.45] #[0.45, 0.00, 0.70]
+    position: [0.45, -0.00, 0.40] #[0.45, 0.00, 0.70]
     orientation: [1.00, 0.00, 0.00, 0.00] #[0.9436, 0, 0, 0.3310] #[0.9820, 0, 0, 0.1891] #
     increment_lift_pos: false
   # placing task parameters (user defined)
   placing: 
-    position: [0.70, -0.12, 0.25] #[0.675, 0.0, 0.25]  [0.72, 0.0, 0.25]
+    position: [0.70, -0.00, 0.25] #[0.675, 0.0, 0.25]  [0.72, 0.0, 0.25]
     orientation: [1.00, 0.00, 0.00, 0.00]
     height_via_point: 0.05
   # tossing task parameters (user defined)
   tossing:
-    desVtoss:           0.85
-    releasePos:         [0.68, -0.0, 0.37] #[0.70, 0.00, 0.60] [0.70, 0.00, 0.40]
+    desVtoss:           1.00
+    releasePos:         [0.45, -0.00, 0.40] #[0.68, -0.0, 0.37] #[0.70, 0.00, 0.60] [0.70, 0.00, 0.40]
     releaseOrient:      [1.00, 0.00, 0.00, 0.00] # [0.9436, 0, 0, 0.3310] #[0.9820, 0, 0, 0.1891] #
-    releaseLinVel_dir:  [1.00, -0.0, 0.50] # [1.00, 0.00, 1.00]
+    releaseLinVel_dir:  [0.00, 0.00, 1.00] #[1.00, -0.0, 0.50] # [1.00, 0.00, 1.00]
     releaseAngVel:      [0.00, 0.00, 0.00]
     restPos:            [0.50, 0.15, 0.30]
     restOrient:         [1.00, 0.00, 0.00, 0.00] 

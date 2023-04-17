@@ -248,6 +248,14 @@ class dualArmFreeMotionController
                               Eigen::Vector4f (&qd)[NB_ROBOTS], 
                               bool isOrient3d);
 
+		void computeFastCoordinatedMotion(Eigen::Matrix4f w_H_ee[],  Eigen::Matrix4f w_H_gp[], Eigen::Matrix4f w_H_o, 
+																			Vector6f (&Vd_ee)[NB_ROBOTS], Eigen::Vector4f (&qd)[NB_ROBOTS], bool isOrient3d);
+
+		void computeFastReleaseMotion(	Eigen::Matrix4f w_H_ee[],  Eigen::Matrix4f w_H_gp[], Eigen::Matrix4f w_H_o, 
+																		Vector6f (&Vd_ee)[NB_ROBOTS], Eigen::Vector4f (&qd)[NB_ROBOTS], bool isOrient3d);
+
+		Vector6f gen_directional_motion(const Eigen::Matrix4f &w_H_c, const Eigen::Matrix4f &w_H_d, const Eigen::Vector3f &des_dir);
+
 };
 
 #endif // dualArmFreeMotionController_H
