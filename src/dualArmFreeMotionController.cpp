@@ -625,8 +625,8 @@ void dualArmFreeMotionController::computeFastReleaseMotion( Eigen::Matrix4f w_H_
   _error_rel.head(3) = lr_H_rr.block<3,1>(0,3) - d_p_rel;
 
   // computing the velocity
-  _V_rel.head(3) = -12.0f*gain_p_rel * _error_rel.head(3);
-  _V_rel.tail(3) = -jacMuTheta_rel.inverse() * gain_o_rel * _error_rel.tail(3);
+  _V_rel.head(3) = -20.0f*gain_p_rel * _error_rel.head(3);
+  _V_rel.tail(3) = -4.0f*jacMuTheta_rel.inverse() * gain_o_rel * _error_rel.tail(3);
 
   // =======================================
   // Absolute velocity of the End-effectors
@@ -652,8 +652,8 @@ void dualArmFreeMotionController::computeFastReleaseMotion( Eigen::Matrix4f w_H_
 
   // computing the velocity
   // ~~~~~~~~~~~~~~~~~~~~~~~
-  _V_abs.head(3) = -12.0f*gain_p_abs * _error_abs.head(3);
-  _V_abs.tail(3) = -jacMuTheta_abs.inverse() * gain_o_abs * _error_abs.tail(3);
+  _V_abs.head(3) = -20.0f*gain_p_abs * _error_abs.head(3);
+  _V_abs.tail(3) = -4.0f*jacMuTheta_abs.inverse() * gain_o_abs * _error_abs.tail(3);
 
   // ========================================
   // Computation of individual EE motion
@@ -670,7 +670,7 @@ void dualArmFreeMotionController::computeFastReleaseMotion( Eigen::Matrix4f w_H_
     Eigen::Matrix4f d_H_c_ee = w_H_ee_t.inverse() * w_H_ee[k];
     Eigen::Vector3f error_ee_o    = Utils<float>::getPoseErrorCur2Des(d_H_c_ee).tail(3);
     Eigen::Matrix3f jacMuTheta_ee = Utils<float>::getMuThetaJacobian(d_H_c_ee.block<3,3>(0,0)) * w_H_ee[k].block<3,3>(0,0).transpose();
-    Vd_ee[k].tail(3) = -4.0f*jacMuTheta_ee.inverse() * gain_o_abs * error_ee_o;
+    // Vd_ee[k].tail(3) = -4.0f*jacMuTheta_ee.inverse() * gain_o_abs * error_ee_o;
   } 
 
   Vd_ee[LEFT]  = Utils<float>::SaturationTwist(_v_max, _w_max, Vd_ee[LEFT]);
@@ -993,8 +993,8 @@ void dualArmFreeMotionController::computeFastCoordinatedMotion(Eigen::Matrix4f w
 
   // computing the velocity
   // ~~~~~~~~~~~~~~~~~~~~~~~
-  _V_abs.head(3) = -12.0f* gain_p_abs * _error_abs.head(3); // -3.0
-  _V_abs.tail(3) = -3.0f* jacMuTheta_abs.inverse() * gain_o_abs * _error_abs.tail(3);
+  _V_abs.head(3) = -20.0f* gain_p_abs * _error_abs.head(3); // -3.0
+  _V_abs.tail(3) = -4.0f* jacMuTheta_abs.inverse() * gain_o_abs * _error_abs.tail(3);
 
   // =====================================
   // Relative velocity of the hands
@@ -1039,8 +1039,8 @@ void dualArmFreeMotionController::computeFastCoordinatedMotion(Eigen::Matrix4f w
   _error_rel.head(3) = lr_H_rr.block<3,1>(0,3) - d_p_rel;  // 
 
   // computing the velocity
-  _V_rel.head(3) = -12.0f* gain_p_rel * _error_rel.head(3);                             // -3.0
-  _V_rel.tail(3) = -3.0f* jacMuTheta_rel.inverse() * gain_o_rel * _error_rel.tail(3);   // -3.0
+  _V_rel.head(3) = -20.0f* gain_p_rel * _error_rel.head(3);                             // -3.0
+  _V_rel.tail(3) = -4.0f* jacMuTheta_rel.inverse() * gain_o_rel * _error_rel.tail(3);   // -3.0
 
   // ========================================
   // Computation of individual EE motion
@@ -1061,8 +1061,8 @@ void dualArmFreeMotionController::computeFastCoordinatedMotion(Eigen::Matrix4f w
   Eigen::Matrix3f jacMuTheta_l = Utils<float>::getMuThetaJacobian(d_H_c_l.block<3,3>(0,0)) * w_H_ee[LEFT].block<3,3>(0,0).transpose(); // wrt. the world
   Eigen::Matrix3f jacMuTheta_r = Utils<float>::getMuThetaJacobian(d_H_c_r.block<3,3>(0,0)) * w_H_ee[RIGHT].block<3,3>(0,0).transpose(); // wrt. the world
 
-  Vd_ee[LEFT].tail(3)  = -3.0f* jacMuTheta_l.inverse() * gain_o_rel * error_ori_l;
-  Vd_ee[RIGHT].tail(3) = -3.0f* jacMuTheta_r.inverse() * gain_o_rel * error_ori_r;
+  Vd_ee[LEFT].tail(3)  = -4.0f* jacMuTheta_l.inverse() * gain_o_rel * error_ori_l;
+  Vd_ee[RIGHT].tail(3) = -4.0f* jacMuTheta_r.inverse() * gain_o_rel * error_ori_r;
 
   Vd_ee[LEFT]  = Utils<float>::SaturationTwist(_v_max, _w_max, Vd_ee[LEFT]);
   Vd_ee[RIGHT] = Utils<float>::SaturationTwist(_v_max, _w_max, Vd_ee[RIGHT]);
