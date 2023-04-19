@@ -431,8 +431,8 @@ bool dual_arm_control::init()
 	object_._objectMass = param_objectMass;
 	object_._objectDim 	= Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(param_objectDim.data(), param_objectDim.size());
 	// relative grasping positons
-	object_._xgp_o[0] 	= Eigen::Vector3f(0.0f, -object_._objectDim(1)/2.0f,  0.0f) + graspOffset_L;   // left  
-	object_._xgp_o[1] 	= Eigen::Vector3f(0.0f,  object_._objectDim(1)/2.0f,  0.0f) + graspOffset_R; 	 // right 
+	object_._xgp_o[0] 	= Eigen::Vector3f(0.0f, -object_._objectDim(1)/2.0f,  -0.0f) + graspOffset_L;   // left  
+	object_._xgp_o[1] 	= Eigen::Vector3f(0.0f,  object_._objectDim(1)/2.0f,  -0.0f) + graspOffset_R; 	 // right 
 
 	// // pregrasp re-orientation
 	// if(true){
@@ -804,9 +804,9 @@ void dual_arm_control::update_states_machines(){
 				// disturb the target speed
 				case 'e':
 					_isDisturbTarget = !_isDisturbTarget;
-					_Regrasping = true;
-					_RegraspCount = 0;
-					_regrasp_nb_step = 1;
+					// _Regrasping = true;
+					// _RegraspCount = 0;
+					// _regrasp_nb_step = 1;
 				break;
 
 				// placing hight
@@ -1231,8 +1231,8 @@ void dual_arm_control::computeCommands()
 				_xqp_o_Open[0]  = object_._xgp_o[0] + Eigen::Vector3f(0.0, -regraspOpenOffset, -0.5f*regraspStep);
 				_xqp_o_Open[1]  = object_._xgp_o[1] + Eigen::Vector3f(0.0,  regraspOpenOffset, -0.5f*regraspStep);
 
-				_xqp_o_Close[0] = object_._xgp_o[0] + Eigen::Vector3f(0.0,  0.0, -regraspStep);
-				_xqp_o_Close[1] = object_._xgp_o[1] + Eigen::Vector3f(0.0, -0.0, -regraspStep);
+				_xqp_o_Close[0] = object_._xgp_o[0] + Eigen::Vector3f(0.0,  0.0, regraspStep);
+				_xqp_o_Close[1] = object_._xgp_o[1] + Eigen::Vector3f(0.0, -0.0, regraspStep);
 
 				for(int i=0; i<NB_ROBOTS; i++){
 				 	// w_H_release[i] = object_._w_H_gp[i];
@@ -1244,8 +1244,8 @@ void dual_arm_control::computeCommands()
 				}
 
 				float alp_reg = 0.20f;
-				// object_._xgp_o[0](2) = (1.0f - alp_reg)*object_._xgp_o[0](2) + alp_reg*(-0.05f);
-				// object_._xgp_o[1](2) = (1.0f - alp_reg)*object_._xgp_o[1](2) + alp_reg*(-0.05f);
+				object_._xgp_o[0](2) = (1.0f - alp_reg)*object_._xgp_o[0](2) + alp_reg*(-0.03f);
+				object_._xgp_o[1](2) = (1.0f - alp_reg)*object_._xgp_o[1](2) + alp_reg*(-0.03f);
 
 				int nSamples_regrasp = 10;
 				if(_RegraspCount <= nSamples_regrasp){
@@ -1281,9 +1281,22 @@ void dual_arm_control::computeCommands()
 				_Vd_o  = dsThrowing.apply(object_._xo, object_._qo, object_._vo, Eigen::Vector3f(0.0f, 0.0f, 0.0f), 1);  // Function to call in a loop
 
 				Eigen::Vector3f xDesTask = _xDo_lifting;
-				float om_lift = 2.0f*M_PI/0.8f; //0.8f;
-				if(_isDisturbTarget) xDesTask = _xDo_lifting + Eigen::Vector3f(0.0, 0.0, 0.35*( 0.5f*(std::sin(2.0f*om_lift*_cycle_count*_dt)+1.0f) ) );
 				Eigen::Vector4f qDesTask = _qDo_lifting;
+				float om_lift = 2.0f*M_PI/1.2f; //0.8f;
+				// if(_isDisturbTarget) xDesTask = _xDo_lifting + Eigen::Vector3f(0.0, 0.0, 0.35*( 0.5f*(std::sin(2.0f*om_lift*_cycle_count*_dt)+1.0f) ) );
+				if(_isDisturbTarget) {
+					xDesTask = _xDo_lifting + Eigen::Vector3f(0.0, 0.20*( 0.5f*(std::sin(2.0f*om_lift*_cycle_count*_dt)) ), 0.0 );
+
+					Eigen::Matrix3f Rq = Utils<float>::quaternionToRotationMatrix(qDesTask);
+					Eigen::Vector3f ang_q = Utils<float>::getEulerAnglesXYZ_FixedFrame(Rq); // psi theta phi
+				  // ang_q = ang_q + Eigen::Vector3f((M_PI/6.f)*( 0.5f*(std::sin(2.0f*om_lift*_cycle_count*_dt)) ), 0.0, 0.0 );
+				  ang_q = ang_q + Eigen::Vector3f(0.0, 0.0, (M_PI/30.f)*( 0.5f*(std::sin(2.0f*om_lift*_cycle_count*_dt)) ) );
+				  Rq = Utils<float>::eulerAnglesToRotationMatrix(	ang_q(2), ang_q(1), ang_q(0)); // phi theta psi
+				  qDesTask = Utils<float>::rotationMatrixToQuaternion(Rq);
+			}
+
+				
+
 
 				//----------------------------------------------
 				// desired task position and orientation vectors
@@ -2138,8 +2151,8 @@ void dual_arm_control::objectPoseCallback(const geometry_msgs::Pose::ConstPtr& m
 	Eigen::Matrix3f w_R_o = Utils<float>::quaternionToRotationMatrix(object_._qo);
 	object_._xo = xom + w_R_o*t_xo_xom;
 
-	std::cerr << "[dual_arm_control]: xom : " << xom.transpose() << _c << std::endl;
-  std::cerr << "[dual_arm_control]: object_._xo: " << object_._xo.transpose() << std::endl;
+  // filtered object position
+	object_.get_estimated_state();
 
 	_Vo.head(3) = object_._vo;
 	_Vo.tail(3) = object_._wo;
