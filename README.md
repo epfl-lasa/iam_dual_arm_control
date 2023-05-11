@@ -2,10 +2,16 @@
 This repository contains codes to generate coordinated motion and forces to control a robotic dual arm system (here two iiwa robots)
 
 
-- Dual-arm Grabbing with impact and tossing an Object 
+- Dual-arm Grabbing with impact and tossing an object 
 <p align="center">
    <img src="https://github.com/epfl-lasa/iam_dual_arm_control/blob/main/media/GrabbingAndTossingSmallBox.gif"  width="350"></>
    <img src="https://github.com/epfl-lasa/iam_dual_arm_control/blob/main/media/GrabbingAndTossingBigObject_00.gif"  width="350"></>
+</p> 
+
+- Dual-arm tossing: workspace extension 
+<p align="center">
+   <img src="https://github.com/epfl-lasa/iam_dual_arm_control/blob/main/media/Expansion_of_workspace_side_00.gif"  width="350"></>
+   <img src="https://github.com/epfl-lasa/iam_dual_arm_control/blob/main/media/Expansion_of_workspace_front_00.gif"  width="350"></>
 </p> 
 
 - DS-based Dual-arm Adaptation and Robustness
