@@ -363,10 +363,10 @@ bool dual_arm_control::init()
 	// Desired command for the dual
 	_pubDesiredVel_Quat[LEFT]   	= nh_.advertise<geometry_msgs::Pose>("/dual_arm_control/iiwa1/vel_quat", 1);     // "/passive_control/iiwa1/vel_quat" 
 	_pubDesiredVel_Quat[RIGHT]  	= nh_.advertise<geometry_msgs::Pose>("/dual_arm_control/iiwa_blue/vel_quat", 1);
-	// _pubDesiredTwist[LEFT] 		= nh_.advertise<geometry_msgs::Twist>("/dual_arm_control/robot_left/desired/ee_velocity", 1);  // /passive_control/iiwa1/des_twist
-	// _pubDesiredTwist[RIGHT] 	 	= nh_.advertise<geometry_msgs::Twist>("/dual_arm_control/robot_right/desired/ee_velocity", 1);
-	_pubDesiredTwist[LEFT] 		  	= nh_.advertise<geometry_msgs::Twist>("/passive_control/iiwa1/des_twist", 1);  //  "/dual_arm_control/robot_right/desired/ee_velocity"
-	_pubDesiredTwist[RIGHT] 	 		= nh_.advertise<geometry_msgs::Twist>("/passive_control/iiwa_blue/des_twist", 1);
+	_pubDesiredTwist[LEFT] 				= nh_.advertise<geometry_msgs::Twist>("/dual_arm_control/robot_left/desired/ee_velocity", 1);  // /passive_control/iiwa1/des_twist
+	_pubDesiredTwist[RIGHT] 	 		= nh_.advertise<geometry_msgs::Twist>("/dual_arm_control/robot_right/desired/ee_velocity", 1);
+	// _pubDesiredTwist[LEFT] 		= nh_.advertise<geometry_msgs::Twist>("/passive_control/iiwa1/des_twist", 1);  //  "/dual_arm_control/robot_right/desired/ee_velocity"
+	// _pubDesiredTwist[RIGHT] 	 	= nh_.advertise<geometry_msgs::Twist>("/passive_control/iiwa_blue/des_twist", 1);
   _pubAttractor[LEFT] 					= nh_.advertise<geometry_msgs::Pose>("/dual_arm_control/iiwa1/attractor", 1);							
 	_pubAttractor[RIGHT] 					= nh_.advertise<geometry_msgs::Pose>("/dual_arm_control/iiwa_blue/attractor", 1);					
 	_pubDistAttractorEe[LEFT] 		= nh_.advertise<std_msgs::Float64>("/dual_arm_control/iiwa1/error", 1);     							
@@ -1156,8 +1156,8 @@ void dual_arm_control::computeCommands()
 				//------------------------------------
 				for(int k=0; k<NB_ROBOTS; k++){ 
 					object_._w_H_Dgp[k]  = object_._w_H_Do * _o_H_ee[k];
-					// object_._w_H_Dgp[k].block(0,0,3,3)  = w_H_DesObj.block(0,0,3,3) * Utils<float>::pose2HomoMx(object_._xgp_o[k], object_._qgp_o[k]).block(0,0,3,3);
-					object_._w_H_Dgp[k].block(0,0,3,3)  = object_._w_H_o.block(0,0,3,3) * Utils<float>::pose2HomoMx(object_._xgp_o[k], object_._qgp_o[k]).block(0,0,3,3);  
+					object_._w_H_Dgp[k].block(0,0,3,3)  = w_H_DesObj.block(0,0,3,3) * Utils<float>::pose2HomoMx(object_._xgp_o[k], object_._qgp_o[k]).block(0,0,3,3);
+					// object_._w_H_Dgp[k].block(0,0,3,3)  = object_._w_H_o.block(0,0,3,3) * Utils<float>::pose2HomoMx(object_._xgp_o[k], object_._qgp_o[k]).block(0,0,3,3);  
 					if(isThrowing && isClose2Release){
 						// object_._w_H_Dgp[k]  = object_._w_H_Do * _o_H_ee[k];
 						// object_._w_H_Dgp[k]  = object_._w_H_o * _o_H_ee[k];
@@ -1175,7 +1175,7 @@ void dual_arm_control::computeCommands()
 																				_Vd_o, 
 																				_BasisQ, 
 																				_VdImpact, 
-																				true, 
+																				false, 
 																				_dualTaskSelector, 
 																				robot_._Vd_ee, 
 																				robot_._qd, 

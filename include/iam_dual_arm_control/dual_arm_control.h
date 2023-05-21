@@ -42,6 +42,9 @@
 #include "throwingDS.h"
 #include "toss_task_param_estimator.h"
 #include "data_logging.hpp"
+#include "RobotVariables.hpp"
+#include "ObjectToGrasp.hpp"
+#include "TossingTarget.hpp"
 
 #define NB_ROBOTS 2                  // Number of robots
 #define NB_FT_SENSOR_SAMPLES 50      // Number of force torque sensors' samples used for initial calibration (compute the offsets)
@@ -78,465 +81,6 @@ struct spherical_position{
 	}
 };
 
-class robot_var{
-
-	public:
-
-		// --------------------------------------------------------------------------------
-		Eigen::Vector3f _gravity;
-		int _nb_joints[NB_ROBOTS];
-		float _toolMass[NB_ROBOTS];                         				// Tool mass [kg]
-		float _toolOffsetFromEE[NB_ROBOTS];          								// Tool offset along z axis of end effector [m]   
-		Eigen::Vector3f _toolComPositionFromSensor[NB_ROBOTS];      // Tool CoM offset along z axis of end effector [m]
-		int _wrenchCount[NB_ROBOTS];                      					// Counter used to pre-process the force data
-		std::deque<float> _normalForceWindow[NB_ROBOTS];  					// Moving window saving the robots' measured normal force to the object's surface [N]  
-		float _normalForceAverage[NB_ROBOTS];             					// Average normal force measured through the force windows [N]
-		float _normalForce[NB_ROBOTS];                    					// Normal force to the surface [N] 
-		// float _c;                                        				// Contact value (1 = CONTACT, 0 otherwise)
-		bool _wrenchBiasOK[NB_ROBOTS];                 							// Check if computation of force/torque sensor bias is OK
-		// --------------------------------------------------------------------------------
-		Eigen::Vector3f _x[NB_ROBOTS];
-		Eigen::Vector4f _q[NB_ROBOTS];
-		Eigen::Matrix3f _wRb[NB_ROBOTS]; 														// Orientation matrix (3x3)
-		Eigen::Vector3f _xd[NB_ROBOTS];
-		Eigen::Vector4f _qd[NB_ROBOTS];
-		Eigen::Vector3f _aad[NB_ROBOTS];														// desired axis angle 
-
-		Eigen::Vector3f _vd[NB_ROBOTS];
-		Eigen::Vector3f _omegad[NB_ROBOTS];
-		Eigen::Vector3f _v[NB_ROBOTS];
-		Eigen::Vector3f _w[NB_ROBOTS];
-		Vector6f 				_Vee[NB_ROBOTS];
-		Vector6f 				_Vd_ee[NB_ROBOTS];													// desired velocity twist
-		Matrix6f 				_tcp_W_EE[NB_ROBOTS];												// Velocity Twist transformation between the robot EE and the tool center point (tcp)
-		Vector6f 				_VEE_oa[NB_ROBOTS]; 												// self collision (obstacle) avoidance
-		Eigen::Vector3f _fxc[NB_ROBOTS];     												// Desired conservative parts of the nominal DS [m/s] (3x1)
-		Vector6f  			_wrench[NB_ROBOTS];          								// Wrench [N and Nm] (6x1)
-		Vector6f 				_wrenchBias[NB_ROBOTS];											// Wrench bias [N and Nm] (6x1)
-		Vector6f        _filteredWrench[NB_ROBOTS];  								// Filtered wrench [N and Nm] (6x1)
-
-		float _targetForce;                  												// Target force in contact [N]
-		// float _d1[NB_ROBOTS];
-		// float _err[NB_ROBOTS];
-		// bool _qp_wrench_generation;
-		bool _firstRobotPose[NB_ROBOTS];
-		bool _firstRobotTwist[NB_ROBOTS];
-		bool _firstWrenchReceived[NB_ROBOTS];
-
-		Eigen::Matrix4f _w_H_ee[NB_ROBOTS];													// Homogenenous transform of the End-effectors poses (4x4)
-		Eigen::Matrix4f _w_H_eeStandby[NB_ROBOTS];									// Homogenenous transform of Standby pose of the End-effectors (4x4)
-		Eigen::Matrix4f _w_H_rb[NB_ROBOTS];													// Homogenenous transform of robots base frame (4x4)
-		Eigen::Matrix4f _rb_H_eeStandby[NB_ROBOTS];									// Homogenenous transform of EE standby poses relatve to robots base (4x4)
-		Eigen::Vector3f _xrbStandby[NB_ROBOTS];		    							// quaternion orientation of EE standby poses relatve to robots base (3x1)
-		Eigen::Vector4f _qrbStandby[NB_ROBOTS];		    							// quaternion orientation of EE standby poses relatve to robots base (4x1)
-
-		std::unique_ptr<SGF::SavitzkyGolayFilter> _sgf_ddq_filtered_l;
-		std::unique_ptr<SGF::SavitzkyGolayFilter> _sgf_ddq_filtered_r;
-		//
-		Vector7f _joints_positions[NB_ROBOTS];
-		Vector7f _joints_velocities[NB_ROBOTS];
-		Vector7f _joints_accelerations[NB_ROBOTS];
-		Vector7f _joints_torques[NB_ROBOTS];
-
-
-		robot_var(){}
-		~robot_var(){};
-
-		void init_robot(int sgf_q[], float dt, Eigen::Vector3f gravity){
-			//
-			_gravity = gravity;
-
-			for(int k= 0; k < NB_ROBOTS; k++)
-			{
-				// robots
-				_nb_joints[k] = 7;
-				_x[k].setConstant(0.0f);
-				_q[k].setConstant(0.0f);
-				_wRb[k].setIdentity();
-				_w_H_ee[k].setConstant(0.0f);
-				_w_H_eeStandby[k].setConstant(0.0f);
-				_w_H_rb[k].setIdentity();
-				_rb_H_eeStandby[k].setIdentity();
-				_xrbStandby[k].setZero();
-				_qrbStandby[k].setZero();
-
-				// desired values
-				_Vd_ee[k].setZero();
-				_Vee[k].setZero();
-				_tcp_W_EE[k].setIdentity();
-				_xd[k].setZero();
-				_v[k].setZero();
-				_w[k].setZero();
-				_vd[k].setZero();
-				_omegad[k].setZero();
-				_qd[k].setZero();
-				_aad[k].setZero();
-
-				// forces control variables
-				_fxc[k].setZero();
-				// _d1[k] 	= 1.0f;
-				// _Fd[k] 	= 0.0f;
-				// _err[k] = 1.0f;
-				_filteredWrench[k].setZero();
-				_wrench[k].setZero();
-				_wrenchBias[k].setZero();
-				_normalForceAverage[k] = 0.0f;
-				_wrenchCount[k] 		= 0;
-				_normalForce[k] 		= 0.0f;
-				// _wrenchBiasOK[k] 		= false;
-				// _firstRobotPose[k] 	= false;
-				// _firstRobotTwist[k] = false;
-		
-				// joinr variables
-				_joints_positions[k].setZero();
-				_joints_velocities[k].setZero();
-				_joints_accelerations[k].setZero();
-				_joints_torques[k].setZero();
-
-				_VEE_oa[k].setZero();
-			}
-			// Filtered variable (SG)
-			_sgf_ddq_filtered_l = std::make_unique<SGF::SavitzkyGolayFilter>(sgf_q[0], sgf_q[1], sgf_q[2], dt); //(7,3,6,_dt); // dim, order. window lenght
-			_sgf_ddq_filtered_r = std::make_unique<SGF::SavitzkyGolayFilter>(sgf_q[0], sgf_q[1], sgf_q[2], dt); //(7,3,6,_dt); // dim, order. window lenght
-		}
-
-		void get_StandbyHmgTransformInBase(){
-			_w_H_eeStandby[0] = Utils<float>::pose2HomoMx(_xrbStandby[0],  _qrbStandby[0]);		// 
-			_w_H_eeStandby[1] = Utils<float>::pose2HomoMx(_xrbStandby[1],  _qrbStandby[1]);		// 
-		}
-
-		void get_StandbyHmgTransformInWorld(){
-			_w_H_eeStandby[0] =  _w_H_rb[0] * Utils<float>::pose2HomoMx(_xrbStandby[0],  _qrbStandby[0]);		// 
-			_w_H_eeStandby[1] =  _w_H_rb[1] * Utils<float>::pose2HomoMx(_xrbStandby[1],  _qrbStandby[1]);		// 
-		}
-
-		void get_EndEffectorHmgTransform(){
-			_w_H_ee[0]  = Utils<float>::pose2HomoMx(_x[0],  _q[0]);			// WITH EE pose wrt. the world
-			_w_H_ee[1]  = Utils<float>::pose2HomoMx(_x[1],  _q[1]);			// WITH EE pose wrt. the world
-		}
-
-		void get_desired_lin_task_velocity(float applyVelo, float nu_Wr0){
-			_vd[0] = applyVelo *_vd[0] + nu_Wr0 * _fxc[0];
-			_vd[1] = applyVelo *_vd[1] + nu_Wr0 * _fxc[1];
-		}
-
-		void get_robotBaseFrameInWorld(Eigen::Vector3f xB, Eigen::Vector4f q, int k){
-			_w_H_rb[k].block(0,3,3,1) = xB;
-			_w_H_rb[k].block(0,0,3,3) = Utils<float>::quaternionToRotationMatrix(q);
-		}
-
-		void update_EndEffectorPosesInWorld(Eigen::Vector3f xB, Eigen::Vector4f q, int k){
-			// update positions and Orientations of the EEs
-			_x[k] = xB;
-			_q[k] = q;
-
-			// update EE positions with tool offset
-			_wRb[k] = Utils<float>::quaternionToRotationMatrix(_q[k]);
-			_x[k]   = _x[k]+_toolOffsetFromEE[k]*_wRb[k].col(2);
-
-			// update velocity Twist transformation from EE to tcp
-			Eigen::Vector3f tcp = _toolOffsetFromEE[k]*_wRb[k].col(2);
-			Eigen::Matrix3f skew_Mx_tcp; 
-			skew_Mx_tcp <<   0.0f,   -tcp(2),     tcp(1),
-			               tcp(2),      0.0f,    -tcp(0),
-			              -tcp(1),    tcp(0),       0.0f;
-			_tcp_W_EE[k].block(0,3,3,3) = skew_Mx_tcp;
-		}
-
-		void update_EndEffectorVelocity(Eigen::Vector3f vE, Eigen::Vector3f wE, int k){
-			_v[k] = vE;
-			_w[k] = wE;
-			_Vee[k].head(3)  = _v[k];
-			_Vee[k].tail(3)  = _w[k];
-			_Vee[k] = _tcp_W_EE[k] * _Vee[k];
-		}
-
-		void update_EndEffectorWrench(Eigen::Matrix<float,6,1> raw, Eigen::Vector3f normalObj[], float filteredForceGain, bool wrenchBiasOK[], int k){
-			//
-			if(!wrenchBiasOK[k])
-		  {
-		    Eigen::Vector3f loadForce 	 = _wRb[k].transpose()*_toolMass[k]*_gravity;
-		    _wrenchBias[k].segment(0,3) -= loadForce;
-		    _wrenchBias[k].segment(3,3) -= _toolComPositionFromSensor[k].cross(loadForce);
-		    _wrenchBias[k] += raw; 
-		    _wrenchCount[k]++;
-
-		    if(_wrenchCount[k]==NB_FT_SENSOR_SAMPLES)
-		    {
-		      _wrenchBias[k] /= NB_FT_SENSOR_SAMPLES;
-		      wrenchBiasOK[k] = true;
-		      // std::cerr << "[robot]: Bias " << k << ": " <<_wrenchBias[k].transpose() << std::endl;
-		    }
-		  }
-
-		  if(wrenchBiasOK[k])
-		  {
-		    _wrench[k] = raw -_wrenchBias[k];
-		    Eigen::Vector3f loadForce = _wRb[k].transpose()*_toolMass[k]*_gravity;
-		    _wrench[k].segment(0,3)  -= loadForce;
-		    _wrench[k].segment(3,3)  -= _toolComPositionFromSensor[k].cross(loadForce);
-		    _wrench[k].head(3) = _wRb[k] * _wrench[k].head(3);
-				_wrench[k].tail(3) = _wRb[k] * _wrench[k].tail(3);
-		    _filteredWrench[k] = filteredForceGain*_filteredWrench[k]+(1.0f-filteredForceGain)*_wrench[k];
-		    //
-		    _normalForce[k] = fabs((_filteredWrench[k].segment(0,3)).dot(normalObj[k]));
-		  }
-		}
-
-		void get_estimated_joint_accelerations(int k){
-			//
-			SGF::Vec temp_acc(_nb_joints[k]);
-			if(k==0){
-				_sgf_ddq_filtered_l->AddData(_joints_velocities[k]);
-		  	_sgf_ddq_filtered_l->GetOutput(1,temp_acc);
-			}
-			else{
-				_sgf_ddq_filtered_r->AddData(_joints_velocities[k]);
-		  	_sgf_ddq_filtered_r->GetOutput(1,temp_acc);
-			}
-		 	_joints_accelerations[k]	= temp_acc.cast<float>();	
-		}
-
-		void get_estimated_AverageNormalForce(){
-			//
-			for(int k = 0; k < NB_ROBOTS; k++){
-		    if(_normalForceWindow[k].size()<MOVING_FORCE_WINDOW_SIZE){
-		      _normalForceWindow[k].push_back(_normalForce[k]);
-		      _normalForceAverage[k] = 0.0f;
-		    }
-		    else{
-		      _normalForceWindow[k].pop_front();
-		      _normalForceWindow[k].push_back(_normalForce[k]);
-		      _normalForceAverage[k] = 0.0f;
-		      for(int m = 0; m < MOVING_FORCE_WINDOW_SIZE; m++){
-		        _normalForceAverage[k]+=_normalForceWindow[k][m];
-		      }
-		      _normalForceAverage[k] /= MOVING_FORCE_WINDOW_SIZE;
-		    }
-		  }
-		}
-
-		void set_init_parameters(	float toolMass_param[],     
-															float toolOffsetFromEE_param[],
-															Eigen::Vector3f toolComPositionFromSensor_param[],
-															Eigen::Vector3f xrbStandby_param[],
-															Eigen::Vector4f qrbStandby_param[]){
-			//
-			memcpy(_toolMass, 									&toolMass_param[0], 									NB_ROBOTS * sizeof *toolMass_param); 
-			memcpy(_toolOffsetFromEE, 					&toolOffsetFromEE_param[0], 					NB_ROBOTS * sizeof *toolOffsetFromEE_param); 
-			memcpy(_toolComPositionFromSensor, 	&toolComPositionFromSensor_param[0], 	NB_ROBOTS * sizeof *toolComPositionFromSensor_param); 
-			memcpy(_xrbStandby, 								&xrbStandby_param[0], 								NB_ROBOTS * sizeof *xrbStandby_param); 
-			memcpy(_qrbStandby, 								&qrbStandby_param[0], 								NB_ROBOTS * sizeof *qrbStandby_param); 
-
-			// get stanby transformation of the EEs wrt. the dual-robot Base frame
-			this->get_StandbyHmgTransformInBase();
-
-		}
-
-};
-
-class object_to_grasp{
-
-	public:
-
-		// object
-		float 					_objectMass;
-		Eigen::Vector3f _objectDim;                  			// Object dimensions [m] (3x1)
-		Eigen::Vector3f _xo;
-		Eigen::Vector4f _qo;
-		Eigen::Vector3f _xDo; 
-		Eigen::Vector4f _qDo;
-		Eigen::Matrix4f _w_H_o;
-		Eigen::Matrix4f _w_H_Do;
-		Eigen::Vector3f _xoC;                             // Measured object center position [m] (3x1)
-		Eigen::Vector3f _xoD;                             // Measured object dimension vector [m] (3x1)
-		Eigen::Vector3f _xgp_o[NB_ROBOTS];
-		Eigen::Vector4f _qgp_o[NB_ROBOTS];
-		Eigen::Matrix4f _w_H_gp[NB_ROBOTS];
-		Eigen::Matrix4f _w_H_Dgp[NB_ROBOTS];
-		Eigen::Vector3f _vo;
-		Eigen::Vector3f _wo;
-		Eigen::Vector3f _x_pickup;
-		// Vector6f 		_Vo;
-		// Vector6f 		_Vd_o;   													// desired object velocity (toss)
-		// Vector6f  		_desired_object_wrench; 
-		Eigen::Vector3f _n[NB_ROBOTS];               			// Normal vector to surface object for each robot (3x1)
-		Vector6f        _V_gpo[NB_ROBOTS];
-
-		std::unique_ptr<SGF::SavitzkyGolayFilter> _xo_filtered;
-		std::unique_ptr<SGF::SavitzkyGolayFilter> _qo_filtered;
-		// KF_3DVeloFromPosEstimator 								_xo_KF_filtered; //
-		// KF_3DVeloFromPosEstimator 								_wo_KF_filtered; //
-
-		object_to_grasp(){};
-		~object_to_grasp(){};
-
-		void init_object(int sgf_p[], int sgf_o[], float dt, Eigen::Matrix3f o_R_gpl, Eigen::Matrix3f o_R_gpr){
-			// object
-			_vo.setZero();
-			_wo.setZero();
-			_xo.setZero(); 
-			_xDo.setZero(); 
-			// _Vd_o.setZero();
-			_xoC.setZero();
-			_xoD.setZero();
-			_x_pickup.setZero();
-
-			_qo  << 1.0f, 0.0f, 0.0f, 0.0f;
-			_qDo << 1.0f, 0.0f, 0.0f, 0.0f;
-			_w_H_o  = Utils<float>::pose2HomoMx(_xo, _qo);	
-			_w_H_Do = Utils<float>::pose2HomoMx(_xDo, _qDo);	
-			_qgp_o[0] = Utils<float>::rotationMatrixToQuaternion(o_R_gpl); //
-			_qgp_o[1] = Utils<float>::rotationMatrixToQuaternion(o_R_gpr); //
-
-			// normal to contact surfaces
-			_n[0] = o_R_gpl.col(2);
-			_n[1] = o_R_gpr.col(2);
-			_V_gpo[0].setZero();
-			_V_gpo[1].setZero();
-
-			//
-			_xo_filtered = std::make_unique<SGF::SavitzkyGolayFilter>(sgf_p[0], sgf_p[1], sgf_p[2], dt); //(3,3,6,_dt);
-			_qo_filtered = std::make_unique<SGF::SavitzkyGolayFilter>(sgf_o[0], sgf_o[1], sgf_o[2], dt); //(4,3,10,_dt); dim, order, win_l, dt
-
-			// //
-			// _xo_KF_filtered.init(_dt, Eigen::Vector2f(0.004, 0.1), 0.004, _xo);
-			// _xo_KF_filtered.update(_xo);
-
-			this->get_desiredHmgTransform();
-		}
-
-		void get_HmgTransform(){
-				_w_H_o = Utils<float>::pose2HomoMx(_xo, _qo);
-		}
-
-		void get_desiredHmgTransform(){
-				_w_H_Do = Utils<float>::pose2HomoMx(_xDo, _qDo);
-		}
-
-		void get_estimated_state(){
-			// filtered object position
-			SGF::Vec temp(3), temp_o(4);
-			_xo_filtered->AddData(_xo);
-			_xo_filtered->GetOutput(0,temp);
-			_xo = temp;
-			_xo_filtered->GetOutput(1,temp);
-			_vo = temp;	
-			//
-			_qo_filtered->AddData(_qo);
-			_qo_filtered->GetOutput(0,temp_o);
-			_qo = temp_o;
-
-			// normalizing the quaternion
-			_qo.normalize();
-			//
-			if(_qo.norm() <= 1e-8){
-				_qo = Eigen::Vector4f(1.0, 0.0, 0.0, 0.0);
-			}
-			//
-			// ===========================================================
-			_qo_filtered->GetOutput(1,temp_o);
-			Eigen::Vector4f qo_dot = temp_o;
-			//
-			Eigen::MatrixXf wQ_map(3,4);
-			wQ_map << -_qo(1), -_qo(0), -_qo(3),  _qo(2),
-								-_qo(2),  _qo(3),  _qo(0), -_qo(1),
-								-_qo(3), -_qo(2),  _qo(1),  _qo(0);
-			_wo = 0.0*wQ_map*qo_dot;
-
-		}
-
-		void get_grasp_point_HTransform(){
-			_w_H_gp[0]  = _w_H_o * Utils<float>::pose2HomoMx(_xgp_o[0],  _qgp_o[0]);
-			_w_H_gp[1]  = _w_H_o * Utils<float>::pose2HomoMx(_xgp_o[1],  _qgp_o[1]);
-		}
-
-		void get_grasp_point_desiredHTransform(){
-			_w_H_Dgp[0] = _w_H_Do * Utils<float>::pose2HomoMx(_xgp_o[0],  _qgp_o[0]);
-			_w_H_Dgp[1] = _w_H_Do * Utils<float>::pose2HomoMx(_xgp_o[1],  _qgp_o[1]);
-		}
-
-		void get_grasp_point_desiredRotation(){
-			_w_H_Dgp[0].block(0,0,3,3) = _w_H_Do.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[0],  _qgp_o[0]).block(0,0,3,3);
-			_w_H_Dgp[1].block(0,0,3,3) = _w_H_Do.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[1],  _qgp_o[1]).block(0,0,3,3);
-		}
-
-		void update_grasp_normals(){
-			_n[0]       = _w_H_gp[0].block(0,0,3,3).col(2);
-			_n[1]       = _w_H_gp[1].block(0,0,3,3).col(2);
-		}
-
-		void get_grasp_point_velocity(){
-			//velocity of grasp points on the object
-		  for(int i=0; i<NB_ROBOTS; i++)
-		  {
-		    Eigen::Vector3f t = _w_H_o.block<3,3>(0,0) * _xgp_o[i];
-		    Eigen::Matrix3f skew_Mx_gpo;
-		    skew_Mx_gpo <<   0.0f,  -t(2),     t(1),
-		                     t(2),   0.0f,    -t(0),
-		                    -t(1),   t(0),     0.0f;             
-		    // velocity
-		    _V_gpo[i].head(3) = _vo - 0*skew_Mx_gpo * _wo;
-		    _V_gpo[i].tail(3) = 0*_wo;
-		    //
-		    _V_gpo[i].head(3) *= 0.0f;
-		    _V_gpo[i].tail(3) *= 0.0f;
-		  }
-		  
-		}
-
-};
-
-class tossing_target{
-
-	public:
-
-	// target (tossing)
-	Eigen::Vector3f _xt;
-	Eigen::Vector4f _qt;
-	Eigen::Vector3f _vt;
-	Eigen::Vector3f _wt;
-
-	Eigen::Vector3f _xd_landing;
-	// Eigen::Vector3f _x_pickup;
-	Eigen::Vector3f _x_intercept;   // intercept point of the moving object
-	Eigen::Vector3f _xt_state2go;
-
-	std::unique_ptr<SGF::SavitzkyGolayFilter> _xt_filtered; // target
-	KF_3DVeloFromPosEstimator 								_xt_KF_filtered; //
-
-	tossing_target(){};
-	~tossing_target(){};
-
-	void init_target(int dim, int order, int win_l, float dt){
-		// target
-		_xt.setZero();
-		_qt.setZero();
-		_vt.setZero();
-		_wt.setZero();
-		_qt  << 1.0f, 0.0f, 0.0f, 0.0f;
-		// _x_pickup.setZero();
-		_xt_state2go.setZero();
-		//
-		_xt_filtered = std::make_unique<SGF::SavitzkyGolayFilter>(dim, order, win_l, dt); //(3,3,10,dt); dim, order, win_l, dt
-		_xt_KF_filtered.init(dt, Eigen::Vector2f(0.004, 0.1), 0.004, _xt);
-		_xt_KF_filtered.update(_xt);
-	}
-
-	void get_filtered_state(){
-		// filtered target position
-		SGF::Vec temp(3);
-	  _xt_filtered->AddData(_xt);
-	  _xt_filtered->GetOutput(0,temp);
-	  _xt = temp;
-	  _xt_filtered->GetOutput(1,temp);
-	  _vt = temp;	
-	  _xt_KF_filtered.update(_vt);
-		_vt = _xt_KF_filtered.get_estimate_position();
-	}
-
-};
-
 
 class dual_arm_control
 {
@@ -544,19 +88,15 @@ class dual_arm_control
 	public :
 		// Robot ID: left or right
 	    enum ROBOT {LEFT = 0, RIGHT = 1};
+
 	  // Contact state:
     // CONTACT: Both robots are in contact with the object
     // CLOSE_TO_CONTACT: Both robots are close to make contact with the object
     // NO_CONTACT: Both robots are not in contact with the object
     enum ContactState {CONTACT = 0, CLOSE_TO_CONTACT = 1, NO_CONTACT = 2};
-    // Exection mode:
-    // REACHING_GRASPING_ONLY: The two robots reach and grasp the object
-    // REACHING_GRASPING_MANIPULATING: The two robots reach, grasp and move the object to a predefined position                               
-    enum Mode {REACHING_GRASPING = 0, REACHING_GRASPING_MANIPULATING = 1};
-    // TaskType
-    // enum TASK_TYPE {GOHOME = 0, RELEASE_AND_RETRACT = 1, PICK_AND_LIFT = 2, PICK_AND_THROW = 3, PICK_AND_PLACE = 4, 
-    // 								PICK_AND_HANDOVER = 5, THROWING = 6, HANDINGOVER = 7, PAUSE_MOTION = 8};
-    enum TASK_TYPE {REACH = 0, PICK_AND_LIFT = 1, TOSSING = 2, PICK_AND_TOSS = 3, PICK_AND_PLACE = 4, PLACE_TOSSING = 5, THROWING = 6, HANDINGOVER = 7, PAUSE_MOTION = 8};
+    // TaskType: dual-arm reaching and manipulation tasks
+    enum TASK_TYPE {REACH = 0, PICK_AND_LIFT = 1, TOSSING = 2, PICK_AND_TOSS = 3, PICK_AND_PLACE = 4, 
+    													PLACE_TOSSING = 5, THROWING = 6, HANDINGOVER = 7, PAUSE_MOTION = 8};
 
 		// 0=reach, 1=pick, 2=toss, 3=pick_and_toss, 4=pick_and_place
 
@@ -578,11 +118,11 @@ class dual_arm_control
 		//////////////////////////////
 		ros::Subscriber _sub_object_pose;
 		ros::Subscriber _sub_target_pose;
-		ros::Subscriber _sub_base_pose[NB_ROBOTS];				// subscribe to the base pose of the robots
-		ros::Subscriber _sub_ee_pose[NB_ROBOTS];					// subscribe to the end effectors poses
-		ros::Subscriber _sub_ee_velo[NB_ROBOTS];					// subscribe to the end effectors velocity Twist
-		ros::Subscriber _subForceTorqueSensor[NB_ROBOTS];	// Subscribe to force torque sensors
-		ros::Subscriber _sub_joint_states[NB_ROBOTS];			// subscriber for the joint position
+		ros::Subscriber _sub_base_pose[NB_ROBOTS];					// subscribe to the base pose of the robots
+		ros::Subscriber _sub_ee_pose[NB_ROBOTS];						// subscribe to the end effectors poses
+		ros::Subscriber _sub_ee_velo[NB_ROBOTS];						// subscribe to the end effectors velocity Twist
+		ros::Subscriber _subForceTorqueSensor[NB_ROBOTS];		// Subscribe to force torque sensors
+		ros::Subscriber _sub_joint_states[NB_ROBOTS];				// subscriber for the joint position
 		//////////////////////////////
 		// Publishers:
 		//////////////////////////////
@@ -613,7 +153,7 @@ class dual_arm_control
 		std::string _topic_subForceTorqueSensor[NB_ROBOTS];
 
 		// Velocity commands to be sent to the robots
-		std_msgs::Float64MultiArray _pubVelo[NB_ROBOTS]; 	// velocity Twist data to be published
+		std_msgs::Float64MultiArray _pubVelo[NB_ROBOTS]; 		// velocity Twist data to be published
 
 		geometry_msgs::WrenchStamped _msgFilteredWrench;
 
@@ -635,7 +175,7 @@ class dual_arm_control
                 
 		float _eoD;                                       	// Error to object dimension vector [m]                       
 		float _eoC;                                       	// Error to object center position [m]  
-		// --------------------------------------------------------------------------------
+		// --------------------------------------------------------------------------------------------
 
 		float _Fd[NB_ROBOTS];                								// Desired force profiles [N]
 		float _targetForce;                  								// Target force in contact [N]
@@ -645,39 +185,28 @@ class dual_arm_control
 		bool _firstRobotPose[NB_ROBOTS];
 		bool _firstRobotTwist[NB_ROBOTS];
 		bool _firstWrenchReceived[NB_ROBOTS];
-		// ------------------------------------------------------------------------------------
+		// ---------------------------------------------------------------------------------------------
 		bool _sensedContact;
 
 		bool _startlogging;
 
-		Eigen::Vector3f _delta_pos; 											// variation of object position
-		Eigen::Vector3f _delta_ang; 											// variation of object orientation euler angles
+		Eigen::Vector3f _delta_pos; 												// variation of object position
+		Eigen::Vector3f _delta_ang; 												// variation of object orientation euler angles
 		Eigen::Vector3f _filt_delta_ang;
 		Eigen::Vector3f _filt_delta_ang_mir;
 		bool 						_objCtrlKey;
 
-		//---------------------------------------------------------------------------------
+		//------------------------------------------------------------------------------------------------
 		// object to grasp
 		object_to_grasp object_;
 
 		Vector6f 				_Vo;
-		Vector6f 				_Vd_o;   													// desired object velocity (toss)
+		Vector6f 				_Vd_o;   														// desired object velocity (toss)
 		Vector6f  			_desired_object_wrench; 
 
 		// -------------------------------
 		// tossing target
 		tossing_target target_;
-
-		// // target (tossing)
-		// Eigen::Vector3f _xt;
-		// Eigen::Vector4f _qt;
-		// Eigen::Vector3f _vt;
-		// Eigen::Vector3f _wt;
-
-		// Eigen::Vector3f _xd_landing;
-		// Eigen::Vector3f _x_pickup;
-		// Eigen::Vector3f _x_intercept;   // intercept point of the moving object
-		// Eigen::Vector3f _xt_state2go;
 
 		//-------------------------------------------------------------------------------------------------
 		Eigen::Matrix4f _o_H_ee[NB_ROBOTS];
@@ -834,8 +363,9 @@ class dual_arm_control
 		throwingDS 										dsThrowingEstim;				//
 		bool 													_isSimulation;
 
-
-		// Callbacks
+		/////////////////////
+		// ROS Callbacks
+		/////////////////////
 		void objectPoseCallback(const geometry_msgs::Pose::ConstPtr& msg);
 		void targetPoseCallback(const geometry_msgs::Pose::ConstPtr& msg);
 		void updateBasePoseCallback(const geometry_msgs::Pose::ConstPtr& msg , int k);
@@ -845,25 +375,14 @@ class dual_arm_control
 		void updateRobotWrenchLeft(const geometry_msgs::WrenchStamped::ConstPtr& msg);
 		void updateRobotWrenchRight(const geometry_msgs::WrenchStamped::ConstPtr& msg);
 		void updateContactState();
-		// void updateRobotStatesLeft(const sensor_msgs::JointState::ConstPtr &msg);
-		// void updateRobotStatesRight(const sensor_msgs::JointState::ConstPtr &msg);
 		void updateRobotStates(const sensor_msgs::JointState::ConstPtr &msg, int k);
 		void updateObjectsPoseCallback(const geometry_msgs::Pose::ConstPtr& msg , int k);
 
 	public :
 		/////////////////////
-		// SG Filter variables //
-		/////////////////////
-		// SGF::SavitzkyGolayFilter _xo_filtered;    			// Filter used for the object's center position
-		// std::unique_ptr<SGF::SavitzkyGolayFilter> _xo_filtered;
-		// std::unique_ptr<SGF::SavitzkyGolayFilter> _qo_filtered;
-		// std::unique_ptr<SGF::SavitzkyGolayFilter> _sgf_ddq_filtered_l;
-		// std::unique_ptr<SGF::SavitzkyGolayFilter> _sgf_ddq_filtered_r;
-		// SGF::SavitzkyGolayFilter _x_filtered;    			// Filter used for the object's dimension vector
-		// std::unique_ptr<SGF::SavitzkyGolayFilter> _xt_filtered; // target
 		KF_3DVeloFromPosEstimator 								_xo_KF_filtered; //
 		KF_3DVeloFromPosEstimator 								_wo_KF_filtered; //
-		// KF_3DVeloFromPosEstimator 								_xt_KF_filtered; //
+		// KF_3DVeloFromPosEstimator 							_xt_KF_filtered; //
 
 		tossingTaskVariables _tossVar;
 
