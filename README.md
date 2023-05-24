@@ -47,6 +47,12 @@ The main dependencies are the following ones:
  - **iiwa_ros**: A ROS-package to control the KUKA IIWA 7 and IIWA 14 (https://github.com/epfl-lasa/iiwa_ros/tree/2kukas_with_force_sensors)
  - **sg_differentiation**: A package implementing Savitzky-Golay smoothing and differentiation. (https://github.com/epfl-lasa/sg_differentiation)
  - **iiwa_sim_models_poses**: A ROS-package that get the poses of the robots and objects in Gazebo and publish them as `ros topics`. This package can be found at https://github.com/epfl-lasa/iiwa_sim_models_poses.
+ - **dual_iiwa_toolkit**: A ROS-package to control dual KUKA IIWA7 and IIW14 robots in **simulation** (https://github.com/epfl-lasa/dual_iiwa_toolkit)
+ - **iiwa_toolkit_ns**: A ROS-package to control KUKA IIWA7 and IIW14 robots in  (https://github.com/epfl-lasa/dual_iiwa_toolkit)
+
+ Optional QP-based torque controller
+ - **dual_gen_torque_controller**: A QP-based ROS-package to control KUKA IIWA7 and IIW14 robots in  (https://github.com/MichaelBombile/dual_gen_torque_controller)
+
 
 # File hierarchy
 
@@ -67,11 +73,11 @@ The file system is divided in several subfolders:
 
 Open a new terminal and launch the simulated robots by running the following commands:
 ```sh
-roslaunch roslaunch iiwa_gazebo iiwa_double_gazebo.launch
+roslaunch roslaunch dual_arm_control main_sim_pt3.launch
 ```
 Read and publish the poses of the simulated robots and object by running the command below:
 ```sh
-roslaunch roslaunch sim_models_poses sim_models_poses.launch
+roslaunch roslaunch sim_models_poses sim_models_poses2.launch
 ```
 When sim_models_poses is running, you can now start the dual arm controller:
 ```sh
@@ -104,7 +110,7 @@ Step 2: launch the sensors packages
 ```
 Step 3: Launch the torque controllers of the robots
 
-   Option 1: CustomControllers
+   Option 1: CustomControllers (no longer working)
    ----------------------------
 
    - Open a new terminal and launch the torque controller for IIWA7 and run:
@@ -118,7 +124,7 @@ Step 3: Launch the torque controllers of the robots
 ```sh
    roslaunch real_pose bringup_iiwa14.launch
 ```
-   Option 2: iiwa_toolkit torqueController
+   Option 2: iiwa_toolkit_ns torqueController
    ----------------------------------------
    - Open a new terminal and launch the torque controller for IIWA7 and run:
 
