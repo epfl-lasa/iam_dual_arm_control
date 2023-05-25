@@ -47,6 +47,7 @@ The main dependencies are the following ones:
  - **iiwa_ros**: A ROS-package to control the KUKA IIWA 7 and IIWA 14 (https://github.com/epfl-lasa/iiwa_ros/tree/2kukas_with_force_sensors)
  - **sg_differentiation**: A package implementing Savitzky-Golay smoothing and differentiation. (https://github.com/epfl-lasa/sg_differentiation)
  - **iiwa_sim_models_poses**: A ROS-package that get the poses of the robots and objects in Gazebo and publish them as `ros topics`. This package can be found at https://github.com/epfl-lasa/iiwa_sim_models_poses.
+ - **sim_objects_description**: A ROS-package that contains URDF and SDF models of some objects (FT_sensors, Robot base, table, conveyor belt) used in the simulation environment. This package can be found at https://github.com/epfl-lasa/sim_objects_description.
  - **dual_iiwa_toolkit**: A ROS-package to control dual KUKA IIWA7 and IIW14 robots in **simulation** (https://github.com/epfl-lasa/dual_iiwa_toolkit)
  - **iiwa_toolkit_ns**: A ROS-package to control KUKA IIWA7 and IIW14 robots in  (https://github.com/epfl-lasa/dual_iiwa_toolkit)
 
