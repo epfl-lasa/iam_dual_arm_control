@@ -97,8 +97,12 @@ class dual_arm_control
     // TaskType: dual-arm reaching and manipulation tasks
     enum TASK_TYPE {REACH = 0, PICK_AND_LIFT = 1, TOSSING = 2, PICK_AND_TOSS = 3, PICK_AND_PLACE = 4, 
     													PLACE_TOSSING = 5, THROWING = 6, HANDINGOVER = 7, PAUSE_MOTION = 8};
-
 		// 0=reach, 1=pick, 2=toss, 3=pick_and_toss, 4=pick_and_place
+
+  private:
+		// Callback called when CTRL is detected to stop the node       
+		static void stopNode(int sig);
+		//  static dual_arm_control* me; // Pointer on the instance of the class
 
 	protected: 
 		std::mutex _mutex;
@@ -380,24 +384,16 @@ class dual_arm_control
 
 	public :
 		/////////////////////
-		KF_3DVeloFromPosEstimator 								_xo_KF_filtered; //
-		KF_3DVeloFromPosEstimator 								_wo_KF_filtered; //
-		// KF_3DVeloFromPosEstimator 							_xt_KF_filtered; //
 
 		tossingTaskVariables _tossVar;
 
-	private:
-    	// Callback called when CTRL is detected to stop the node       
-      static void stopNode(int sig);
-	//  static dual_arm_control* me; // Pointer on the instance of the class
-	public :
-		//
+		/////////////////////
 		dual_arm_control(	ros::NodeHandle &n, double frequency, 	//std::string dataID,
-							std::string topic_pose_object_,
-							std::string topic_pose_robot_base[],
-							std::string topic_pose_robot_ee[],
-							std::string topic_ee_commands[],
-							std::string topic_sub_ForceTorque_Sensor[]);
+											std::string topic_pose_object_,
+											std::string topic_pose_robot_base[],
+											std::string topic_pose_robot_ee[],
+											std::string topic_ee_commands[],
+											std::string topic_sub_ForceTorque_Sensor[]);
 		~dual_arm_control();
 
 		bool init();
