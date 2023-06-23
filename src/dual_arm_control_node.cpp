@@ -1,5 +1,5 @@
 
-#include "iam_dual_arm_control/dual_arm_control.h"
+#include "iam_dual_arm_control/dualArmControl.h"
 #include "ros/ros.h"
 
 int main(int argc, char** argv) {
@@ -58,13 +58,13 @@ int main(int argc, char** argv) {
   }
 
   // Creating the streamer
-  dual_arm_control dualArmCtrl(nh,
-                               frequency,
-                               topicPoseObject,
-                               topicPoseRobotBase,
-                               topicPoseRobotEE,
-                               topicEECommands,
-                               topicSubForceTorqueSensor);
+  dualArmControl dualArmCtrl(nh,
+                             frequency,
+                             topicPoseObject,
+                             topicPoseRobotBase,
+                             topicPoseRobotEE,
+                             topicEECommands,
+                             topicSubForceTorqueSensor);
 
   if (!dualArmCtrl.init()) {
     return -1;

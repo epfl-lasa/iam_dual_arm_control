@@ -47,7 +47,7 @@ include_directories(
   ${SOLVER_BWC}
   )
 
-set(SOURCES_DS  ${SRC_FOLDER}/dual_arm_control.cpp 
+set(SOURCES_DS  ${SRC_FOLDER}/dualArmControl.cpp 
                 ${SRC_FOLDER}/dualArmFreeMotionController.cpp
                 ${SRC_FOLDER}/dualArmCooperativeController.cpp
                 ${SRC_FOLDER}/throwingDS.cpp

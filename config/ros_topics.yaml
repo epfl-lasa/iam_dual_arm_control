@@ -1,0 +1,30 @@
+pose: {
+  object: "/simo_track/object_pose",
+  robot_base: {
+    robot_right: "/simo_track/robot_right/pose",
+    robot_left: "/simo_track/robot_left/pose"
+  },
+  robot_ee: {
+    robot_right: "/simo_track/robot_right/ee_pose",
+    robot_left: "/simo_track/robot_left/ee_pose"
+  }
+}
+
+commands: {
+  robot_ee: {
+    robot_right: "/iiwa_blue/CustomControllers/command",
+    robot_left: "/iiwa1/CustomControllers/command"
+  }
+}
+  
+
+ft_sensors: {
+  simulation: {
+    sensor_right: "/iiwa_blue/iiwa_blue_FTS_topic",
+    sensor_left: "/iiwa1/iiwa1_FTS_topic"
+  },
+  real: {
+    sensor_right: "/ft_sensor_right/netft_data",
+    sensor_left: "/ft_sensor_left/netft_data"
+  }
+}
