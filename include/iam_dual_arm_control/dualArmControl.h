@@ -12,6 +12,11 @@
 #include <termios.h>
 #include <vector>
 
+#include "iam_dual_arm_control/Utils.hpp"
+#include "iam_dual_arm_control/keyboard.h"
+#include <chrono>
+#include <ctime>
+
 #include "geometry_msgs/PointStamped.h"
 #include "geometry_msgs/Pose.h"
 #include "geometry_msgs/Quaternion.h"
@@ -58,9 +63,9 @@
 // typedef Eigen::Matrix<float, 6, 6> Matrix6f;
 
 //! reading keyboard functions TODO
-int khbit_2();
-void nonblock_2(int state);
-bool keyState_2(char key);
+// int khbit_2();
+// void nonblock_2(int state);
+// bool keyState_2(char key);
 
 struct SphericalPosition {
   float r;
@@ -185,7 +190,7 @@ private:
   float nuWr1_;
   float applyVelo_;
   float desVtoss_;
-  float desVimp_;
+  float desiredVelImp_;
   float desVreach_;
   float refVreach_;
   float frictionAngle_ = 0.0f;
@@ -211,7 +216,7 @@ private:
   Eigen::Vector3f dirImp_[NB_ROBOTS];
   Eigen::Vector3f vdImpact_[NB_ROBOTS];
   Eigen::Vector3f dualAngularLimit_;
-  bool releaseFlag_;
+  bool releaseFlag_;// 0=reach, 1=pick, 2=toss, 3=pick_and_toss, 4=pick_and_place TODO
 
   float trackingFactor_;
 
@@ -340,37 +345,39 @@ public:
   /////////////////////
 
   void updatePoses();
-  void get_pasive_ds_1st_damping();
+  void getPassiveDSDamping();
   void computeCommands();
-  void publish_commands();
+  void publishCommands();
   void publishData();
   void saveData();
   void run();
   void prepareCommands(Vector6f Vd_ee[], Eigen::Vector4f qd[], Vector6f V_gpo[]);
   void getGraspPointsVelocity();
-  void Keyboard_reference_object_control();
-  void Keyboard_virtual_object_control();
-  Eigen::Vector3f get_impact_direction(Eigen::Vector3f des_object_force, Eigen::Vector3f normal, float coeff_friction);
-  void reset_variables();
-  void update_states_machines();
-  Eigen::Vector3f get_object_desired_direction(int task_type, Eigen::Vector3f object_pos);
-  void update_release_position();
-  void publish_conveyor_belt_cmds();
+  void keyboardReferenceObjectControl();
+  void keyboardVirtualObjectControl();
+  Eigen::Vector3f
+  getImpactDirection(Eigen::Vector3f objectDesiredForce, Eigen::Vector3f objNormal, float coeffFriction);
+  void resetVariables();
+  void updateStatesMachines();
+
+  void updateReleasePosition();
+  void publishConveyorBeltCmds();
   void update_placing_position(float y_t_min, float y_t_max);
   void constrain_placing_position(float x_t_min, float x_t_max, float y_t_min, float y_t_max);
-  void set_2d_position_box_constraints(Eigen::Vector3f& position_vec, float limits[]);
-  void mirror_target2object_orientation(Eigen::Vector4f qt, Eigen::Vector4f& qo, Eigen::Vector3f ang_lim);
-  Eigen::Vector3f compute_intercept_with_target(const Eigen::Vector3f& x_pick,
-                                                const Eigen::Vector3f& x_target,
-                                                const Eigen::Vector3f& v_target,
-                                                float phi_i);
-  float get_desired_yaw_angle_target(const Eigen::Vector4f& qt, const Eigen::Vector3f& ang_lim);
-  void estimate_moving_average_ee_speed();
-  void estimate_moving_average_target_velocity();
-  void find_desired_landing_position(Eigen::Vector3f x_origin, bool isPlacing, bool isPlaceTossing, bool isThrowing);
-  void update_intercept_position(float flytime_obj, float intercep_limits[]);
-  void find_release_configuration();
-  void set_release_state();
-  void estimate_target_state_to_go(Eigen::Vector2f Lp_Va_pred_bot, Eigen::Vector2f Lp_Va_pred_tgt, float flytime_obj);
-  void compute_adaptation_factors(Eigen::Vector2f Lp_Va_pred_bot, Eigen::Vector2f Lp_Va_pred_tgt, float flytime_obj);
+  void set2DPositionBoxConstraints(Eigen::Vector3f& position_vec, float limits[]);
+  void mirrorTargetToObjectOrientation(Eigen::Vector4f qt, Eigen::Vector4f& qo, Eigen::Vector3f ang_lim);
+  Eigen::Vector3f
+  computeInterceptWithTarget(const Eigen::Vector3f& x_target, const Eigen::Vector3f& v_target, float phi_i);
+  float getDesiredYawAngleTarget(const Eigen::Vector4f& qt, const Eigen::Vector3f& ang_lim);
+
+  void findDesiredLandingPosition(bool isPlacing, bool isPlaceTossing, bool isThrowing);
+  void updateInterceptPosition(float flyTimeObj, float intercep_limits[]);
+  void findReleaseConfiguration();
+  void setReleaseState();
+  void estimateTargetStateToGo(Eigen::Vector2f lengthPathAvgSpeedRobot,
+                               Eigen::Vector2f lengthPathAvgSpeedTarget,
+                               float flyTimeObj);
+  void computeAdaptationFactors(Eigen::Vector2f lengthPathAvgSpeedRobot,
+                                Eigen::Vector2f lengthPathAvgSpeedTarget,
+                                float flyTimeObj);
 };

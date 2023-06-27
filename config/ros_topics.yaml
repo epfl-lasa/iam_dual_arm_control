@@ -97,7 +97,7 @@ force: {
   }
 }
 
-converyor_belt: {
+conveyor_belt: {
   desired_mode: "/conveyor_belt/desired_mode",
   desired_speed: "/conveyor_belt/desired_speed",
 }
