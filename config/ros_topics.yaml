@@ -1,3 +1,6 @@
+
+# SUBSCRIBER
+# -----------
 pose: {
   object: "/simo_track/object_pose",
   robot_base: {
@@ -7,17 +10,24 @@ pose: {
   robot_ee: {
     robot_right: "/simo_track/robot_right/ee_pose",
     robot_left: "/simo_track/robot_left/ee_pose"
+  },
+  joints: {
+    robot_right: "/iiwa_blue/joint_states",
+    robot_left: "/iiwa1/joint_states"
   }
 }
-
+vel: {
+  robot_ee: {
+    robot_right: "/simo_track/robot_right/ee_velo",
+    robot_left: "/simo_track/robot_left/ee_velo"
+  }
+}
 commands: {
   robot_ee: {
     robot_right: "/iiwa_blue/CustomControllers/command",
     robot_left: "/iiwa1/CustomControllers/command"
   }
 }
-  
-
 ft_sensors: {
   simulation: {
     sensor_right: "/iiwa_blue/iiwa_blue_FTS_topic",
@@ -27,4 +37,67 @@ ft_sensors: {
     sensor_right: "/ft_sensor_right/netft_data",
     sensor_left: "/ft_sensor_left/netft_data"
   }
+}
+
+# PUBLISHER
+# -----------
+
+orientation: {
+  ee_desired: {
+    robot_left : "/dual_arm_control/robot_left/desired/ee_orientation",
+    robot_right : "/dual_arm_control/robot_right/desired/ee_orientation",  
+  }
+}
+
+veloctiy: {
+  ee_desired: {
+    robot_left : "/dual_arm_control/robot_left/desired/ee_velocity", # "/passive_control/iiwa1/vel_quat"
+    robot_right : "/dual_arm_control/robot_right/desired/ee_velocity",  
+  },
+  quat_desired: {
+    robot_left : "/dual_arm_control/iiwa1/vel_quat", # /passive_control/iiwa1/des_twist
+    robot_right : "/dual_arm_control/iiwa_blue/vel_quat",  
+  },
+  linear_vel_norm: {
+    robot_left : "/dual_arm_control/iiwa_left/lin_vel_norm",    
+    robot_right : "/dual_arm_control/iiwa_right/lin_vel_norm",      
+  }
+}
+
+attractor: {
+  pos: {
+    robot_left: "/dual_arm_control/iiwa1/attractor",
+    robot_right: "/dual_arm_control/iiwa_blue/attractor",
+  },
+  error: {
+    robot_left: "/dual_arm_control/iiwa1/error",
+    robot_right: "/dual_arm_control/iiwa_blue/error",
+  }
+}
+
+wrench: {
+  filtered: {
+    robot_left : "/dual_arm_control/robot_left/filteredWrenchLeft",
+    robot_right : "/dual_arm_control/robot_right/filteredWrenc0hRight",  
+  },
+  applied: {
+    robot_left : "/dual_arm_control/robot_left/applied_wrench",
+    robot_right : "/dual_arm_control/robot_right/applied_wrench",  
+  }
+}
+
+force: {
+  normal: {
+    robot_left : "/dual_arm_control/robot_left/normalForceLeft",
+    robot_right : "/dual_arm_control/robot_right/normalForceRight",  
+  },
+  applied_ext: {
+    robot_left : "/passive_control/iiwa1/ext_nforce_moments",
+    robot_right : "/passive_control/iiwa_blue/ext_nforce_moments",  
+  }
+}
+
+converyor_belt: {
+  desired_mode: "/conveyor_belt/desired_mode",
+  desired_speed: "/conveyor_belt/desired_speed",
 }

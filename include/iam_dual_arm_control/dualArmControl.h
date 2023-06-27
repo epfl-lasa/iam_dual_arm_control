@@ -92,12 +92,10 @@ private:
   float timeStartRun_;
   int cycleCount_;
 
-  // TODO function in private?
-  // Callback called when CTRL is detected to stop the node
-  static void stopNode(int sig);
-  //  static dualArmControl* me; // Pointer on the instance of the class
-
   std::string topic_pose_target_;
+
+  // Velocity commands to be sent to the robots
+  std_msgs::Float64MultiArray pubVel_[NB_ROBOTS];// velocity Twist data to be published
 
   //////////////////////////////
   // Publishers:
@@ -118,6 +116,158 @@ private:
 
   ros::Publisher pubConveyorBeltMode_; // Publish conveyor belt mode
   ros::Publisher pubConveyorBeltSpeed_;// Publish conveyor belt Speed
+
+  //////////////////////////////
+  // List of the topics
+  //////////////////////////////
+  std::string topicPoseObject_;
+  std::string topicPoseRobotBase_[NB_ROBOTS];
+  std::string topicPoseRobotEE_[NB_ROBOTS];
+  std::string topicEECommands_[NB_ROBOTS];
+  std::string topicFTSensor_[NB_ROBOTS];
+
+  // --------------------------------------------------------------------------------
+  // Robot
+  robot_var robot_;
+  int contactState_;            // Contact state with the object
+  float toolMass_;              // [kg]
+  float normalForce_[NB_ROBOTS];// Normal force to the surface [N]
+  float isContact_;             // Contact value (1 = CONTACT, 0 otherwise)
+  bool wrenchBiasOK_[NB_ROBOTS];// Check if computation of force/torque sensor bias is OK
+  Eigen::Vector3f gravity_;
+
+  float errorObjDim_;// Error to object dimension vector [m]
+  float errorObjPos_;// Error to object center position [m]
+  // --------------------------------------------------------------------------------------------
+
+  float d1_[NB_ROBOTS];
+  float err_[NB_ROBOTS];
+  bool qpWrenchGeneration_;
+  // ---------------------------------------------------------------------------------------------
+
+  bool sensedContact_;
+  bool startlogging_;
+
+  Eigen::Vector3f deltaPos_;// variation of object position
+  Eigen::Vector3f deltaAng_;// variation of object orientation euler angles
+  Eigen::Vector3f filtDeltaAng_;
+  Eigen::Vector3f filtDeltaAngMir_;
+  bool objCtrlKey_;
+
+  //------------------------------------------------------------------------------------------------
+  // object to grasp
+  object_to_grasp object_;
+  Vector6f objVelDes_;// desired object velocity (toss)
+  Vector6f desiredObjectWrench_;
+
+  // Vector6f _Vo;
+
+  // -------------------------------
+  // tossing target
+  tossing_target target_;
+  //-------------------------------------------------------------------------------------------------
+  Eigen::Matrix4f oHEE_[NB_ROBOTS];
+  int initPoseCount_;// Counter of received initial poses measurements
+
+  Matrix6f gainAbs_;
+  Matrix6f gainRel_;
+
+  // task
+  Eigen::Vector3f xLifting_;
+  Eigen::Vector4f qLifting_;
+  Eigen::Vector3f xPlacing_;
+  Eigen::Vector4f qPlacing_;
+
+  float vMax_;
+  float filteredForceGain_;
+  float forceThreshold_;
+  float nuWr0_;
+  float nuWr1_;
+  float applyVelo_;
+  float desVtoss_;
+  float desVimp_;
+  float desVreach_;
+  float refVreach_;
+  float frictionAngle_ = 0.0f;
+  float frictionAngleMax_ = 0.0f;
+  float heightViaPoint_;
+
+  bool goHome_;
+  bool releaseAndretract_;
+  bool isThrowing_;    // if true execute throwing of the object
+  bool goToAttractors_;// send the robots to their attractors
+  bool isPlacing_;
+  bool isPickupSet_;
+  bool isPlaceTossing_;// fast interrupted placing motion
+  bool impactDirPreset_ = true;
+  int dualTaskSelector_ = 1;
+  bool oldDualMethod_ = false;
+
+  // create data logging object
+  data_logging dataLog_;
+
+  ////////////////////////////////////////////
+  Eigen::Matrix3f basisQ_[NB_ROBOTS];
+  Eigen::Vector3f dirImp_[NB_ROBOTS];
+  Eigen::Vector3f vdImpact_[NB_ROBOTS];
+  Eigen::Vector3f dualAngularLimit_;
+  bool releaseFlag_;
+
+  float trackingFactor_;
+
+  std::string dsDampingTopic_[NB_ROBOTS];
+
+  Eigen::Vector3f deltaRelPos_;
+  bool incrementReleasePos_ = false;
+  bool ctrlModeConveyorBelt_ = false;
+  SphericalPosition releasePos_;
+
+  int modeConveyorBelt_;
+  int desSpeedConveyorBelt_;
+  int nominalSpeedConveyorBelt_;
+  int magniturePertConveyorBelt_;
+  Eigen::Vector2f dualPathLenAvgSpeed_;
+  bool hasCaughtOnce_ = false;
+  bool isIntercepting_ = false;
+  float betaVelMod_;
+  bool isDisturbTarget_ = false;
+  float initSpeedScaling_;
+  std::deque<float> windowSpeedEE_;
+  float movingAvgSpeedEE_;
+  int winLengthAvgSpeedEE_;
+  bool adaptationActive_ = false;
+  bool isTargetFixed_ = true;
+  bool userSelect_ = true;
+
+  bool feasibleAlgo_ = false;
+  bool pickupBased_ = true;
+  bool trackTargetRotation_ = false;
+  bool isMotionTriggered_ = false;
+  bool isRatioFactor_ = false;
+  float tolAttractor_ = 0.07f;
+  float switchSlopeAdapt_ = 100.0f;
+  float betaVelModUnfilt_ = 1.0f;
+  float timeToInterceptTgt_;
+  float timeToInterceptBot_;
+
+  // ------------------------------------------------------------------------
+  // target
+  std::deque<Eigen::Vector3f> windowVelTarget_;
+  Eigen::Vector3f movingAvgVelTarget_;
+
+  ////////////////////////////////////////////////////////////////////////
+  // Objects for Unconstrained and contrained motion and force generation
+  ////////////////////////////////////////////////////////////////////////
+  dualArmFreeMotionController freeMotionCtrl_; // Motion generation
+  dualArmCooperativeController CooperativeCtrl;// Force generation
+  throwingDS dsThrowing_;
+
+  toss_task_param_estimator tossParamEstimator_;// tossing task param estimator
+  dualArmFreeMotionController freeMotionCtrlEstim_;
+  throwingDS dsThrowingEstim_;
+  bool isSimulation_;
+
+  tossingTaskVariables tossVar_;
 
 public:
   // Robot ID: left or right
@@ -142,243 +292,31 @@ public:
   };
   // 0=reach, 1=pick, 2=toss, 3=pick_and_toss, 4=pick_and_place
 
-protected:
+public:
   std::mutex mutex;
 
-  // int _nb_joints[NB_ROBOTS];
+  dualArmControl(ros::NodeHandle& n,
+                 double frequency,//std::string dataID,
+                 std::string topicPoseObject,
+                 std::string topicPoseRobotBase[],
+                 std::string topicPoseRobotEE[],
+                 std::string topicEECommands[],
+                 std::string topicFTSensorSub[]);
+  ~dualArmControl();
 
-  // TODO
-  //////////////////////////////
-  // Subscribers declarations //
-  //////////////////////////////
-  // ros::Subscriber _sub_object_pose;
-  // ros::Subscriber _sub_target_pose;
-  // ros::Subscriber _sub_base_pose[NB_ROBOTS];       // subscribe to the base pose of the robots
-  // ros::Subscriber _sub_ee_pose[NB_ROBOTS];         // subscribe to the end effectors poses
-  // ros::Subscriber _sub_ee_velo[NB_ROBOTS];         // subscribe to the end effectors velocity Twist
-  // ros::Subscriber _subForceTorqueSensor[NB_ROBOTS];// Subscribe to force torque sensors
-  // ros::Subscriber _sub_joint_states[NB_ROBOTS];    // subscriber for the joint position
-
-  //////////////////////////////
-  // List of the topics
-  //////////////////////////////
-  std::string _topic_pose_object;
-  std::string _topic_pose_robot_base[NB_ROBOTS];
-  std::string _topic_pose_robot_ee[NB_ROBOTS];
-  std::string _topic_ee_commands[NB_ROBOTS];
-  std::string _topic_subForceTorqueSensor[NB_ROBOTS];
-
-  // Velocity commands to be sent to the robots
-  std_msgs::Float64MultiArray _pubVelo[NB_ROBOTS];// velocity Twist data to be published
-
-  geometry_msgs::WrenchStamped _msgFilteredWrench;
-
-  // --------------------------------------------------------------------------------
-  // robot
-  robot_var robot_;
-
-  float _toolMass;                   // Tool mass [kg]
-  float _toolOffsetFromEE[NB_ROBOTS];// Tool offset along z axis of end effector [m]
-  Eigen::Vector3f _gravity;
-  Eigen::Vector3f _toolComPositionFromSensor;
-  int _wrenchCount[NB_ROBOTS];// Counter used to pre-process the force data
-  ContactState _contactState; // Contact state with the object
-  std::deque<float> _normalForceWindow
-      [NB_ROBOTS];// Moving window saving the robots' measured normal force to the object's surface [N]
-  float _normalForceAverage[NB_ROBOTS];// Average normal force measured through the force windows [N]
-  float _normalForce[NB_ROBOTS];       // Normal force to the surface [N]
-  float _c;                            // Contact value (1 = CONTACT, 0 otherwise)
-  bool _wrenchBiasOK[NB_ROBOTS];       // Check if computation of force/torque sensor bias is OK
-
-  float _eoD;// Error to object dimension vector [m]
-  float _eoC;// Error to object center position [m]
-  // --------------------------------------------------------------------------------------------
-
-  float _Fd[NB_ROBOTS];// Desired force profiles [N]
-  float _targetForce;  // Target force in contact [N]
-  float _d1[NB_ROBOTS];
-  float _err[NB_ROBOTS];
-  bool _qp_wrench_generation;
-  bool _firstRobotPose[NB_ROBOTS];
-  bool _firstRobotTwist[NB_ROBOTS];
-  bool _firstWrenchReceived[NB_ROBOTS];
-  // ---------------------------------------------------------------------------------------------
-  bool _sensedContact;
-
-  bool _startlogging;
-
-  Eigen::Vector3f _delta_pos;// variation of object position
-  Eigen::Vector3f _delta_ang;// variation of object orientation euler angles
-  Eigen::Vector3f _filt_delta_ang;
-  Eigen::Vector3f _filt_delta_ang_mir;
-  bool _objCtrlKey;
-
-  //------------------------------------------------------------------------------------------------
-  // object to grasp
-  object_to_grasp object_;
-
-  Vector6f _Vo;
-  Vector6f _Vd_o;// desired object velocity (toss)
-  Vector6f _desired_object_wrench;
-
-  // -------------------------------
-  // tossing target
-  tossing_target target_;
-
-  //-------------------------------------------------------------------------------------------------
-  Eigen::Matrix4f _o_H_ee[NB_ROBOTS];
-  int _objecPoseCount;
-  int _initPoseCount;// Counter of received initial poses measurements
-
-  Eigen::Vector3f _v_abs;
-  Eigen::Vector3f _w_abs;
-  Eigen::Vector3f _v_rel;
-  Eigen::Vector3f _w_rel;
-
-  Eigen::Vector3f _ep_abs;
-  Eigen::Vector3f _eo_abs;
-  Eigen::Vector3f _ep_rel;
-  Eigen::Vector3f _eo_rel;
-
-  Matrix6f _gain_abs;
-  Matrix6f _gain_rel;
-
-  // task
-  Eigen::Vector3f _xDo_lifting;
-  Eigen::Vector4f _qDo_lifting;
-  Eigen::Vector3f _xDo_placing;
-  Eigen::Vector4f _qDo_placing;
-
-  float _reachable;
-  float _v_max;
-  float _w_max;
-  float _filteredForceGain;
-  float _forceThreshold;
-  float _nu_Wr0;
-  float _nu_Wr1;
-  float _applyVelo;
-  float _delta_oDx;
-  float _delta_oDy;
-  float _delta_oDz;
-  float _desVtoss;
-  float _desVimp;
-  float _desVreach;
-  float _refVreach;
-  float _friction_angle = 0.0f;
-  float _max_friction_angle = 0.0f;
-  float _height_via_point;
-
-  bool _goHome;
-  bool _releaseAndretract;
-  bool _stop;          // Check for CTRL+C
-  bool _isThrowing;    // if true execute throwing of the object
-  bool _goToAttractors;// send the robots to their attractors
-  bool _isPlacing;
-  bool _isPickupSet;
-  bool _isPlaceTossing;// fast interrupted placing motion
-  bool _impact_dir_preset = true;
-  int _dualTaskSelector = 1;
-  bool _old_dual_method = false;
-
-  // data logging
-  std::string _DataID;
-  // create data logging object
-  data_logging datalog;
-  ////////////////////////////////////////////
-  ros::Subscriber _sub_N_objects_pose[NB_ROBOTS];// subscribe to the base pose of the robots
-  Eigen::Matrix4f _w_H_No[NB_OBJECTS];
-  Eigen::Matrix4f _w_H_abs_Do;
-  Eigen::Matrix4f _lDo_H_rDo;
-  Eigen::Matrix4f _w_H_abs_o;
-  Eigen::Matrix4f _lo_H_ro;
-  //
-  Eigen::Vector3f _xNo[NB_OBJECTS];
-  Eigen::Vector4f _qNo[NB_OBJECTS];
-  //
-  Eigen::Matrix3f _BasisQ[NB_ROBOTS];
-  Eigen::Matrix3f _E_xt_xd[NB_ROBOTS];
-  // Vector6f 		_Vee[NB_ROBOTS];
-  // Matrix6f 		_tcp_W_EE[NB_ROBOTS];			// Velocity Twist transformation between the robot EE and the tool center point (tcp)
-  Eigen::Vector3f _dirImp[NB_ROBOTS];
-  Eigen::Vector3f _VdImpact[NB_ROBOTS];
-  Eigen::Vector3f _dual_angular_limit;
-  bool _release_flag;
-
-  //
-  Vector7f _joints_positions[NB_ROBOTS];
-  Vector7f _joints_velocities[NB_ROBOTS];
-  Vector7f _joints_accelerations[NB_ROBOTS];
-  Vector7f _joints_torques[NB_ROBOTS];
-
-  float _delta_Imp = 0.0f;
-  float _delta_Toss = 0.0f;
-  float _trackingFactor;
-  float _delta_tracking;
-
-  // Vector6f _VEE_oa[NB_ROBOTS];
-  std::string _dsDampingTopic[NB_ROBOTS];
-
-  Eigen::Vector3f _delta_rel_pos;
-  bool _increment_release_pos = false;
-  bool _increment_lift_pos = false;
-  bool _ctrl_mode_conveyor_belt = false;
-  SphericalPosition release_pos;
-
-  int _mode_conveyor_belt;
-  int _desSpeed_conveyor_belt;
-  int _nominalSpeed_conveyor_belt;
-  int _magniture_pert_conveyor_belt;
-  Eigen::Vector2f _dual_PathLen_AvgSpeed;
-  bool _hasCaughtOnce = false;
-  bool _isIntercepting = false;
-  float _beta_vel_mod;
-  bool _isDisturbTarget = false;
-  float _initSpeedScaling;
-  std::deque<float> _windowSpeedEE;
-  float _movingAvgSpeedEE;
-  int _winLengthAvgSpeedEE;
-  // int _winCounterAvgSpeedEE;
-  bool _adaptationActive = false;
-  bool _isTargetFixed = true;
-  bool userSelect_ = true;
-
-  bool _feasibleAlgo = false;
-  bool _pickupBased = true;
-  bool _trackTargetRotation = false;
-  bool _isMotionTriggered = false;
-  bool _isRatioFactor = false;
-  float _tol_attractor = 0.07f;
-  float _switchSlopeAdapt = 100.0f;
-  float _beta_vel_mod_unfilt = 1.0f;
-  float _time2intercept_tgt;
-  float _time2intercept_bot;
-
-  // ------------------------------------------------------------------------
-  bool _updatePathEstim = false;
-  int _counter_monocycle = 0;
-  int _counter_pickup = 0;
-  float _dxEE_dual_avg = 0.f;
-  float _dxEE_dual_avg_pcycle = 0.f;
-  float _dxEE_dual_avg_0 = 0.f;
-  float _Del_xEE_dual_avg = 0.f;
-  Eigen::Vector3f _xEE_dual;
-  Eigen::Vector3f _xEE_dual_0;
-  // ------------------------------------------------------------------------
-
-  // target
-  std::deque<Eigen::Vector3f> _windowVelTarget;
-  Eigen::Vector3f _movingAvgVelTarget;
-  ////////////////////////////////////////////////////////////////////////
-  // Objects for Unconstrained and contrained motion and force generation
-  ////////////////////////////////////////////////////////////////////////
-  dualArmFreeMotionController FreeMotionCtrl;  // Motion generation
-  dualArmCooperativeController CooperativeCtrl;// Force generation
-  throwingDS dsThrowing;                       //
-
-  toss_task_param_estimator tossParamEstimator;// tossing task param estimator
-  dualArmFreeMotionController FreeMotionCtrlEstim;
-  throwingDS dsThrowingEstim;//
-  bool _isSimulation;
+  bool init();
+  bool initRosSubscribers();
+  bool initRosPublisher();
+  bool initRobotParam();
+  bool initObjectParam();
+  bool initFreeMotionCtrl();
+  bool initTossVar();
+  bool initDesTasksPosAndLimits();
+  bool initDampingTopicCtrl();
+  bool initConveyorBelt();
+  bool initUserInteraction();
+  bool initTossParamEstimator();
+  bool initDSThrowing();
 
   /////////////////////
   // ROS Callbacks
@@ -395,24 +333,12 @@ protected:
   void updateRobotStates(const sensor_msgs::JointState::ConstPtr& msg, int k);
   void updateObjectsPoseCallback(const geometry_msgs::Pose::ConstPtr& msg, int k);
 
-public:
   /////////////////////
 
-  tossingTaskVariables _tossVar;
-
+  // Callback called when CTRL is detected to stop the node
+  static void stopNode(int sig);
   /////////////////////
-  dualArmControl(ros::NodeHandle& n,
-                 double frequency,//std::string dataID,
-                 std::string topic_pose_object_,
-                 std::string topic_pose_robot_base[],
-                 std::string topic_pose_robot_ee[],
-                 std::string topic_ee_commands[],
-                 std::string topic_sub_ForceTorque_Sensor[]);
-  ~dualArmControl();
 
-  bool init();
-  bool initRosSubscribers();
-  bool initRosPublisher();
   void updatePoses();
   void get_pasive_ds_1st_damping();
   void computeCommands();
