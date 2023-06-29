@@ -44,13 +44,13 @@ RUN --mount=type=ssh git clone git@github.com:epfl-lasa/iiwa_sim_models_poses.gi
 WORKDIR /home/${USER}/ros_ws/src
 RUN --mount=type=ssh git clone git@github.com:epfl-lasa/sim_objects_description.git
 
-#dual_iiwa_toolkit
+#dual_iiwa_toolkit - simulation control
 WORKDIR /home/${USER}/ros_ws/src
 RUN --mount=type=ssh git clone git@github.com:epfl-lasa/dual_iiwa_toolkit.git
 
-#iiwa_toolkit_ns
-WORKDIR /home/${USER}/ros_ws/src
-RUN --mount=type=ssh git clone git@github.com:epfl-lasa/iiwa_toolkit_ns.git
+# #iiwa_toolkit_ns - for real robot control
+# WORKDIR /home/${USER}/ros_ws/src
+# RUN --mount=type=ssh git clone git@github.com:epfl-lasa/iiwa_toolkit_ns.git
 
 # #dual_gen_torque_controller
 # WORKDIR /home/${USER}/ros_ws/src

@@ -47,11 +47,12 @@ include_directories(
   ${SOLVER_BWC}
   )
 
-set(SOURCES_DS  ${SRC_FOLDER}/dualArmControl.cpp 
+set(SOURCES_DS  ${SRC_FOLDER}/DualArmControl.cpp 
                 ${SRC_FOLDER}/dualArmFreeMotionController.cpp
                 ${SRC_FOLDER}/dualArmCooperativeController.cpp
                 ${SRC_FOLDER}/throwingDS.cpp
                 ${SRC_FOLDER}/toss_task_param_estimator.cpp
+                ${SRC_FOLDER}/DataLogging.cpp
                 )
 
 file(GLOB BWC_SOURCES   "${SOLVER_BWC}/*.c")

@@ -22,12 +22,7 @@ vel: {
     robot_left: "/simo_track/robot_left/ee_velo"
   }
 }
-commands: {
-  robot_ee: {
-    robot_right: "/iiwa_blue/CustomControllers/command",
-    robot_left: "/iiwa1/CustomControllers/command"
-  }
-}
+
 ft_sensors: {
   simulation: {
     sensor_right: "/iiwa_blue/iiwa_blue_FTS_topic",
@@ -41,6 +36,13 @@ ft_sensors: {
 
 # PUBLISHER
 # -----------
+
+commands: {
+  robot_ee: {
+    robot_right: "/iiwa_blue/TorqueController/command", # TODO how to choose controllers? according to param in main_sim_pt3.launch?
+    robot_left: "/iiwa1/TorqueController/command" #CustomControllers #TorqueController
+  }
+}
 
 orientation: {
   ee_desired: {

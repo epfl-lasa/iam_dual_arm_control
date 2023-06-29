@@ -25,8 +25,8 @@ dual_system:
         left : "/iiwa1/CustomControllers/controllers/PassiveDS/params"      # "/control/lambda_Pos" #
         right: "/iiwa_blue/CustomControllers/controllers/PassiveDS/params"  #"/control/lambda_Pos"  #
       TorqueController:
-        left : "/iiwa1/control/lambda_Pos"      #
-        right: "/iiwa_blue/control/lambda_Pos"  #
+        left : "/iiwa1/control/lambda_Pos"
+        right: "/iiwa_blue/control/lambda_Pos"
 
 # object
 object:

@@ -1,5 +1,4 @@
-#ifndef __UTILS_H__
-#define __UTILS_H__
+#pragma once
 
 #include "Eigen/Eigen"
 #include "ros/ros.h"
@@ -784,76 +783,76 @@ public:
 template class Utils<float>;
 template class Utils<double>;
 
-class MatrixPseudoInverse2 {
+// class MatrixPseudoInverse2 {
 
-public:
-  MatrixPseudoInverse2() {}
+// public:
+//   MatrixPseudoInverse2() {}
 
-  ~MatrixPseudoInverse2() {}
+//   ~MatrixPseudoInverse2() {}
 
-  // Compute the pseudo inverse of a matrix
-  template<typename _Matrix_Type_>
-  _Matrix_Type_ get_pseudoInverse(const _Matrix_Type_& a, double epsilon = std::numeric_limits<double>::epsilon()) {
+//   // Compute the pseudo inverse of a matrix
+//   template<typename _Matrix_Type_>
+//   _Matrix_Type_ get_pseudoInverse(const _Matrix_Type_& a, double epsilon = std::numeric_limits<double>::epsilon()) {
 
-    Eigen::JacobiSVD<_Matrix_Type_> svd(a, Eigen::ComputeThinU | Eigen::ComputeThinV);
+//     Eigen::JacobiSVD<_Matrix_Type_> svd(a, Eigen::ComputeThinU | Eigen::ComputeThinV);
 
-    int svdSize = svd.singularValues().size();
+//     int svdSize = svd.singularValues().size();
 
-    double tolerance = epsilon * std::max(a.cols(), a.rows()) * svd.singularValues().array().abs()(0);
+//     double tolerance = epsilon * std::max(a.cols(), a.rows()) * svd.singularValues().array().abs()(0);
 
-    return svd.matrixV().leftCols(svdSize)
-        * (svd.singularValues().array().abs() > tolerance)
-              .select(svd.singularValues().array().inverse(), 0)
-              .matrix()
-              .asDiagonal()
-        * svd.matrixU().leftCols(svdSize).adjoint();
-  }
+//     return svd.matrixV().leftCols(svdSize)
+//         * (svd.singularValues().array().abs() > tolerance)
+//               .select(svd.singularValues().array().inverse(), 0)
+//               .matrix()
+//               .asDiagonal()
+//         * svd.matrixU().leftCols(svdSize).adjoint();
+//   }
 
-  bool get_HhQRPseudoInverse(Eigen::MatrixXd myMatrix, Eigen::MatrixXd& PsdInvmyMatrix) {
+//   bool get_HhQRPseudoInverse(Eigen::MatrixXd myMatrix, Eigen::MatrixXd& PsdInvmyMatrix) {
 
-    Eigen::HouseholderQR<Eigen::MatrixXd> qr(myMatrix.transpose());
-    PsdInvmyMatrix.setIdentity(myMatrix.cols(), myMatrix.rows());
-    PsdInvmyMatrix = qr.householderQ() * PsdInvmyMatrix;
-    PsdInvmyMatrix = qr.matrixQR()
-                         .topLeftCorner(myMatrix.rows(), myMatrix.rows())
-                         .triangularView<Eigen::Upper>()
-                         .transpose()
-                         .solve<Eigen::OnTheRight>(PsdInvmyMatrix);
+//     Eigen::HouseholderQR<Eigen::MatrixXd> qr(myMatrix.transpose());
+//     PsdInvmyMatrix.setIdentity(myMatrix.cols(), myMatrix.rows());
+//     PsdInvmyMatrix = qr.householderQ() * PsdInvmyMatrix;
+//     PsdInvmyMatrix = qr.matrixQR()
+//                          .topLeftCorner(myMatrix.rows(), myMatrix.rows())
+//                          .triangularView<Eigen::Upper>()
+//                          .transpose()
+//                          .solve<Eigen::OnTheRight>(PsdInvmyMatrix);
 
-    return true;
-  }
+//     return true;
+//   }
 
-  bool get_CODecomPseudoInverse(Eigen::MatrixXd myMatrix, Eigen::MatrixXd& PsdInvmyMatrix) {
-    //
-    Eigen::CompleteOrthogonalDecomposition<Eigen::MatrixXd> cqr(myMatrix);
-    PsdInvmyMatrix = cqr.pseudoInverse();
+//   bool get_CODecomPseudoInverse(Eigen::MatrixXd myMatrix, Eigen::MatrixXd& PsdInvmyMatrix) {
+//     //
+//     Eigen::CompleteOrthogonalDecomposition<Eigen::MatrixXd> cqr(myMatrix);
+//     PsdInvmyMatrix = cqr.pseudoInverse();
 
-    return true;
-  }
+//     return true;
+//   }
 
-  bool get_LLTSolveInverse(Eigen::MatrixXd myMatrix, Eigen::MatrixXd& Inv_myMatrix) {
-    //
-    Eigen::MatrixXd UnitMx = Eigen::MatrixXd::Identity(myMatrix.cols(), myMatrix.rows());
-    Inv_myMatrix = myMatrix.llt().solve(UnitMx);
+//   bool get_LLTSolveInverse(Eigen::MatrixXd myMatrix, Eigen::MatrixXd& Inv_myMatrix) {
+//     //
+//     Eigen::MatrixXd UnitMx = Eigen::MatrixXd::Identity(myMatrix.cols(), myMatrix.rows());
+//     Inv_myMatrix = myMatrix.llt().solve(UnitMx);
 
-    return true;
-  }
+//     return true;
+//   }
 
-  bool get_LUSolveInverse(Eigen::MatrixXd myMatrix, Eigen::MatrixXd& Inv_myMatrix) {
-    //
-    Eigen::MatrixXd UnitMx = Eigen::MatrixXd::Identity(myMatrix.cols(), myMatrix.rows());
-    Inv_myMatrix = myMatrix.lu().solve(UnitMx);
+//   bool get_LUSolveInverse(Eigen::MatrixXd myMatrix, Eigen::MatrixXd& Inv_myMatrix) {
+//     //
+//     Eigen::MatrixXd UnitMx = Eigen::MatrixXd::Identity(myMatrix.cols(), myMatrix.rows());
+//     Inv_myMatrix = myMatrix.lu().solve(UnitMx);
 
-    return true;
-  }
-  bool get_LDLTSolveInverse(Eigen::MatrixXd myMatrix, Eigen::MatrixXd& Inv_myMatrix) {
-    //
-    Eigen::MatrixXd UnitMx = Eigen::MatrixXd::Identity(myMatrix.cols(), myMatrix.rows());
-    Inv_myMatrix = myMatrix.ldlt().solve(UnitMx);
+//     return true;
+//   }
+//   bool get_LDLTSolveInverse(Eigen::MatrixXd myMatrix, Eigen::MatrixXd& Inv_myMatrix) {
+//     //
+//     Eigen::MatrixXd UnitMx = Eigen::MatrixXd::Identity(myMatrix.cols(), myMatrix.rows());
+//     Inv_myMatrix = myMatrix.ldlt().solve(UnitMx);
 
-    return true;
-  }
-};
+//     return true;
+//   }
+// };
 
 // Kalman filter
 class KalmanFilter {
@@ -1117,117 +1116,115 @@ public:
 };
 }// namespace utils
 
-template<typename T = float>
-class DataLoader {
+// template<typename T = float>
+// class DataLoader {
 
-public:
-  DataLoader() {}
-  ~DataLoader(){};
+// public:
+//   DataLoader() {}
+//   ~DataLoader(){};
 
-  // function to log data from file
-  bool LoadDataFromFile(std::string file_name, Eigen::Matrix<T, Eigen::Dynamic, 1>& data_all_val) {
-    //
-    std::ifstream inFile;
-    inFile.open(file_name);
-    if (!inFile) {
-      std::cout << "Unable to open file \n";
-      exit(1);// terminate with error
-    }
-    //
-    std::vector<T> data_val;
-    T x;
-    //
-    while (inFile >> x) { data_val.push_back(x); }
-    //
-    int size_data_val = data_val.size();
-    //
-    data_all_val.resize(size_data_val);
-    for (int i = 0; i < size_data_val; i++) data_all_val(i) = data_val[i];
+//   // function to log data from file
+//   bool LoadDataFromFile(std::string file_name, Eigen::Matrix<T, Eigen::Dynamic, 1>& data_all_val) {
+//     //
+//     std::ifstream inFile;
+//     inFile.open(file_name);
+//     if (!inFile) {
+//       std::cout << "Unable to open file \n";
+//       exit(1);// terminate with error
+//     }
+//     //
+//     std::vector<T> data_val;
+//     T x;
+//     //
+//     while (inFile >> x) { data_val.push_back(x); }
+//     //
+//     int size_data_val = data_val.size();
+//     //
+//     data_all_val.resize(size_data_val);
+//     for (int i = 0; i < size_data_val; i++) data_all_val(i) = data_val[i];
 
-    return true;
-  }
+//     return true;
+//   }
 
-  //
-  bool Load_gmm_param(std::string file_name[],
-                      int dataDim,
-                      int nbStates,
-                      Eigen::Matrix<T, Eigen::Dynamic, 1>& Priors_,
-                      Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& Means_,
-                      Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& Covars_) {
+//   //
+//   bool Load_gmm_param(std::string file_name[],
+//                       int dataDim,
+//                       int nbStates,
+//                       Eigen::Matrix<T, Eigen::Dynamic, 1>& Priors_,
+//                       Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& Means_,
+//                       Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& Covars_) {
 
-    //
-    std::string Priors_file_name = file_name[0];// + "_prio.txt";
-    std::string Means_file_name = file_name[1]; // + "_mu.txt";
-    std::string Covar_file_name = file_name[2]; // + "_sigma.txt";
-    //
-    Eigen::Matrix<T, Eigen::Dynamic, 1> priors_all_val;
-    Eigen::Matrix<T, Eigen::Dynamic, 1> means_all_val;
-    Eigen::Matrix<T, Eigen::Dynamic, 1> covars_all_val;
-    //
-    DataLoader<T>::LoadDataFromFile(Priors_file_name, priors_all_val);
-    DataLoader<T>::LoadDataFromFile(Means_file_name, means_all_val);
-    DataLoader<T>::LoadDataFromFile(Covar_file_name, covars_all_val);
-    //
-    // Priors
-    Priors_ = priors_all_val;
-    // Means
-    Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> Means_Mx(means_all_val.data(),
-                                                                                           dataDim,
-                                                                                           nbStates);
-    Means_ = Means_Mx;
+//     //
+//     std::string Priors_file_name = file_name[0];// + "_prio.txt";
+//     std::string Means_file_name = file_name[1]; // + "_mu.txt";
+//     std::string Covar_file_name = file_name[2]; // + "_sigma.txt";
+//     //
+//     Eigen::Matrix<T, Eigen::Dynamic, 1> priors_all_val;
+//     Eigen::Matrix<T, Eigen::Dynamic, 1> means_all_val;
+//     Eigen::Matrix<T, Eigen::Dynamic, 1> covars_all_val;
+//     //
+//     DataLoader<T>::LoadDataFromFile(Priors_file_name, priors_all_val);
+//     DataLoader<T>::LoadDataFromFile(Means_file_name, means_all_val);
+//     DataLoader<T>::LoadDataFromFile(Covar_file_name, covars_all_val);
+//     //
+//     // Priors
+//     Priors_ = priors_all_val;
+//     // Means
+//     Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> Means_Mx(means_all_val.data(),
+//                                                                                            dataDim,
+//                                                                                            nbStates);
+//     Means_ = Means_Mx;
 
-    //
-    int row_cov = dataDim * nbStates;
-    // Covariance
-    Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> Covar_Mx(covars_all_val.data(),
-                                                                                           row_cov,
-                                                                                           dataDim);
-    Covars_ = Covar_Mx;
+//     //
+//     int row_cov = dataDim * nbStates;
+//     // Covariance
+//     Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> Covar_Mx(covars_all_val.data(),
+//                                                                                            row_cov,
+//                                                                                            dataDim);
+//     Covars_ = Covar_Mx;
 
-    return true;
-  }
+//     return true;
+//   }
 
-  bool Load_gmm_param2(std::string file_name[],
-                       Eigen::Matrix<T, Eigen::Dynamic, 1>& Priors_,
-                       Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& Means_,
-                       Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& Covars_) {
-    //
-    std::string Priors_file_name = file_name[0];// + "_prio.txt";
-    std::string Means_file_name = file_name[1]; // + "_mu.txt";
-    std::string Covar_file_name = file_name[2]; // + "_sigma.txt";
-    //
-    Eigen::Matrix<T, Eigen::Dynamic, 1> priors_all_val;
-    Eigen::Matrix<T, Eigen::Dynamic, 1> means_all_val;
-    Eigen::Matrix<T, Eigen::Dynamic, 1> covars_all_val;
-    //
-    DataLoader<T>::LoadDataFromFile(Priors_file_name, priors_all_val);
-    DataLoader<T>::LoadDataFromFile(Means_file_name, means_all_val);
-    DataLoader<T>::LoadDataFromFile(Covar_file_name, covars_all_val);
-    //
-    // Priors
-    Priors_ = priors_all_val;
-    //
-    int nbStates = priors_all_val.rows();
-    int dataDim = int(means_all_val.rows() / nbStates);
-    // Means
-    Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> Means_Mx(means_all_val.data(),
-                                                                                           dataDim,
-                                                                                           nbStates);
-    Means_ = Means_Mx;
+//   bool Load_gmm_param2(std::string file_name[],
+//                        Eigen::Matrix<T, Eigen::Dynamic, 1>& Priors_,
+//                        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& Means_,
+//                        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& Covars_) {
+//     //
+//     std::string Priors_file_name = file_name[0];// + "_prio.txt";
+//     std::string Means_file_name = file_name[1]; // + "_mu.txt";
+//     std::string Covar_file_name = file_name[2]; // + "_sigma.txt";
+//     //
+//     Eigen::Matrix<T, Eigen::Dynamic, 1> priors_all_val;
+//     Eigen::Matrix<T, Eigen::Dynamic, 1> means_all_val;
+//     Eigen::Matrix<T, Eigen::Dynamic, 1> covars_all_val;
+//     //
+//     DataLoader<T>::LoadDataFromFile(Priors_file_name, priors_all_val);
+//     DataLoader<T>::LoadDataFromFile(Means_file_name, means_all_val);
+//     DataLoader<T>::LoadDataFromFile(Covar_file_name, covars_all_val);
+//     //
+//     // Priors
+//     Priors_ = priors_all_val;
+//     //
+//     int nbStates = priors_all_val.rows();
+//     int dataDim = int(means_all_val.rows() / nbStates);
+//     // Means
+//     Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> Means_Mx(means_all_val.data(),
+//                                                                                            dataDim,
+//                                                                                            nbStates);
+//     Means_ = Means_Mx;
 
-    //
-    int row_cov = dataDim * nbStates;
-    // Covariance
-    Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> Covar_Mx(covars_all_val.data(),
-                                                                                           row_cov,
-                                                                                           dataDim);
-    Covars_ = Covar_Mx;
+//     //
+//     int row_cov = dataDim * nbStates;
+//     // Covariance
+//     Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> Covar_Mx(covars_all_val.data(),
+//                                                                                            row_cov,
+//                                                                                            dataDim);
+//     Covars_ = Covar_Mx;
 
-    return true;
-  }
-};
+//     return true;
+//   }
+// };
 
-template class DataLoader<float>;
-template class DataLoader<double>;
-
-#endif
+// template class DataLoader<float>;
+// template class DataLoader<double>;
