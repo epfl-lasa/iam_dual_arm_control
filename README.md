@@ -52,7 +52,7 @@ The main dependencies are the following ones:
  - **iiwa_toolkit_ns**: A ROS-package to control KUKA IIWA7 and IIW14 robots in  (https://github.com/epfl-lasa/dual_iiwa_toolkit)
 
  Optional QP-based torque controller
- - **dual_gen_torque_controller**: A QP-based ROS-package to control KUKA IIWA7 and IIW14 robots in  (https://github.com/MichaelBombile/dual_gen_torque_controller)
+ - **dual_gen_torque_controller**: A QP-based ROS-package to control KUKA IIWA7 and IIW14 robots in  (https://github.com/epfl-lasa/dual_gen_torque_controller)
 
 
 # File hierarchy
