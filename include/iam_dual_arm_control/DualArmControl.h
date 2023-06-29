@@ -94,6 +94,20 @@ private:
   // Velocity commands to be sent to the robots
   std_msgs::Float64MultiArray pubVel_[NB_ROBOTS];
 
+  // ---- Subscriber
+  ros::Subscriber subObjectPose_;
+  ros::Subscriber subTargetPose_;
+  ros::Subscriber subBasePoseLeft_;
+  ros::Subscriber subBasePoseRight_;
+  ros::Subscriber subEEPoseLeft_;
+  ros::Subscriber subEEPoseRight_;
+  ros::Subscriber subEEVelLeft_;
+  ros::Subscriber subEEVelRight_;
+  ros::Subscriber subForceTorqueSensorLeft_;
+  ros::Subscriber subForceTorqueSensorRight_;
+  ros::Subscriber subJointStateLeft_;
+  ros::Subscriber subJointStateRight_;
+
   // ---- Publishers:
   ros::Publisher pubTSCommands_[NB_ROBOTS];        // Publisher of the End effectors velocity twist
   ros::Publisher pubDesiredTwist_[NB_ROBOTS];      // Publish desired twist to DS-impdedance controller

@@ -145,71 +145,71 @@ bool DualArmControl::initRosSubscribers() {
     ROS_ERROR("Topic pose/joints/robot_right not found");
   }
 
-  ros::Subscriber subObjectPose = nh_.subscribe(topicPoseObject_,
-                                                1,
-                                                &DualArmControl::objectPoseCallback,
-                                                this,
-                                                ros::TransportHints().reliable().tcpNoDelay());
-  ros::Subscriber subTargetPose = nh_.subscribe(topic_pose_target_,
-                                                1,
-                                                &DualArmControl::targetPoseCallback,
-                                                this,
-                                                ros::TransportHints().reliable().tcpNoDelay());
-  ros::Subscriber subBasePoseLeft =
+  subObjectPose_ = nh_.subscribe(topicPoseObject_,
+                                 1,
+                                 &DualArmControl::objectPoseCallback,
+                                 this,
+                                 ros::TransportHints().reliable().tcpNoDelay());
+  subTargetPose_ = nh_.subscribe(topic_pose_target_,
+                                 1,
+                                 &DualArmControl::targetPoseCallback,
+                                 this,
+                                 ros::TransportHints().reliable().tcpNoDelay());
+  subBasePoseLeft_ =
       nh_.subscribe<geometry_msgs::Pose>(topicPoseRobotBase_[LEFT],
                                          1,
                                          boost::bind(&DualArmControl::updateBasePoseCallback, this, _1, LEFT),
                                          ros::VoidPtr(),
                                          ros::TransportHints().reliable().tcpNoDelay());
-  ros::Subscriber subBasePoseRight =
+  subBasePoseRight_ =
       nh_.subscribe<geometry_msgs::Pose>(topicPoseRobotBase_[RIGHT],
                                          1,
                                          boost::bind(&DualArmControl::updateBasePoseCallback, this, _1, RIGHT),
                                          ros::VoidPtr(),
                                          ros::TransportHints().reliable().tcpNoDelay());
-  ros::Subscriber subEEPoseLeft =
+  subEEPoseLeft_ =
       nh_.subscribe<geometry_msgs::Pose>(topicPoseRobotEE_[LEFT],
                                          1,
                                          boost::bind(&DualArmControl::updateEEPoseCallback, this, _1, LEFT),
                                          ros::VoidPtr(),
                                          ros::TransportHints().reliable().tcpNoDelay());
-  ros::Subscriber subEEPoseRight =
+  subEEPoseRight_ =
       nh_.subscribe<geometry_msgs::Pose>(topicPoseRobotEE_[RIGHT],
                                          1,
                                          boost::bind(&DualArmControl::updateEEPoseCallback, this, _1, RIGHT),
                                          ros::VoidPtr(),
                                          ros::TransportHints().reliable().tcpNoDelay());
-  ros::Subscriber subEEVelLeft =
+  subEEVelLeft_ =
       nh_.subscribe<geometry_msgs::Twist>(topicSubEEVel[LEFT],
                                           1,
                                           boost::bind(&DualArmControl::updateEETwistCallback, this, _1, LEFT),
                                           ros::VoidPtr(),
                                           ros::TransportHints().reliable().tcpNoDelay());
-  ros::Subscriber subEEVelRight =
+  subEEVelRight_ =
       nh_.subscribe<geometry_msgs::Twist>(topicSubEEVel[RIGHT],
                                           1,
                                           boost::bind(&DualArmControl::updateEETwistCallback, this, _1, RIGHT),
                                           ros::VoidPtr(),
                                           ros::TransportHints().reliable().tcpNoDelay());
-  ros::Subscriber subForceTorqueSensorLeft = nh_.subscribe<geometry_msgs::WrenchStamped>(
+  subForceTorqueSensorLeft_ = nh_.subscribe<geometry_msgs::WrenchStamped>(
       topicFTSensor_[LEFT],
       1,
       boost::bind(&DualArmControl::updateRobotWrenchCallback, this, _1, LEFT),
       ros::VoidPtr(),
       ros::TransportHints().reliable().tcpNoDelay());
-  ros::Subscriber subForceTorqueSensorRight = nh_.subscribe<geometry_msgs::WrenchStamped>(
+  subForceTorqueSensorRight_ = nh_.subscribe<geometry_msgs::WrenchStamped>(
       topicFTSensor_[RIGHT],
       1,
       boost::bind(&DualArmControl::updateRobotWrenchCallback, this, _1, RIGHT),
       ros::VoidPtr(),
       ros::TransportHints().reliable().tcpNoDelay());
-  ros::Subscriber subJointStateLeft =
+  subJointStateLeft_ =
       nh_.subscribe<sensor_msgs::JointState>(topicSubJointState[LEFT],
                                              1,
                                              boost::bind(&DualArmControl::updateRobotStatesCallback, this, _1, LEFT),
                                              ros::VoidPtr(),
                                              ros::TransportHints().reliable().tcpNoDelay());
-  ros::Subscriber subJointStateRight =
+  subJointStateRight_ =
       nh_.subscribe<sensor_msgs::JointState>(topicSubJointState[RIGHT],
                                              1,
                                              boost::bind(&DualArmControl::updateRobotStatesCallback, this, _1, RIGHT),
@@ -788,7 +788,7 @@ bool DualArmControl::init() {
   freeMotionCtrlEstim_ = freeMotionCtrl_;
 
   // Data recording:
-  dataLog_.init(ros::package::getPath(std::string("DualArmControl")) + "/Data");
+  dataLog_.init(ros::package::getPath(std::string("dual_arm_control")) + "/Data");
 
   if (nh_.ok()) {
     // Wait for poses being published
