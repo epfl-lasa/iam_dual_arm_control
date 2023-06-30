@@ -66,11 +66,9 @@ int main(int argc, char** argv) {
                              topicEECommands,
                              topicSubForceTorqueSensor);
 
-  ROS_WARN_STREAM("START ");
   if (!dualArmCtrl.init()) {
     return -1;
   } else {
-    ROS_WARN_STREAM("START RUN");
     dualArmCtrl.run();
   }
 

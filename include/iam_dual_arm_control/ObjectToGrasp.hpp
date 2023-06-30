@@ -7,10 +7,10 @@
 #ifndef OBJECT_TO_GRASP_H
 #define OBJECT_TO_GRASP_H
 
-#include "Utils.hpp"
 #include "eigen3/Eigen/Core"
 #include "eigen3/Eigen/Dense"
 #include "eigen3/Eigen/Geometry"
+#include "iam_dual_arm_control/tools/Utils.hpp"
 #include "sg_filter.h"
 #include <deque>
 #include <vector>
@@ -54,8 +54,8 @@ public:
 
   std::unique_ptr<SGF::SavitzkyGolayFilter> _xo_filtered;
   std::unique_ptr<SGF::SavitzkyGolayFilter> _qo_filtered;
-  // KF_3DVeloFromPosEstimator 								_xo_KF_filtered; //
-  // KF_3DVeloFromPosEstimator 								_wo_KF_filtered; //
+  // KalmanFilter3DVelFromPosEstimator 								_xo_KF_filtered; //
+  // KalmanFilter3DVelFromPosEstimator 								_wo_KF_filtered; //
 
   object_to_grasp(){};
   ~object_to_grasp(){};

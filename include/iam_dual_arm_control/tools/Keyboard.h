@@ -14,7 +14,7 @@
 
 namespace keyboard {
 
-int khbit_2() {
+int khBit() {
   struct timeval tv;
   fd_set fds;
   tv.tv_sec = 0;
@@ -28,7 +28,7 @@ int khbit_2() {
 // ///////////////////////////////////////////
 //
 // ///////////////////////////////////////////
-void nonblock_2(int state) {
+void nonBlock(int state) {
   struct termios ttystate;
   tcgetattr(STDIN_FILENO, &ttystate);
 
@@ -45,9 +45,9 @@ void nonblock_2(int state) {
 // ///////////////////////////////////////////
 // return true if the key character is pressed
 // ///////////////////////////////////////////
-bool keyState_2(char key) {
+bool keyState(char key) {
   bool pressed = false;
-  int i = khbit_2();//Alow to read from terminal
+  int i = khBit();//Alow to read from terminal
   if (i != 0) {
     char c = fgetc(stdin);
     if (c == key) {
@@ -63,9 +63,9 @@ bool keyState_2(char key) {
 // ///////////////////////////////////////////
 // It returns the pressed character
 // ///////////////////////////////////////////
-char get_char() {
+char getChar() {
   char c;
-  int i = khbit_2();//Alow to read from terminal
+  int i = khBit();//Alow to read from terminal
   if (i != 0) {
     c = fgetc(stdin);
     fflush(stdin);

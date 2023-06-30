@@ -33,7 +33,7 @@
 #include "eigen3/Eigen/Geometry"
 #include "eigen3/Eigen/Dense"
 
-#include "Utils.hpp"
+#include "iam_dual_arm_control/tools/Utils.hpp"
 
 typedef Eigen::Matrix<float, 6, 1> Vector6f;
 

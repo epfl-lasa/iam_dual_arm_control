@@ -12,8 +12,8 @@
 #include <termios.h>
 #include <vector>
 
-#include "iam_dual_arm_control/Utils.hpp"
-#include "iam_dual_arm_control/keyboard.h"
+#include "iam_dual_arm_control/tools/Keyboard.h"
+#include "iam_dual_arm_control/tools/Utils.hpp"
 #include <chrono>
 #include <ctime>
 

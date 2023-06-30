@@ -1185,9 +1185,9 @@ void DualArmControl::updateContactState() {
 }
 
 void DualArmControl::updateStatesMachines() {
-  keyboard::nonblock_2(1);
+  keyboard::nonBlock(1);
 
-  if (keyboard::khbit_2() != 0) {
+  if (keyboard::khBit() != 0) {
     char keyboardCommand = fgetc(stdin);
     fflush(stdin);
 
@@ -1388,7 +1388,7 @@ void DualArmControl::updateStatesMachines() {
       } break;
     }
   }
-  keyboard::nonblock_2(0);
+  keyboard::nonBlock(0);
 }
 
 void DualArmControl::updatePoses() {
