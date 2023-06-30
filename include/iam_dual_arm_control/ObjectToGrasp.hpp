@@ -1,11 +1,7 @@
 /** Class ObjectToGrasp
-
 */
 
 #pragma once
-
-#ifndef OBJECT_TO_GRASP_H
-#define OBJECT_TO_GRASP_H
 
 #include "eigen3/Eigen/Core"
 #include "eigen3/Eigen/Dense"
@@ -15,156 +11,137 @@
 #include <deque>
 #include <vector>
 
-#define NB_ROBOTS 2// Number of robots
-#define NB_FT_SENSOR_SAMPLES                                                                                           \
-  50// Number of force torque sensors' samples used for initial calibration (compute the offsets)
+#define NB_ROBOTS 2                // Number of robots
+#define NB_FT_SENSOR_SAMPLES 50    // Number of FT sensors' samples used for initial calibration (compute the offsets)
 #define MOVING_FORCE_WINDOW_SIZE 10// Window's size used to average the force data and detect peristent contact
 #define NB_OBJECTS 3               // Number of objects
 
-typedef Eigen::Matrix<float, 7, 1> Vector7f;
 typedef Eigen::Matrix<float, 6, 1> Vector6f;
-typedef Eigen::Matrix<float, 6, 6> Matrix6f;
 
-class object_to_grasp {
+class ObjectToGrasp {
+
+private:
+  float objectMass_;
+  Eigen::Vector3f objectDim_;// Object dimensions [m] (3x1)
+
+  Eigen::Vector3f xo_;
+  Eigen::Vector3f xDo_;
+  Eigen::Vector4f qo_;
+  Eigen::Vector4f qDo_;
+  Eigen::Matrix4f wHo_;
+  Eigen::Matrix4f wHDo_;
+  Eigen::Matrix4f wHDgp_[NB_ROBOTS];
+
+  Eigen::Vector3f xGpO_[NB_ROBOTS];
+  Eigen::Vector4f qGpO_[NB_ROBOTS];
+  Eigen::Matrix4f wHGp_[NB_ROBOTS];
+
+  Eigen::Vector3f vo_;
+  Eigen::Vector3f wo_;
+  Eigen::Vector3f xPickup_;
+
+  std::unique_ptr<SGF::SavitzkyGolayFilter> xoFiltered_;
+  std::unique_ptr<SGF::SavitzkyGolayFilter> qoFiltered_;
+
+  Eigen::Vector3f normalVectSurfObj_[NB_ROBOTS];// Normal vector to surface object for each robot (3x1)
+  Vector6f vGpO_[NB_ROBOTS];
 
 public:
-  // object
-  float _objectMass;
-  Eigen::Vector3f _objectDim;// Object dimensions [m] (3x1)
-  Eigen::Vector3f _xo;
-  Eigen::Vector4f _qo;
-  Eigen::Vector3f _xDo;
-  Eigen::Vector4f _qDo;
-  Eigen::Matrix4f _w_H_o;
-  Eigen::Matrix4f _w_H_Do;
-  Eigen::Vector3f _xoC;// Measured object center position [m] (3x1)
-  Eigen::Vector3f _xoD;// Measured object dimension vector [m] (3x1)
-  Eigen::Vector3f _xgp_o[NB_ROBOTS];
-  Eigen::Vector4f _qgp_o[NB_ROBOTS];
-  Eigen::Matrix4f _w_H_gp[NB_ROBOTS];
-  Eigen::Matrix4f _w_H_Dgp[NB_ROBOTS];
-  Eigen::Vector3f _vo;
-  Eigen::Vector3f _wo;
-  Eigen::Vector3f _x_pickup;
-  // Vector6f 		_Vo;
-  // Vector6f 		_Vd_o;   													// desired object velocity (toss)
-  // Vector6f  		_desired_object_wrench;
-  Eigen::Vector3f _n[NB_ROBOTS];// Normal vector to surface object for each robot (3x1)
-  Vector6f _V_gpo[NB_ROBOTS];
+  ObjectToGrasp(){};
+  ~ObjectToGrasp(){};
 
-  std::unique_ptr<SGF::SavitzkyGolayFilter> _xo_filtered;
-  std::unique_ptr<SGF::SavitzkyGolayFilter> _qo_filtered;
-  // KalmanFilter3DVelFromPosEstimator 								_xo_KF_filtered; //
-  // KalmanFilter3DVelFromPosEstimator 								_wo_KF_filtered; //
+  void init(int sgfP[], int sgfO[], float dt, Eigen::Matrix3f oRGpLeft, Eigen::Matrix3f oRGpRight) {
+    vo_.setZero();
+    wo_.setZero();
+    xo_.setZero();
+    xDo_.setZero();
+    xPickup_.setZero();
 
-  object_to_grasp(){};
-  ~object_to_grasp(){};
+    qo_ << 1.0f, 0.0f, 0.0f, 0.0f;
+    qDo_ << 1.0f, 0.0f, 0.0f, 0.0f;
+    wHo_ = Utils<float>::pose2HomoMx(xo_, qo_);
+    wHDo_ = Utils<float>::pose2HomoMx(xDo_, qDo_);
+    qGpO_[0] = Utils<float>::rotationMatrixToQuaternion(oRGpLeft);
+    qGpO_[1] = Utils<float>::rotationMatrixToQuaternion(oRGpRight);
 
-  void init_object(int sgf_p[], int sgf_o[], float dt, Eigen::Matrix3f o_R_gpl, Eigen::Matrix3f o_R_gpr) {
-    // object
-    _vo.setZero();
-    _wo.setZero();
-    _xo.setZero();
-    _xDo.setZero();
-    // _Vd_o.setZero();
-    _xoC.setZero();
-    _xoD.setZero();
-    _x_pickup.setZero();
+    // Normal to contact surfaces
+    normalVectSurfObj_[0] = oRGpLeft.col(2);
+    normalVectSurfObj_[1] = oRGpRight.col(2);
+    vGpO_[0].setZero();
+    vGpO_[1].setZero();
 
-    _qo << 1.0f, 0.0f, 0.0f, 0.0f;
-    _qDo << 1.0f, 0.0f, 0.0f, 0.0f;
-    _w_H_o = Utils<float>::pose2HomoMx(_xo, _qo);
-    _w_H_Do = Utils<float>::pose2HomoMx(_xDo, _qDo);
-    _qgp_o[0] = Utils<float>::rotationMatrixToQuaternion(o_R_gpl);//
-    _qgp_o[1] = Utils<float>::rotationMatrixToQuaternion(o_R_gpr);//
+    xoFiltered_ = std::make_unique<SGF::SavitzkyGolayFilter>(sgfP[0], sgfP[1], sgfP[2], dt);
+    qoFiltered_ = std::make_unique<SGF::SavitzkyGolayFilter>(sgfO[0], sgfO[1], sgfO[2], dt);
 
-    // normal to contact surfaces
-    _n[0] = o_R_gpl.col(2);
-    _n[1] = o_R_gpr.col(2);
-    _V_gpo[0].setZero();
-    _V_gpo[1].setZero();
-
-    //
-    _xo_filtered = std::make_unique<SGF::SavitzkyGolayFilter>(sgf_p[0], sgf_p[1], sgf_p[2], dt);//(3,3,6,_dt);
-    _qo_filtered = std::make_unique<SGF::SavitzkyGolayFilter>(sgf_o[0],
-                                                              sgf_o[1],
-                                                              sgf_o[2],
-                                                              dt);//(4,3,10,_dt); dim, order, win_l, dt
-
-    // //
-    // _xo_KF_filtered.init(_dt, Eigen::Vector2f(0.004, 0.1), 0.004, _xo);
-    // _xo_KF_filtered.update(_xo);
-
-    this->get_desiredHmgTransform();
+    this->getDesiredHmgTransform();
   }
 
-  void get_HmgTransform() { _w_H_o = Utils<float>::pose2HomoMx(_xo, _qo); }
+  void getHmgTransform() { wHo_ = Utils<float>::pose2HomoMx(xo_, qo_); }
 
-  void get_desiredHmgTransform() { _w_H_Do = Utils<float>::pose2HomoMx(_xDo, _qDo); }
+  void getDesiredHmgTransform() { wHDo_ = Utils<float>::pose2HomoMx(xDo_, qDo_); }
 
-  void get_estimated_state() {
-    // filtered object position
-    SGF::Vec temp(3), temp_o(4);
-    _xo_filtered->AddData(_xo);
-    _xo_filtered->GetOutput(0, temp);
-    _xo = temp;
-    _xo_filtered->GetOutput(1, temp);
-    _vo = temp;
-    //
-    _qo_filtered->AddData(_qo);
-    _qo_filtered->GetOutput(0, temp_o);
-    _qo = temp_o;
-
-    // normalizing the quaternion
-    _qo.normalize();
-    //
-    if (_qo.norm() <= 1e-8) { _qo = Eigen::Vector4f(1.0, 0.0, 0.0, 0.0); }
-    //
-    // ===========================================================
-    _qo_filtered->GetOutput(1, temp_o);
-    Eigen::Vector4f qo_dot = temp_o;
-    //
-    Eigen::MatrixXf wQ_map(3, 4);
-    wQ_map << -_qo(1), -_qo(0), -_qo(3), _qo(2), -_qo(2), _qo(3), _qo(0), -_qo(1), -_qo(3), -_qo(2), _qo(1), _qo(0);
-    _wo = 0.0 * wQ_map * qo_dot;
+  void getGraspPointHTransform() {
+    wHGp_[0] = wHo_ * Utils<float>::pose2HomoMx(xGpO_[0], qGpO_[0]);
+    wHGp_[1] = wHo_ * Utils<float>::pose2HomoMx(xGpO_[1], qGpO_[1]);
   }
 
-  void get_grasp_point_HTransform() {
-    _w_H_gp[0] = _w_H_o * Utils<float>::pose2HomoMx(_xgp_o[0], _qgp_o[0]);
-    _w_H_gp[1] = _w_H_o * Utils<float>::pose2HomoMx(_xgp_o[1], _qgp_o[1]);
+  void getGraspPointDesiredHTransform() {
+    wHDgp_[0] = wHDo_ * Utils<float>::pose2HomoMx(xGpO_[0], qGpO_[0]);
+    wHDgp_[1] = wHDo_ * Utils<float>::pose2HomoMx(xGpO_[1], qGpO_[1]);
   }
 
-  void get_grasp_point_desiredHTransform() {
-    _w_H_Dgp[0] = _w_H_Do * Utils<float>::pose2HomoMx(_xgp_o[0], _qgp_o[0]);
-    _w_H_Dgp[1] = _w_H_Do * Utils<float>::pose2HomoMx(_xgp_o[1], _qgp_o[1]);
+  void updateGraspNormals() {
+    normalVectSurfObj_[0] = wHGp_[0].block(0, 0, 3, 3).col(2);
+    normalVectSurfObj_[1] = wHGp_[1].block(0, 0, 3, 3).col(2);
   }
 
-  void get_grasp_point_desiredRotation() {
-    _w_H_Dgp[0].block(0, 0, 3, 3) =
-        _w_H_Do.block(0, 0, 3, 3) * Utils<float>::pose2HomoMx(_xgp_o[0], _qgp_o[0]).block(0, 0, 3, 3);
-    _w_H_Dgp[1].block(0, 0, 3, 3) =
-        _w_H_Do.block(0, 0, 3, 3) * Utils<float>::pose2HomoMx(_xgp_o[1], _qgp_o[1]).block(0, 0, 3, 3);
-  }
-
-  void update_grasp_normals() {
-    _n[0] = _w_H_gp[0].block(0, 0, 3, 3).col(2);
-    _n[1] = _w_H_gp[1].block(0, 0, 3, 3).col(2);
-  }
-
-  void get_grasp_point_velocity() {
-    //velocity of grasp points on the object
+  void getGraspPointVelocity() {
+    //Velocity of grasp points on the object
     for (int i = 0; i < NB_ROBOTS; i++) {
-      Eigen::Vector3f t = _w_H_o.block<3, 3>(0, 0) * _xgp_o[i];
+      Eigen::Vector3f t = wHo_.block<3, 3>(0, 0) * xGpO_[i];
       Eigen::Matrix3f skew_Mx_gpo;
       skew_Mx_gpo << 0.0f, -t(2), t(1), t(2), 0.0f, -t(0), -t(1), t(0), 0.0f;
-      // velocity
-      _V_gpo[i].head(3) = _vo - 0 * skew_Mx_gpo * _wo;
-      _V_gpo[i].tail(3) = 0 * _wo;
-      //
-      _V_gpo[i].head(3) *= 0.0f;
-      _V_gpo[i].tail(3) *= 0.0f;
+
+      // Velocity
+      vGpO_[i].head(3) = vo_ - 0 * skew_Mx_gpo * wo_;
+      vGpO_[i].tail(3) = 0 * wo_;
+
+      vGpO_[i].head(3) *= 0.0f;
+      vGpO_[i].tail(3) *= 0.0f;
     }
   }
-};
 
-#endif// OBJECT_TO_GRASP_H
+  float getObjectMass() { return objectMass_; }
+  float getObjectDimSpecific(int dim) { return objectDim_[dim]; }
+  float getXoSpecific(int dim) { return xo_[dim]; }
+  Eigen::Vector3f getObjectDim() { return objectDim_; }
+  Eigen::Vector3f getXo() { return xo_; }
+  Eigen::Vector3f getXGpO(int robotID) { return xGpO_[robotID]; }
+  Eigen::Vector3f getVo() { return vo_; }
+  Eigen::Vector3f getWo() { return wo_; }
+  Eigen::Vector3f getXPickup() { return xPickup_; }
+  Eigen::Vector3f getNormalVectSurfObjSpecific(int robotID) { return normalVectSurfObj_[robotID]; }
+  Eigen::Vector3f* getNormalVectSurfObj() { return normalVectSurfObj_; }
+  Eigen::Vector4f getQo() { return qo_; }
+  Eigen::Vector4f getQGpO(int robotID) { return qGpO_[robotID]; }
+  Vector6f* getVGpO() { return vGpO_; }
+  Eigen::Matrix4f getWHo() { return wHo_; }
+  Eigen::Matrix4f getWHDo() { return wHDo_; }
+  Eigen::Matrix4f* getWHGp() { return wHGp_; }
+  Eigen::Matrix4f getWHGpSpecific(int robotID) { return wHGp_[robotID]; }
+  Eigen::Matrix4f* getWHDgp() { return wHDgp_; }
+  Eigen::Matrix4f getWHDgpSpecific(int robotID) { return wHDgp_[robotID]; }
+
+  void setObjectMass(float objectMass) { objectMass_ = objectMass; }
+  void setObjectDim(Eigen::Vector3f objectDim) { objectDim_ = objectDim; }
+  void setXo(Eigen::Vector3f xo) { xo_ = xo; }
+  void setXDo(Eigen::Vector3f xDo) { xDo_ = xDo; }
+  void setXPickup(Eigen::Vector3f xPickup) { xPickup_ = xPickup; }
+  void setXGpO(Eigen::Vector3f xGpO, int robotID) { xGpO_[robotID] = xGpO; }
+  void setQo(Eigen::Vector4f qo) { qo_ = qo; }
+  void setQDo(Eigen::Vector4f qDo) { qDo_ = qDo; }
+  void setWHo(Eigen::Matrix4f wHo) { wHo_ = wHo; }
+  void setWHDo(Eigen::Matrix4f wHDo) { wHDo_ = wHDo; }
+  void setWHDgp(Eigen::Matrix4f wHDgp, int robotID) { wHDgp_[robotID] = wHDgp; }
+  void setVGpO(Vector6f vGpO, int robotID) { vGpO_[robotID] = vGpO; }
+};

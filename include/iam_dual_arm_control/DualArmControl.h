@@ -160,7 +160,7 @@ private:
   Eigen::Vector3f filtDeltaAngMir_;
   bool objCtrlKey_;
 
-  object_to_grasp object_;
+  ObjectToGrasp object_;
   Vector6f objVelDes_;// desired object velocity (toss)
   Vector6f desiredObjectWrench_;
 
