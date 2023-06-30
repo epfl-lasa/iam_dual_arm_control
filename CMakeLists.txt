@@ -49,7 +49,7 @@ include_directories(
 
 set(SOURCES_DS  ${SRC_FOLDER}/DualArmControl.cpp 
                 ${SRC_FOLDER}/dualArmFreeMotionController.cpp
-                ${SRC_FOLDER}/dualArmCooperativeController.cpp
+                ${SRC_FOLDER}/DualArmCooperativeController.cpp
                 ${SRC_FOLDER}/throwingDS.cpp
                 ${SRC_FOLDER}/toss_task_param_estimator.cpp
                 ${SRC_FOLDER}/DataLogging.cpp

@@ -866,7 +866,7 @@ void DualArmControl::computeCommands() {
   // Self imposed limits on intercept region (placing on moving target)
   float betaVelModUnfiltered = 1.0f;
 
-  bool isContact = true && sensedContact_ && CooperativeCtrl._ContactConfidence == 1.0f;
+  bool isContact = true && sensedContact_ && CooperativeCtrl.getContactConfidence() == 1.0f;
   bool isPlacing = isPlacing_ || (dualTaskSelector_ == PICK_AND_PLACE);
   bool isThrowing = isThrowing_ || (dualTaskSelector_ == TOSSING) || (dualTaskSelector_ == PICK_AND_TOSS);
   bool isPlaceTossing = isPlaceTossing_ || (dualTaskSelector_ == PLACE_TOSSING);
@@ -925,7 +925,7 @@ void DualArmControl::computeCommands() {
 
   // Set at pickup instant
   if (!isPickupSet_ && !releaseAndretract_) {
-    if (sensedContact_ && (CooperativeCtrl._ContactConfidence == 1.0)) {
+    if (sensedContact_ && (CooperativeCtrl.getContactConfidence() == 1.0)) {
       // Update intercept (desired landing) position
       this->updateInterceptPosition(flyTimeObj, intercepLimits);
       // Determination of the release configuration
@@ -1078,9 +1078,9 @@ void DualArmControl::computeCommands() {
       // Force feedback to grab objects
       float gainForce = 0.02f;
       float absForceCorrection = nuWr0_ * gainForce * 0.5f
-          * ((robot_._filteredWrench[LEFT].segment(0, 3) - CooperativeCtrl._f_applied[LEFT].head(3))
+          * ((robot_._filteredWrench[LEFT].segment(0, 3) - CooperativeCtrl.getForceApplied(LEFT).head(3))
                  .dot(object_._n[LEFT])
-             + (robot_._filteredWrench[RIGHT].segment(0, 3) - CooperativeCtrl._f_applied[RIGHT].head(3))
+             + (robot_._filteredWrench[RIGHT].segment(0, 3) - CooperativeCtrl.getForceApplied(RIGHT).head(3))
                    .dot(object_._n[RIGHT]));
 
       if (fabs(absForceCorrection) > 0.2f) {
@@ -1124,7 +1124,7 @@ void DualArmControl::computeCommands() {
                                        isForceDetected);
 
     // Applied force in velocity space
-    for (int i = 0; i < NB_ROBOTS; i++) { robot_._fxc[i] = 1.0f / d1_[i] * CooperativeCtrl._f_applied[i].head(3); }
+    for (int i = 0; i < NB_ROBOTS; i++) { robot_._fxc[i] = 1.0f / d1_[i] * CooperativeCtrl.getForceApplied(i).head(3); }
   }
 
   // Compute the velocity to avoid EE collision
@@ -1160,7 +1160,7 @@ void DualArmControl::updateContactState() {
   errorObjPos_ = errorObjPosVect.norm();
 
   if ((robot_._normalForceAverage[LEFT] > 2.0f || robot_._normalForceAverage[RIGHT] > 2.0f) && errorObjDim_ < 0.065f
-      && (errorObjPos_ < 0.065f || CooperativeCtrl._ContactConfidence == 1.0f)) {
+      && (errorObjPos_ < 0.065f || CooperativeCtrl.getContactConfidence() == 1.0f)) {
     contactState_ = CONTACT;
     isContact_ = 1.0f;
   } else if (!(robot_._normalForceAverage[LEFT] > 2.0f && robot_._normalForceAverage[RIGHT] > 2.0f)
@@ -1429,7 +1429,7 @@ void DualArmControl::updatePoses() {
     err_[k] = (robot_._w_H_ee[k].block(0, 3, 3, 1) - object_._w_H_gp[k].block(0, 3, 3, 1)).norm();
     oHEE_[k] = object_._w_H_o.inverse() * robot_._w_H_ee[k];
 
-    if (CooperativeCtrl._ContactConfidence == 1.0) {
+    if (CooperativeCtrl.getContactConfidence() == 1.0) {
       oHEE_[k](1, 3) *= 0.95f;
       object_._w_H_Dgp[k] = object_._w_H_Do * oHEE_[k];
     }
@@ -1462,7 +1462,7 @@ void DualArmControl::prepareCommands(Vector6f vDesEE[], Eigen::Vector4f qd[], Ve
     robot_._aad[i] = angleDes[i] * axisDes[i];
   }
 
-  if (goToAttractors_ && sensedContact_ && CooperativeCtrl._ContactConfidence == 1.0f) {
+  if (goToAttractors_ && sensedContact_ && CooperativeCtrl.getContactConfidence() == 1.0f) {
     nuWr0_ = 0.80f * nuWr0_ + 0.20f;
     nuWr1_ = 0.92f * nuWr1_ + 0.08f;
   } else {
@@ -1944,12 +1944,12 @@ void DualArmControl::publishData() {
 
     // Applied wrench
     geometry_msgs::Wrench msgAppliedWrench;
-    msgAppliedWrench.force.x = -nuWr0_ * CooperativeCtrl._f_applied[k](0);
-    msgAppliedWrench.force.y = -nuWr0_ * CooperativeCtrl._f_applied[k](1);
-    msgAppliedWrench.force.z = -nuWr0_ * CooperativeCtrl._f_applied[k](2);
-    msgAppliedWrench.torque.x = -nuWr0_ * CooperativeCtrl._f_applied[k](3);
-    msgAppliedWrench.torque.y = -nuWr0_ * CooperativeCtrl._f_applied[k](4);
-    msgAppliedWrench.torque.z = -nuWr0_ * CooperativeCtrl._f_applied[k](5);
+    msgAppliedWrench.force.x = -nuWr0_ * CooperativeCtrl.getForceApplied(k)(0);
+    msgAppliedWrench.force.y = -nuWr0_ * CooperativeCtrl.getForceApplied(k)(1);
+    msgAppliedWrench.force.z = -nuWr0_ * CooperativeCtrl.getForceApplied(k)(2);
+    msgAppliedWrench.torque.x = -nuWr0_ * CooperativeCtrl.getForceApplied(k)(3);
+    msgAppliedWrench.torque.y = -nuWr0_ * CooperativeCtrl.getForceApplied(k)(4);
+    msgAppliedWrench.torque.z = -nuWr0_ * CooperativeCtrl.getForceApplied(k)(5);
     pubAppliedWrench_[k].publish(msgAppliedWrench);
 
     // Contact normal and applied moment
@@ -1957,9 +1957,9 @@ void DualArmControl::publishData() {
     msgFnormMoment.force.x = object_._n[k](0);
     msgFnormMoment.force.y = object_._n[k](1);
     msgFnormMoment.force.z = object_._n[k](2);
-    msgFnormMoment.torque.x = -CooperativeCtrl._f_applied[k](3);
-    msgFnormMoment.torque.y = -CooperativeCtrl._f_applied[k](4);
-    msgFnormMoment.torque.z = -CooperativeCtrl._f_applied[k](5);
+    msgFnormMoment.torque.x = -CooperativeCtrl.getForceApplied(k)(3);
+    msgFnormMoment.torque.y = -CooperativeCtrl.getForceApplied(k)(4);
+    msgFnormMoment.torque.z = -CooperativeCtrl.getForceApplied(k)(5);
     pubAppliedFNormMoment_[k].publish(msgFnormMoment);
   }
 
@@ -2024,14 +2024,14 @@ void DualArmControl::saveData() {
   dataLog_.outRecordEfforts << (float) (cycleCount_ * dt_) << ", ";
   dataLog_.outRecordEfforts << robot_._filteredWrench[LEFT].transpose().format(CSVFormat) << " , ";
   dataLog_.outRecordEfforts << robot_._filteredWrench[RIGHT].transpose().format(CSVFormat) << " , ";
-  dataLog_.outRecordEfforts << CooperativeCtrl._f_applied[LEFT].transpose().format(CSVFormat) << " , ";
-  dataLog_.outRecordEfforts << CooperativeCtrl._f_applied[RIGHT].transpose().format(CSVFormat) << std::endl;
+  dataLog_.outRecordEfforts << CooperativeCtrl.getForceApplied(LEFT).transpose().format(CSVFormat) << " , ";
+  dataLog_.outRecordEfforts << CooperativeCtrl.getForceApplied(RIGHT).transpose().format(CSVFormat) << std::endl;
 
   dataLog_.outRecordTasks << (float) (cycleCount_ * dt_) << ", ";
   dataLog_.outRecordTasks << desiredVelImp_ << " , " << desVtoss_ << " , ";
   dataLog_.outRecordTasks << goHome_ << " , " << goToAttractors_ << " , " << releaseAndretract_ << " , " << isThrowing_
                           << " , " << isPlacing_ << " , " << isContact_
-                          << " , ";//CooperativeCtrl._ContactConfidence << " , ";
+                          << " , ";//CooperativeCtrl.getContactConfidence() << " , ";
   dataLog_.outRecordTasks << freeMotionCtrl_.a_proximity_ << " , " << freeMotionCtrl_.a_normal_ << " , "
                           << freeMotionCtrl_.a_tangent_ << " , " << freeMotionCtrl_.a_release_ << " , "
                           << freeMotionCtrl_.a_retract_ << " , ";
@@ -2062,7 +2062,7 @@ void DualArmControl::publishConveyorBeltCmds() {
 
 void DualArmControl::printData() {
 
-  bool isContact = true && sensedContact_ && CooperativeCtrl._ContactConfidence == 1.0f;
+  bool isContact = true && sensedContact_ && CooperativeCtrl.getContactConfidence() == 1.0f;
 
   std::cout << " MEASURED HAND WRENCH _filteredWrench  LEFT \t " << robot_._filteredWrench[LEFT].transpose()
             << std::endl;

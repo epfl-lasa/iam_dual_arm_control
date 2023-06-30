@@ -40,10 +40,10 @@
 #include "sg_filter.h"
 
 #include "DataLogging.hpp"
+#include "DualArmCooperativeController.hpp"
 #include "ObjectToGrasp.hpp"
 #include "RobotVariables.hpp"
 #include "TossingTarget.hpp"
-#include "dualArmCooperativeController.h"
 #include "dualArmFreeMotionController.h"
 #include "throwingDS.h"
 #include "toss_task_param_estimator.h"
@@ -252,7 +252,7 @@ private:
 
   // ---- Unconstrained and contrained motion and force generation
   dualArmFreeMotionController freeMotionCtrl_; // Motion generation
-  dualArmCooperativeController CooperativeCtrl;// Force generation
+  DualArmCooperativeController CooperativeCtrl;// Force generation
   throwingDS dsThrowing_;
 
   toss_task_param_estimator tossParamEstimator_;// tossing task param estimator
