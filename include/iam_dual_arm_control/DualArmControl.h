@@ -39,14 +39,14 @@
 #include "eigen3/Eigen/Geometry"
 #include "sg_filter.h"
 
-#include "DataLogging.hpp"
-#include "DualArmCooperativeController.hpp"
-#include "ObjectToGrasp.hpp"
-#include "RobotVariables.hpp"
-#include "TossingTarget.hpp"
-#include "dualArmFreeMotionController.h"
-#include "throwingDS.h"
-#include "toss_task_param_estimator.h"
+#include "iam_dual_arm_control/DataLogging.hpp"
+#include "iam_dual_arm_control/DualArmCooperativeController.hpp"
+#include "iam_dual_arm_control/DualArmFreeMotionController.hpp"
+#include "iam_dual_arm_control/ObjectToGrasp.hpp"
+#include "iam_dual_arm_control/RobotVariables.hpp"
+#include "iam_dual_arm_control/TossingTarget.hpp"
+#include "iam_dual_arm_control/throwingDS.h"
+#include "iam_dual_arm_control/toss_task_param_estimator.h"
 
 // TODO use const or constexpr
 #define NB_ROBOTS 2// Number of robots
@@ -251,12 +251,12 @@ private:
   float timeToInterceptBot_;
 
   // ---- Unconstrained and contrained motion and force generation
-  dualArmFreeMotionController freeMotionCtrl_; // Motion generation
+  DualArmFreeMotionController freeMotionCtrl_; // Motion generation
   DualArmCooperativeController CooperativeCtrl;// Force generation
   throwingDS dsThrowing_;
 
   toss_task_param_estimator tossParamEstimator_;// tossing task param estimator
-  dualArmFreeMotionController freeMotionCtrlEstim_;
+  DualArmFreeMotionController freeMotionCtrlEstim_;
   throwingDS dsThrowingEstim_;
   bool isSimulation_;
 

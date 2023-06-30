@@ -492,14 +492,14 @@ bool DualArmControl::initFreeMotionCtrl() {
   }
 
   freeMotionCtrl_.init(robot_._w_H_eeStandby, this->gainAbs_, this->gainRel_);
-  freeMotionCtrl_._dt = dt_;
-  freeMotionCtrl_._objectDim = object_._objectDim;
-  freeMotionCtrl_._desVreach = desVreach_;
-  freeMotionCtrl_._refVreach[LEFT] = refVreach_;
-  freeMotionCtrl_._refVreach[RIGHT] = refVreach_;
-  freeMotionCtrl_._modulated_reaching = modulatedReaching;
-  freeMotionCtrl_._isNorm_impact_vel = isNormImpactVel;
-  freeMotionCtrl_._height_via_point = heightViaPoint_;
+  freeMotionCtrl_.setDt(dt_);
+  freeMotionCtrl_.setObjectDim(object_._objectDim);
+  freeMotionCtrl_.setDesVelReach(desVreach_);
+  freeMotionCtrl_.setRefVelReach(refVreach_, LEFT);
+  freeMotionCtrl_.setRefVelReach(refVreach_, RIGHT);
+  freeMotionCtrl_.setModulatedReaching(modulatedReaching);
+  freeMotionCtrl_.setIsNormImpactVel(isNormImpactVel);
+  freeMotionCtrl_.setHeightViaPoint(heightViaPoint_);
 
   return true;
 }
@@ -1011,19 +1011,19 @@ void DualArmControl::computeCommands() {
       }
 
       // Motion generation
-      freeMotionCtrl_.dual_arm_motion(robot_._w_H_ee,
-                                      robot_._Vee,
-                                      object_._w_H_Dgp,
-                                      object_._w_H_o,
-                                      object_._w_H_Do,
-                                      objVelDes_,
-                                      basisQ_,
-                                      vdImpact_,
-                                      false,
-                                      dualTaskSelector_,
-                                      robot_._Vd_ee,
-                                      robot_._qd,
-                                      releaseFlag_);
+      freeMotionCtrl_.dualArmMotion(robot_._w_H_ee,
+                                    robot_._Vee,
+                                    object_._w_H_Dgp,
+                                    object_._w_H_o,
+                                    object_._w_H_Do,
+                                    objVelDes_,
+                                    basisQ_,
+                                    vdImpact_,
+                                    false,
+                                    dualTaskSelector_,
+                                    robot_._Vd_ee,
+                                    robot_._qd,
+                                    releaseFlag_);
 
       // Release and Retract condition
       if ((isPlacing && placingDone) || (isPlaceTossing && placeTossingDone) || (isThrowing && tossingDone)) {
@@ -1031,8 +1031,8 @@ void DualArmControl::computeCommands() {
       }
 
     } else {// Unconstraint (Free) motion phase
-      freeMotionCtrl_.reachable_p =
-          (robot_._w_H_ee[LEFT](0, 3) >= 0.72f || robot_._w_H_ee[RIGHT](0, 3) >= 0.72f) ? 0.0f : 1.0f;
+      freeMotionCtrl_.setReachableP(
+          (robot_._w_H_ee[LEFT](0, 3) >= 0.72f || robot_._w_H_ee[RIGHT](0, 3) >= 0.72f) ? 0.0f : 1.0f);
 
       if (false || oldDualMethod_) {
         freeMotionCtrl_.computeCoordinatedMotion2(robot_._w_H_ee,
@@ -1051,19 +1051,19 @@ void DualArmControl::computeCommands() {
         robot_._Vd_ee[LEFT].head(3) = robot_._Vd_ee[LEFT].head(3) + dirImp_[LEFT] * cp_ap * desiredVelImp_;
         robot_._Vd_ee[RIGHT].head(3) = robot_._Vd_ee[RIGHT].head(3) + dirImp_[RIGHT] * cp_ap * desiredVelImp_;
       } else {
-        freeMotionCtrl_.dual_arm_motion(robot_._w_H_ee,
-                                        robot_._Vee,
-                                        object_._w_H_gp,
-                                        object_._w_H_o,
-                                        object_._w_H_Do,
-                                        objVelDes_,
-                                        basisQ_,
-                                        vdImpact_,
-                                        false,
-                                        0,
-                                        robot_._Vd_ee,
-                                        robot_._qd,
-                                        releaseFlag_);
+        freeMotionCtrl_.dualArmMotion(robot_._w_H_ee,
+                                      robot_._Vee,
+                                      object_._w_H_gp,
+                                      object_._w_H_o,
+                                      object_._w_H_Do,
+                                      objVelDes_,
+                                      basisQ_,
+                                      vdImpact_,
+                                      false,
+                                      0,
+                                      robot_._Vd_ee,
+                                      robot_._qd,
+                                      releaseFlag_);
       }
 
       dsThrowing_._refVtoss = desiredVelImp_;
@@ -1071,7 +1071,7 @@ void DualArmControl::computeCommands() {
       // for data logging
       objVelDes_.setZero();
 
-      if (freeMotionCtrl_.a_proximity_ >= 0.2f) { betaVelModUnfilt_ = 1.0; }
+      if (freeMotionCtrl_.getActivationProximity() >= 0.2f) { betaVelModUnfilt_ = 1.0; }
     }
 
     if (isPlacing || isThrowing || isPlaceTossing) {
@@ -1092,7 +1092,7 @@ void DualArmControl::computeCommands() {
     }
 
     // ---------- Adaptation ----------
-    if (!isContact && (freeMotionCtrl_.a_proximity_ >= 0.2f)) { betaVelModUnfiltered = 1.0; }
+    if (!isContact && (freeMotionCtrl_.getActivationProximity() >= 0.2f)) { betaVelModUnfiltered = 1.0; }
 
     float filBeta = 0.10;
     betaVelMod_ = (1.f - filBeta) * betaVelMod_ + filBeta * betaVelModUnfiltered;
@@ -1128,7 +1128,7 @@ void DualArmControl::computeCommands() {
   }
 
   // Compute the velocity to avoid EE collision
-  freeMotionCtrl_.compute_EE_avoidance_velocity(robot_._w_H_ee, robot_._VEE_oa);
+  freeMotionCtrl_.computeEEAvoidanceVelocity(robot_._w_H_ee, robot_._VEE_oa);
 
   // Extract linear velocity commands and desired axis angle command
   this->prepareCommands(robot_._Vd_ee, robot_._qd, object_._V_gpo);
@@ -1395,8 +1395,8 @@ void DualArmControl::updatePoses() {
   if (initPoseCount_ < 100) {
     // Get stanby transformation of the EEs wrt. the world frame
     robot_.get_StandbyHmgTransformInWorld();
-    freeMotionCtrl_._w_H_eeStandby[LEFT] = robot_._w_H_eeStandby[LEFT];
-    freeMotionCtrl_._w_H_eeStandby[RIGHT] = robot_._w_H_eeStandby[RIGHT];
+    freeMotionCtrl_.setWHEEStandy(robot_._w_H_eeStandby[LEFT], LEFT);
+    freeMotionCtrl_.setWHEEStandy(robot_._w_H_eeStandby[RIGHT], RIGHT);
 
     // Set attractor of lifting task
     object_._xDo = Eigen::Vector3f(object_._xo(0), object_._xo(1), xLifting_(2));
@@ -1405,7 +1405,7 @@ void DualArmControl::updatePoses() {
 
     target_._x_intercept = Eigen::Vector3f(object_._xo(0), 0.0, object_._xo(2));
     // For catching
-    freeMotionCtrl_.set_virtual_object_frame(Utils<float>::pose2HomoMx(target_._x_intercept, object_._qo));
+    freeMotionCtrl_.setVirtualObjectFrame(Utils<float>::pose2HomoMx(target_._x_intercept, object_._qo));
 
     initPoseCount_++;
   }
@@ -1576,8 +1576,8 @@ void DualArmControl::resetVariables() {
   nuWr0_ = nuWr1_ = 0.0f;
   this->refVreach_ = 0.0f;
 
-  freeMotionCtrl_._refVreach[LEFT] = 0.0f;
-  freeMotionCtrl_._refVreach[RIGHT] = 0.0f;
+  freeMotionCtrl_.setRefVelReach(0.0f, LEFT);
+  freeMotionCtrl_.setRefVelReach(0.0f, RIGHT);
   dsThrowing_._refVtoss = desiredVelImp_;
   dsThrowing_.reset_release_flag();
   objVelDes_.setZero();
@@ -1769,14 +1769,15 @@ void DualArmControl::computeAdaptationFactors(Eigen::Vector2f lengthPathAvgSpeed
     if (betaVelModUnfilt_ >= beta_vel_mod_max) { betaVelModUnfilt_ = beta_vel_mod_max; }
 
     // Attractor-based adaptation factor
-    freeMotionCtrl_._activationAperture = adaptationActive_ ? 0.5f
-            * (std::tanh(switchSlopeAdapt_
-                         * ((target_._xd_landing - target_._xt).normalized().dot(target_._vt) - tolAttractor_))
-               + 1.0)
-                                                            : 1.0f;
+    freeMotionCtrl_.setActivationAperture(
+        adaptationActive_ ? 0.5f
+                * (std::tanh(switchSlopeAdapt_
+                             * ((target_._xd_landing - target_._xt).normalized().dot(target_._vt) - tolAttractor_))
+                   + 1.0)
+                          : 1.0f);
   } else {
     betaVelModUnfilt_ = 1.0f;
-    freeMotionCtrl_._activationAperture = 1.0f;
+    freeMotionCtrl_.setActivationAperture(1.0f);
   }
 }
 
@@ -2032,9 +2033,10 @@ void DualArmControl::saveData() {
   dataLog_.outRecordTasks << goHome_ << " , " << goToAttractors_ << " , " << releaseAndretract_ << " , " << isThrowing_
                           << " , " << isPlacing_ << " , " << isContact_
                           << " , ";//CooperativeCtrl.getContactConfidence() << " , ";
-  dataLog_.outRecordTasks << freeMotionCtrl_.a_proximity_ << " , " << freeMotionCtrl_.a_normal_ << " , "
-                          << freeMotionCtrl_.a_tangent_ << " , " << freeMotionCtrl_.a_release_ << " , "
-                          << freeMotionCtrl_.a_retract_ << " , ";
+  dataLog_.outRecordTasks << freeMotionCtrl_.getActivationProximity() << " , " << freeMotionCtrl_.getActivationNormal()
+                          << " , " << freeMotionCtrl_.getActivationTangent() << " , "
+                          << freeMotionCtrl_.getActivationRelease() << " , " << freeMotionCtrl_.getActivationRetract()
+                          << " , ";
   // dataLog_.outRecordTasks   	<< dsThrowing_.a_proximity_ << " , " << dsThrowing_.a_normal_  << " , " << dsThrowing_.a_tangent_<< " , " << dsThrowing_.a_toss_  << std::endl;
   dataLog_.outRecordTasks << dsThrowing_.a_proximity_ << " , " << dsThrowing_.a_normal_ << " , "
                           << dsThrowing_.a_tangent_ << " , " << dsThrowing_.a_toss_ << " , ";
@@ -2073,7 +2075,7 @@ void DualArmControl::printData() {
   std::cout << "[DualArmControl]: _w_H_t: \n" << Utils<float>::quaternionToRotationMatrix(target_._qt) << std::endl;
   std::cout << "[DualArmControl]: robot_._w_H_ee[LEFT]: \n" << robot_._w_H_ee[0] << std::endl;
   std::cout << "[DualArmControl]: _w_H_Dgp[LEFT]: \n" << object_._w_H_Dgp[0] << std::endl;
-  std::cout << "[DualArmControl]: robot_._w_H_ee[RIGHT]: \n" << robot_._w_H_ee[1] << std::endl;// robot_._w_H_eeStandby
+  std::cout << "[DualArmControl]: robot_._w_H_ee[RIGHT]: \n" << robot_._w_H_ee[1] << std::endl;
   std::cout << "[DualArmControl]: _w_H_Dgp[RIGHT]: \n" << object_._w_H_Dgp[1] << std::endl;
 
   std::cout << "[DualArmControl]: 3D STATE 2 GO : \t" << target_._xt_state2go.transpose() << std::endl;
