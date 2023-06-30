@@ -131,7 +131,7 @@ private:
   std::string topicFTSensor_[NB_ROBOTS];
 
   // ---- Robot
-  robot_var robot_;
+  RobotVariable robot_;
   int contactState_;            // Contact state with the object
   float toolMass_;              // [kg]
   float normalForce_[NB_ROBOTS];// Normal force to the surface [N]
