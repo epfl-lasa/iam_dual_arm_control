@@ -411,7 +411,7 @@ bool DualArmControl::initRobotParam() {
 
   robot_.init(sgf_dq, dt_, gravity_);
 
-  robot_.set_init_parameters(paramToolMass, toolOffsetFromEE, toolComPositionFromSensor, xrbStandby, qrbStandby);
+  robot_.setInitParameters(paramToolMass, toolOffsetFromEE, toolComPositionFromSensor, xrbStandby, qrbStandby);
 
   return true;
 }
@@ -491,7 +491,7 @@ bool DualArmControl::initFreeMotionCtrl() {
     ROS_INFO("Waitinng for param: placing/height_via_point");
   }
 
-  freeMotionCtrl_.init(robot_._w_H_eeStandby, this->gainAbs_, this->gainRel_);
+  freeMotionCtrl_.init(robot_.getWHEEStandby(), this->gainAbs_, this->gainRel_);
   freeMotionCtrl_.setDt(dt_);
   freeMotionCtrl_.setObjectDim(object_.getObjectDim());
   freeMotionCtrl_.setDesVelReach(desVreach_);
@@ -842,8 +842,8 @@ void DualArmControl::run() {
 
   // Send zero command
   for (int k = 0; k < NB_ROBOTS; k++) {
-    robot_._vd[k].setZero();
-    robot_._omegad[k].setZero();
+    robot_.setVDes(robot_.getVDes(k).setZero(), k);
+    robot_.setOmegaDes(robot_.getOmegaDes(k).setZero(), k);
     robot_.getQdSpecific(k) = robot_.getQ(k);
   }
   publishCommands();
@@ -895,9 +895,9 @@ void DualArmControl::computeCommands() {
 
   // ---------- Application ----------
   if ((!releaseAndretract_) && (fmod(cycleCount_, 20) == 0)) {
-    dualPathLenAvgSpeed_ = freeMotionCtrlEstim_.predictRobotTranslation(robot_._w_H_ee,
+    dualPathLenAvgSpeed_ = freeMotionCtrlEstim_.predictRobotTranslation(robot_.getWHEE(),
                                                                         object_.getWHGp(),
-                                                                        robot_._w_H_eeStandby,
+                                                                        robot_.getWHEEStandby(),
                                                                         object_.getWHo(),
                                                                         tossVar_.release_position,
                                                                         desVtoss_,
@@ -942,14 +942,20 @@ void DualArmControl::computeCommands() {
 
   // Adaptation of the desired motion
   this->computeAdaptationFactors(lengthPathAvgSpeedRobot, lengthPathAvgSpeedTarget, flyTimeObj);
+  Eigen::Vector4f robotQd[NB_ROBOTS];//TODO
+  robotQd[0] = robot_.getQdSpecific(0);
+  robotQd[1] = robot_.getQdSpecific(1);
+  Vector6f vDesEE[NB_ROBOTS];//TODO
+  vDesEE[0] = robot_.getVelDesEE(0);
+  vDesEE[1] = robot_.getVelDesEE(1);
 
   if (goHome_) {
-    freeMotionCtrl_.computeAsyncMotion(robot_._w_H_ee,
-                                       robot_._w_H_eeStandby,
-                                       object_.getWHo(),
-                                       robot_._Vd_ee,
-                                       robot_.getQd(),
-                                       true);
+    freeMotionCtrl_
+        .computeAsyncMotion(robot_.getWHEE(), robot_.getWHEEStandby(), object_.getWHo(), vDesEE, robotQd, true);
+
+    robot_.setQd(robotQd);
+    robot_.setVelDesEE(vDesEE);
+
     objVelDes_ =
         dsThrowing_.apply(object_.getXo(), object_.getQo(), object_.getVo(), Eigen::Vector3f(0.0f, 0.0f, 0.0f), 1);
 
@@ -967,12 +973,23 @@ void DualArmControl::computeCommands() {
 
   } else {//  release_and_retract || release
     if (releaseAndretract_) {
-      freeMotionCtrl_.computeReleaseAndRetractMotion(robot_._w_H_ee,
+      robotQd[NB_ROBOTS];//TODO
+      robotQd[0] = robot_.getQdSpecific(0);
+      robotQd[1] = robot_.getQdSpecific(1);
+      vDesEE[NB_ROBOTS];//TODO
+      vDesEE[0] = robot_.getVelDesEE(0);
+      vDesEE[1] = robot_.getVelDesEE(1);
+
+      freeMotionCtrl_.computeReleaseAndRetractMotion(robot_.getWHEE(),
                                                      object_.getWHDgp(),
                                                      object_.getWHo(),
-                                                     robot_._Vd_ee,
-                                                     robot_.getQd(),
+                                                     vDesEE,
+                                                     robotQd,
                                                      true);
+
+      robot_.setQd(robotQd);
+      robot_.setVelDesEE(vDesEE);
+
       isThrowing_ = false;
       isPlacing_ = false;
       isPickupSet_ = false;
@@ -1018,8 +1035,15 @@ void DualArmControl::computeCommands() {
       }
 
       // Motion generation
-      freeMotionCtrl_.dualArmMotion(robot_._w_H_ee,
-                                    robot_._Vee,
+      robotQd[NB_ROBOTS];//TODO
+      robotQd[0] = robot_.getQdSpecific(0);
+      robotQd[1] = robot_.getQdSpecific(1);
+      vDesEE[NB_ROBOTS];//TODO
+      vDesEE[0] = robot_.getVelDesEE(0);
+      vDesEE[1] = robot_.getVelDesEE(1);
+
+      freeMotionCtrl_.dualArmMotion(robot_.getWHEE(),
+                                    robot_.getVelEE(),
                                     object_.getWHDgp(),
                                     object_.getWHo(),
                                     object_.getWHDo(),
@@ -1028,9 +1052,12 @@ void DualArmControl::computeCommands() {
                                     vdImpact_,
                                     false,
                                     dualTaskSelector_,
-                                    robot_._Vd_ee,
-                                    robot_.getQd(),
+                                    vDesEE,
+                                    robotQd,
                                     releaseFlag_);
+
+      robot_.setQd(robotQd);
+      robot_.setVelDesEE(vDesEE);
 
       // Release and Retract condition
       if ((isPlacing && placingDone) || (isPlaceTossing && placeTossingDone) || (isThrowing && tossingDone)) {
@@ -1039,27 +1066,42 @@ void DualArmControl::computeCommands() {
 
     } else {// Unconstraint (Free) motion phase
       freeMotionCtrl_.setReachableP(
-          (robot_._w_H_ee[LEFT](0, 3) >= 0.72f || robot_._w_H_ee[RIGHT](0, 3) >= 0.72f) ? 0.0f : 1.0f);
+          (robot_.getWHEESpecific(LEFT)(0, 3) >= 0.72f || robot_.getWHEESpecific(RIGHT)(0, 3) >= 0.72f) ? 0.0f : 1.0f);
 
       if (false || oldDualMethod_) {
-        freeMotionCtrl_.computeCoordinatedMotion2(robot_._w_H_ee,
-                                                  object_.getWHGp(),
-                                                  object_.getWHo(),
-                                                  robot_._Vd_ee,
-                                                  robot_.getQd(),
-                                                  false);
+        robotQd[NB_ROBOTS];//TODO
+        robotQd[0] = robot_.getQdSpecific(0);
+        robotQd[1] = robot_.getQdSpecific(1);
+        vDesEE[NB_ROBOTS];//TODO
+        vDesEE[0] = robot_.getVelDesEE(0);
+        vDesEE[1] = robot_.getVelDesEE(1);
 
-        Eigen::Vector3f errPosAbs = object_.getWHo().block(0, 3, 3, 1) - Utils<float>::get_abs_3d(robot_._w_H_ee);
+        freeMotionCtrl_
+            .computeCoordinatedMotion2(robot_.getWHEE(), object_.getWHGp(), object_.getWHo(), vDesEE, robotQd, false);
+        robot_.setQd(robotQd);
+        robot_.setVelDesEE(vDesEE);
+
+        Eigen::Vector3f errPosAbs = object_.getWHo().block(0, 3, 3, 1) - Utils<float>::get_abs_3d(robot_.getWHEE());
         Eigen::Vector3f objErrPosAbs = object_.getWHo().block<3, 3>(0, 0).transpose() * errPosAbs;
         Eigen::Vector3f objErrPosAbsParallel = Eigen::Vector3f(objErrPosAbs(0), 0.0f, objErrPosAbs(2));
         float cp_ap = Utils<float>::computeCouplingFactor(objErrPosAbsParallel, 50.0f, 0.17f, 1.0f, true);
 
         // Create impact at grabbing
-        robot_._Vd_ee[LEFT].head(3) = robot_._Vd_ee[LEFT].head(3) + dirImp_[LEFT] * cp_ap * desiredVelImp_;
-        robot_._Vd_ee[RIGHT].head(3) = robot_._Vd_ee[RIGHT].head(3) + dirImp_[RIGHT] * cp_ap * desiredVelImp_;
+        vDesEE[0] = robot_.getVelDesEE(0);//TODO
+        vDesEE[1] = robot_.getVelDesEE(1);
+        vDesEE[LEFT].head(3) = vDesEE[LEFT].head(3) + dirImp_[LEFT] * cp_ap * desiredVelImp_;
+        vDesEE[RIGHT].head(3) = vDesEE[RIGHT].head(3) + dirImp_[RIGHT] * cp_ap * desiredVelImp_;
+        robot_.setVelDesEE(vDesEE);
       } else {
-        freeMotionCtrl_.dualArmMotion(robot_._w_H_ee,
-                                      robot_._Vee,
+        robotQd[NB_ROBOTS];//TODO
+        robotQd[0] = robot_.getQdSpecific(0);
+        robotQd[1] = robot_.getQdSpecific(1);
+        vDesEE[NB_ROBOTS];//TODO
+        vDesEE[0] = robot_.getVelDesEE(0);
+        vDesEE[1] = robot_.getVelDesEE(1);
+
+        freeMotionCtrl_.dualArmMotion(robot_.getWHEE(),
+                                      robot_.getVelEE(),
                                       object_.getWHGp(),
                                       object_.getWHo(),
                                       object_.getWHDo(),
@@ -1068,9 +1110,11 @@ void DualArmControl::computeCommands() {
                                       vdImpact_,
                                       false,
                                       0,
-                                      robot_._Vd_ee,
-                                      robot_.getQd(),
+                                      vDesEE,
+                                      robotQd,
                                       releaseFlag_);
+        robot_.setQd(robotQd);
+        robot_.setVelDesEE(vDesEE);
       }
 
       dsThrowing_._refVtoss = desiredVelImp_;
@@ -1085,19 +1129,22 @@ void DualArmControl::computeCommands() {
       // Force feedback to grab objects
       float gainForce = 0.02f;
       float absForceCorrection = nuWr0_ * gainForce * 0.5f
-          * ((robot_._filteredWrench[LEFT].segment(0, 3) - CooperativeCtrl.getForceApplied(LEFT).head(3))
+          * ((robot_.getFilteredWrench(LEFT).segment(0, 3) - CooperativeCtrl.getForceApplied(LEFT).head(3))
                  .dot(object_.getNormalVectSurfObjSpecific(LEFT))
-             + (robot_._filteredWrench[RIGHT].segment(0, 3) - CooperativeCtrl.getForceApplied(RIGHT).head(3))
+             + (robot_.getFilteredWrench(RIGHT).segment(0, 3) - CooperativeCtrl.getForceApplied(RIGHT).head(3))
                    .dot(object_.getNormalVectSurfObjSpecific(RIGHT)));
 
       if (fabs(absForceCorrection) > 0.2f) {
         absForceCorrection = absForceCorrection / fabs(absForceCorrection) * 0.2f;
       }
 
-      robot_._Vd_ee[LEFT].head(3) =
-          robot_._Vd_ee[LEFT].head(3) - 0.40 * absForceCorrection * object_.getNormalVectSurfObjSpecific(LEFT);
-      robot_._Vd_ee[RIGHT].head(3) =
-          robot_._Vd_ee[RIGHT].head(3) - 0.40 * absForceCorrection * object_.getNormalVectSurfObjSpecific(RIGHT);
+      vDesEE[0] = robot_.getVelDesEE(0);//TODO
+      vDesEE[1] = robot_.getVelDesEE(1);
+      vDesEE[LEFT].head(3) =
+          vDesEE[LEFT].head(3) - 0.40 * absForceCorrection * object_.getNormalVectSurfObjSpecific(LEFT);
+      vDesEE[RIGHT].head(3) =
+          vDesEE[RIGHT].head(3) - 0.40 * absForceCorrection * object_.getNormalVectSurfObjSpecific(RIGHT);
+      robot_.setVelDesEE(vDesEE);
     }
 
     // ---------- Adaptation ----------
@@ -1107,10 +1154,15 @@ void DualArmControl::computeCommands() {
     betaVelMod_ = (1.f - filBeta) * betaVelMod_ + filBeta * betaVelModUnfiltered;
 
     if ((target_._vt.norm() >= 0.05 && (!releaseAndretract_) && (dsThrowing_.a_proximity_ <= 0.99f))) {
-      robot_._Vd_ee[LEFT].head(3) *=
+      vDesEE[0] = robot_.getVelDesEE(0);//TODO
+      vDesEE[1] = robot_.getVelDesEE(1);
+
+      vDesEE[LEFT].head(3) *=
           initSpeedScaling_ * ((float) adaptationActive_ * betaVelMod_ + (1. - (float) adaptationActive_));
-      robot_._Vd_ee[RIGHT].head(3) *=
+      vDesEE[RIGHT].head(3) *=
           initSpeedScaling_ * ((float) adaptationActive_ * betaVelMod_ + (1. - (float) adaptationActive_));
+
+      robot_.setVelDesEE(vDesEE);
     }
 
     // ---------- Compute the object's grasp points velocity ----------
@@ -1125,7 +1177,7 @@ void DualArmControl::computeCommands() {
     CooperativeCtrl.getAppliedWrenches(goHome_,
                                        contactState_,
                                        object_.getWHo(),
-                                       robot_._w_H_ee,
+                                       robot_.getWHEE(),
                                        object_.getWHGp(),
                                        desiredObjectWrench_,
                                        object_.getObjectMass(),
@@ -1133,16 +1185,26 @@ void DualArmControl::computeCommands() {
                                        isForceDetected);
 
     // Applied force in velocity space
-    for (int i = 0; i < NB_ROBOTS; i++) { robot_._fxc[i] = 1.0f / d1_[i] * CooperativeCtrl.getForceApplied(i).head(3); }
+    for (int i = 0; i < NB_ROBOTS; i++) {
+      robot_.setFXC(1.0f / d1_[i] * CooperativeCtrl.getForceApplied(i).head(3), i);
+    }
   }
 
   // Compute the velocity to avoid EE collision
-  freeMotionCtrl_.computeEEAvoidanceVelocity(robot_._w_H_ee, robot_._VEE_oa);
+  Vector6f vEEOA[NB_ROBOTS];
+  vEEOA[0] = robot_.getVEEObstacleAvoidance(0);//TODO
+  vEEOA[1] = robot_.getVEEObstacleAvoidance(1);
+  freeMotionCtrl_.computeEEAvoidanceVelocity(robot_.getWHEE(), vEEOA);
+  robot_.setVEEObstacleAvoidance(vEEOA);
 
   // Extract linear velocity commands and desired axis angle command
-  Eigen::Vector4f robotQd[NB_ROBOTS];
-  robotQd = [robot_.getQdSpecific(0), robot_.getQdSpecific(1)];
-  this->prepareCommands(robot_._Vd_ee, robotQd, object_.getVGpO());
+  robotQd[NB_ROBOTS];
+  robotQd[0] = robot_.getQdSpecific(0);//TODO
+  robotQd[1] = robot_.getQdSpecific(1);
+  vDesEE[NB_ROBOTS];//TODO
+  vDesEE[0] = robot_.getVelDesEE(0);
+  vDesEE[1] = robot_.getVelDesEE(1);
+  this->prepareCommands(vDesEE, robotQd, object_.getVGpO());
 
   // ---------- Control of conveyor belt speed ----------
   float omegaPert = 2.f * M_PI / 1;
@@ -1160,13 +1222,13 @@ void DualArmControl::computeCommands() {
 // ---- Update
 
 void DualArmControl::updateContactState() {
-  robot_.get_estimated_AverageNormalForce();
+  robot_.getEstimatedAverageNormalForce();
 
   // Compute errors to object center position and dimension vector
-  Eigen::Matrix4f leftEERightEE = robot_._w_H_ee[LEFT].inverse() * robot_._w_H_ee[RIGHT];
+  Eigen::Matrix4f leftEERightEE = robot_.getWHEESpecific(LEFT).inverse() * robot_.getWHEESpecific(RIGHT);
   Eigen::Matrix4f leftGripPoseRightGripPose = object_.getWHGpSpecific(LEFT).inverse() * object_.getWHGpSpecific(RIGHT);
   Eigen::Vector3f errorObjPosVect =
-      Utils<float>::get_abs_3d(object_.getWHGp()) - Utils<float>::get_abs_3d(robot_._w_H_ee);
+      Utils<float>::get_abs_3d(object_.getWHGp()) - Utils<float>::get_abs_3d(robot_.getWHEE());
   errorObjDim_ = fabs(leftEERightEE(2, 3)) - fabs(leftGripPoseRightGripPose(2, 3));
   errorObjPos_ = errorObjPosVect.norm();
 
@@ -1406,9 +1468,9 @@ void DualArmControl::updateStatesMachines() {
 void DualArmControl::updatePoses() {
   if (initPoseCount_ < 100) {
     // Get stanby transformation of the EEs wrt. the world frame
-    robot_.get_StandbyHmgTransformInWorld();
-    freeMotionCtrl_.setWHEEStandy(robot_._w_H_eeStandby[LEFT], LEFT);
-    freeMotionCtrl_.setWHEEStandy(robot_._w_H_eeStandby[RIGHT], RIGHT);
+    robot_.getStandbyHmgTransformInWorld();
+    freeMotionCtrl_.setWHEEStandby(robot_.getWHEEStandbySpecific(LEFT), LEFT);
+    freeMotionCtrl_.setWHEEStandby(robot_.getWHEEStandbySpecific(RIGHT), RIGHT);
 
     // Set attractor of lifting task
     object_.setXDo(Eigen::Vector3f(object_.getXoSpecific(0), object_.getXoSpecific(1), xLifting_(2)));
@@ -1432,14 +1494,14 @@ void DualArmControl::updatePoses() {
   if (incrementReleasePos_) { this->updateReleasePosition(); }
 
   // Homogeneous transformations associated with the reaching task
-  robot_.get_EndEffectorHmgTransform();
+  robot_.getEndEffectorHmgTransform();
   object_.getGraspPointHTransform();
   object_.getGraspPointDesiredHTransform();
   object_.updateGraspNormals();
 
   for (int k = 0; k < NB_ROBOTS; k++) {
-    err_[k] = (robot_._w_H_ee[k].block(0, 3, 3, 1) - object_.getWHGpSpecific(k).block(0, 3, 3, 1)).norm();
-    oHEE_[k] = object_.getWHo().inverse() * robot_._w_H_ee[k];
+    err_[k] = (robot_.getWHEESpecific(k).block(0, 3, 3, 1) - object_.getWHGpSpecific(k).block(0, 3, 3, 1)).norm();
+    oHEE_[k] = object_.getWHo().inverse() * robot_.getWHEESpecific(k);
 
     if (CooperativeCtrl.getContactConfidence() == 1.0) {
       oHEE_[k](1, 3) *= 0.95f;
@@ -1466,12 +1528,12 @@ void DualArmControl::prepareCommands(Vector6f vDesEE[], Eigen::Vector4f qd[], Ve
   float angleDes[NB_ROBOTS];
 
   for (int i = 0; i < NB_ROBOTS; i++) {
-    Vector6f VdEE = robot_._tcp_W_EE[i].inverse() * (vDesEE[i] + velGraspPos[i]);
-    robot_._vd[i] = VdEE.head(3) + 1.0 * robot_._VEE_oa[i].head(3);
-    robot_._omegad[i] = VdEE.tail(3);
+    Vector6f VdEE = robot_.getTwistEEToolCenterPoint(i).inverse() * (vDesEE[i] + velGraspPos[i]);
+    robot_.setVDes(VdEE.head(3) + 1.0 * robot_.getVEEObstacleAvoidance(i).head(3), i);
+    robot_.setOmegaDes(VdEE.tail(3), i);
 
     Utils<float>::quaternionToAxisAngle(qd[i], axisDes[i], angleDes[i]);
-    robot_._aad[i] = angleDes[i] * axisDes[i];
+    robot_.setAxisAngleDes(angleDes[i] * axisDes[i], i);
   }
 
   if (goToAttractors_ && sensedContact_ && CooperativeCtrl.getContactConfidence() == 1.0f) {
@@ -1483,8 +1545,8 @@ void DualArmControl::prepareCommands(Vector6f vDesEE[], Eigen::Vector4f qd[], Ve
   }
 
   if (releaseAndretract_) {
-    robot_._fxc[0].setZero();
-    robot_._fxc[1].setZero();
+    robot_.setFXC(robot_.getFXC(LEFT).setZero(), LEFT);
+    robot_.setFXC(robot_.getFXC(RIGHT).setZero(), RIGHT);
     nuWr0_ = 0.0f;
     nuWr1_ = 0.0f;
   }
@@ -1500,7 +1562,7 @@ void DualArmControl::prepareCommands(Vector6f vDesEE[], Eigen::Vector4f qd[], Ve
   }
 
   // Set the command to send
-  robot_.get_desired_lin_task_velocity(applyVelo_, nuWr0_);
+  robot_.getDesiredLinTaskVelocity(applyVelo_, nuWr0_);
 }
 
 void DualArmControl::mirrorTargetToObjectOrientation(Eigen::Vector4f qt,
@@ -1603,10 +1665,11 @@ void DualArmControl::resetVariables() {
   dsThrowing_.reset_release_flag();
   objVelDes_.setZero();
 
+  Vector6f* newVGpO = object_.getVGpO();
   for (int i = 0; i < NB_ROBOTS; i++) {
-    Vector6f* newVGpO = object_.getVGpO();
+    Eigen::Vector3f newFXC = robot_.getFXC(i);
     object_.setVGpO(newVGpO[i].setZero(), i);
-    robot_._fxc[i].setZero();
+    robot_.setFXC(newFXC.setZero(), i);
   }
 
   if (adaptationActive_) {
@@ -1770,7 +1833,8 @@ void DualArmControl::computeAdaptationFactors(Eigen::Vector2f lengthPathAvgSpeed
   if (isMotionTriggered_) { isIntercepting_ = true; }
 
   float beta_vel_mod_max =
-      min(2.0f, min((vMax_ / robot_._Vd_ee[LEFT].head(3).norm()), (vMax_ / robot_._Vd_ee[RIGHT].head(3).norm())));
+      min(2.0f,
+          min((vMax_ / robot_.getVelDesEE(LEFT).head(3).norm()), (vMax_ / robot_.getVelDesEE(RIGHT).head(3).norm())));
 
   if (isIntercepting_ && !releaseAndretract_) {
     float epsilon = 1e-6;
@@ -1838,14 +1902,14 @@ void DualArmControl::targetPoseCallback(const geometry_msgs::Pose::ConstPtr& msg
 void DualArmControl::updateBasePoseCallback(const geometry_msgs::Pose::ConstPtr& msg, int k) {
   Eigen::Vector3f xB = Eigen::Vector3f(msg->position.x, msg->position.y, msg->position.z);
   Eigen::Vector4f q = Eigen::Vector4f(msg->orientation.w, msg->orientation.x, msg->orientation.y, msg->orientation.z);
-  robot_.get_robotBaseFrameInWorld(xB, q, k);
+  robot_.getRobotBaseFrameInWorld(xB, q, k);
 }
 
 void DualArmControl::updateEEPoseCallback(const geometry_msgs::Pose::ConstPtr& msg, int k) {
   // Update end effecotr pose (position+orientation)
   Eigen::Vector3f xB = Eigen::Vector3f(msg->position.x, msg->position.y, msg->position.z);
   Eigen::Vector4f q = Eigen::Vector4f(msg->orientation.w, msg->orientation.x, msg->orientation.y, msg->orientation.z);
-  robot_.update_EndEffectorPosesInWorld(xB, q, k);
+  robot_.updateEndEffectorPosesInWorld(xB, q, k);
 }
 
 void DualArmControl::updateEETwistCallback(const geometry_msgs::Twist::ConstPtr& msg, int k) {
@@ -1863,16 +1927,16 @@ void DualArmControl::updateRobotWrenchCallback(const geometry_msgs::WrenchStampe
   raw(4) = msg->wrench.torque.y;
   raw(5) = msg->wrench.torque.z;
   //
-  robot_.update_EndEffectorWrench(raw, object_.getNormalVectSurfObj(), filteredForceGain_, wrenchBiasOK_, k);
+  robot_.updateEndEffectorWrench(raw, object_.getNormalVectSurfObj(), filteredForceGain_, wrenchBiasOK_, k);
 }
 
 void DualArmControl::updateRobotStatesCallback(const sensor_msgs::JointState::ConstPtr& msg, int k) {
   //
   for (int i = 0; i < robot_.getNbJoints(k); i++) {
-    robot_._joints_positions[k](i) = (float) msg->position[i];
-    robot_._joints_velocities[k](i) = (float) msg->velocity[i];
-    robot_._joints_torques[k](i) = (float) msg->effort[i];
-    robot_.get_estimated_joint_accelerations(k);
+    robot_.getJointsPositions(k)(i) = (float) msg->position[i];
+    robot_.getJointsVelocities(k)(i) = (float) msg->velocity[i];
+    robot_.getJointsTorques(k)(i) = (float) msg->effort[i];
+    robot_.getEstimatedJointAccelerations(k);
   }
 }
 
@@ -1882,17 +1946,19 @@ void DualArmControl::publishCommands() {
   geometry_msgs::Pose vel_quat[NB_ROBOTS];
 
   for (int k = 0; k < NB_ROBOTS; k++) {
+    Eigen::Vector3f axisAngleDes = robot_.getAxisAngleDes(k);
+    Eigen::Vector3f vDes = robot_.getVDes(k);
     pubVel_[k].data.clear();
-    pubVel_[k].data.push_back(robot_._aad[k](0));// axis angle pose_x
-    pubVel_[k].data.push_back(robot_._aad[k](1));// axis angle pose_y
-    pubVel_[k].data.push_back(robot_._aad[k](2));// axis angle pose_z
-    pubVel_[k].data.push_back(robot_._vd[k](0)); // linear velocity v_x
-    pubVel_[k].data.push_back(robot_._vd[k](1)); // linear velocity v_y
-    pubVel_[k].data.push_back(robot_._vd[k](2)); // linear velocity v_z
+    pubVel_[k].data.push_back(axisAngleDes(0));// axis angle pose_x
+    pubVel_[k].data.push_back(axisAngleDes(1));// axis angle pose_y
+    pubVel_[k].data.push_back(axisAngleDes(2));// axis angle pose_z
+    pubVel_[k].data.push_back(vDes(0));        // linear velocity v_x
+    pubVel_[k].data.push_back(vDes(1));        // linear velocity v_y
+    pubVel_[k].data.push_back(vDes(2));        // linear velocity v_z
 
-    vel_quat[k].position.x = robot_._vd[k](0);// desired velocity x
-    vel_quat[k].position.y = robot_._vd[k](1);// desired velocity y
-    vel_quat[k].position.z = robot_._vd[k](2);// desired velocity z
+    vel_quat[k].position.x = vDes(0);// desired velocity x
+    vel_quat[k].position.y = vDes(1);// desired velocity y
+    vel_quat[k].position.z = vDes(2);// desired velocity z
 
     Eigen::Vector4f qd = robot_.getQdSpecific(k);
     vel_quat[k].orientation.w = qd(0);// desired pose
@@ -1910,15 +1976,18 @@ void DualArmControl::publishCommands() {
 void DualArmControl::publishData() {
 
   for (int k = 0; k < NB_ROBOTS; k++) {
+    Eigen::Vector3f vDes = robot_.getVDes(k);
+    Eigen::Vector3f omegaDes = robot_.getOmegaDes(k);
+
     // Publish desired twist
     geometry_msgs::Twist msgDesiredTwist;
-    msgDesiredTwist.linear.x = robot_._vd[k](0);
-    msgDesiredTwist.linear.y = robot_._vd[k](1);
-    msgDesiredTwist.linear.z = robot_._vd[k](2);
+    msgDesiredTwist.linear.x = vDes(0);
+    msgDesiredTwist.linear.y = vDes(1);
+    msgDesiredTwist.linear.z = vDes(2);
     // Convert desired end effector frame angular velocity to world frame
-    msgDesiredTwist.angular.x = robot_._omegad[k](0);
-    msgDesiredTwist.angular.y = robot_._omegad[k](1);
-    msgDesiredTwist.angular.z = robot_._omegad[k](2);
+    msgDesiredTwist.angular.x = omegaDes(0);
+    msgDesiredTwist.angular.y = omegaDes(1);
+    msgDesiredTwist.angular.z = omegaDes(2);
     pubDesiredTwist_[k].publish(msgDesiredTwist);
 
     // Publish desired orientation
@@ -1934,12 +2003,12 @@ void DualArmControl::publishData() {
     geometry_msgs::WrenchStamped msgFilteredWrench;
     msgFilteredWrench.header.frame_id = "world";
     msgFilteredWrench.header.stamp = ros::Time::now();
-    msgFilteredWrench.wrench.force.x = robot_._filteredWrench[k](0);
-    msgFilteredWrench.wrench.force.y = robot_._filteredWrench[k](1);
-    msgFilteredWrench.wrench.force.z = robot_._filteredWrench[k](2);
-    msgFilteredWrench.wrench.torque.x = robot_._filteredWrench[k](3);
-    msgFilteredWrench.wrench.torque.y = robot_._filteredWrench[k](4);
-    msgFilteredWrench.wrench.torque.z = robot_._filteredWrench[k](5);
+    msgFilteredWrench.wrench.force.x = robot_.getFilteredWrench(k)(0);
+    msgFilteredWrench.wrench.force.y = robot_.getFilteredWrench(k)(1);
+    msgFilteredWrench.wrench.force.z = robot_.getFilteredWrench(k)(2);
+    msgFilteredWrench.wrench.torque.x = robot_.getFilteredWrench(k)(3);
+    msgFilteredWrench.wrench.torque.y = robot_.getFilteredWrench(k)(4);
+    msgFilteredWrench.wrench.torque.z = robot_.getFilteredWrench(k)(5);
     pubFilteredWrench_[k].publish(msgFilteredWrench);
 
     // Normal forces
@@ -1967,7 +2036,7 @@ void DualArmControl::publishData() {
 
     // Norm of desired velocity
     std_msgs::Float64 msgVel;
-    msgVel.data = robot_._Vee[k].head(3).norm();
+    msgVel.data = robot_.getVelEESpecific(k).head(3).norm();
     pubNormLinVel_[k].publish(msgVel);
 
     // Applied wrench
@@ -2004,8 +2073,8 @@ void DualArmControl::saveData() {
   Eigen::Vector4f qgrL = Utils<float>::rotationMatrixToQuaternion(object_.getWHGpSpecific(LEFT).block(0, 0, 3, 3)); //
   Eigen::Vector4f qgrR = Utils<float>::rotationMatrixToQuaternion(object_.getWHGpSpecific(RIGHT).block(0, 0, 3, 3));//
   //
-  Eigen::MatrixXf power_left = robot_._joints_torques[LEFT].transpose() * robot_._joints_velocities[LEFT];
-  Eigen::MatrixXf power_right = robot_._joints_torques[RIGHT].transpose() * robot_._joints_velocities[RIGHT];
+  Eigen::MatrixXf power_left = robot_.getJointsTorques(LEFT).transpose() * robot_.getJointsVelocities(LEFT);
+  Eigen::MatrixXf power_right = robot_.getJointsTorques(RIGHT).transpose() * robot_.getJointsVelocities(RIGHT);
   Eigen::Matrix4f wHDoObject = object_.getWHDo();
 
   dataLog_.outRecordPose << (float) (cycleCount_ * dt_) << ", ";// cycle time
@@ -2034,14 +2103,14 @@ void DualArmControl::saveData() {
                          << xPlacing_.transpose().format(CSVFormat) << std::endl;// target state to go
 
   dataLog_.outRecordVel << (float) (cycleCount_ * dt_) << ", ";
-  dataLog_.outRecordVel << robot_._Vd_ee[LEFT].transpose().format(CSVFormat) << " , "
-                        << robot_._Vd_ee[RIGHT].transpose().format(CSVFormat) << " , ";
-  dataLog_.outRecordVel << robot_._Vee[LEFT].transpose().format(CSVFormat) << " , "
-                        << robot_._Vee[RIGHT].transpose().format(CSVFormat) << " , ";
-  dataLog_.outRecordVel << robot_._vd[LEFT].transpose().format(CSVFormat) << " , "
-                        << robot_._vd[RIGHT].transpose().format(CSVFormat) << " , ";
-  dataLog_.outRecordVel << robot_._omegad[LEFT].transpose().format(CSVFormat) << " , "
-                        << robot_._omegad[RIGHT].transpose().format(CSVFormat) << " , ";
+  dataLog_.outRecordVel << robot_.getVelDesEE(LEFT).transpose().format(CSVFormat) << " , "
+                        << robot_.getVelDesEE(RIGHT).transpose().format(CSVFormat) << " , ";
+  dataLog_.outRecordVel << robot_.getVelEESpecific(LEFT).transpose().format(CSVFormat) << " , "
+                        << robot_.getVelEESpecific(RIGHT).transpose().format(CSVFormat) << " , ";
+  dataLog_.outRecordVel << robot_.getVDes(LEFT).transpose().format(CSVFormat) << " , "
+                        << robot_.getVDes(RIGHT).transpose().format(CSVFormat) << " , ";
+  dataLog_.outRecordVel << robot_.getOmegaDes(LEFT).transpose().format(CSVFormat) << " , "
+                        << robot_.getOmegaDes(RIGHT).transpose().format(CSVFormat) << " , ";
   dataLog_.outRecordVel << object_.getVo().transpose().format(CSVFormat) << " , "
                         << object_.getWo().transpose().format(CSVFormat) << " , ";
   dataLog_.outRecordVel << objVelDes_.transpose().format(CSVFormat) << " , ";
@@ -2050,8 +2119,8 @@ void DualArmControl::saveData() {
   dataLog_.outRecordVel << target_._vt.transpose().format(CSVFormat) << std::endl;
 
   dataLog_.outRecordEfforts << (float) (cycleCount_ * dt_) << ", ";
-  dataLog_.outRecordEfforts << robot_._filteredWrench[LEFT].transpose().format(CSVFormat) << " , ";
-  dataLog_.outRecordEfforts << robot_._filteredWrench[RIGHT].transpose().format(CSVFormat) << " , ";
+  dataLog_.outRecordEfforts << robot_.getFilteredWrench(LEFT).transpose().format(CSVFormat) << " , ";
+  dataLog_.outRecordEfforts << robot_.getFilteredWrench(RIGHT).transpose().format(CSVFormat) << " , ";
   dataLog_.outRecordEfforts << CooperativeCtrl.getForceApplied(LEFT).transpose().format(CSVFormat) << " , ";
   dataLog_.outRecordEfforts << CooperativeCtrl.getForceApplied(RIGHT).transpose().format(CSVFormat) << std::endl;
 
@@ -2070,14 +2139,14 @@ void DualArmControl::saveData() {
   dataLog_.outRecordTasks << betaVelMod_ << " , " << dualPathLenAvgSpeed_.transpose() << std::endl;
   //
   dataLog_.outRecordJointStates << (float) (cycleCount_ * dt_) << ", ";
-  dataLog_.outRecordJointStates << robot_._joints_positions[LEFT].transpose().format(CSVFormat) << " , "
-                                << robot_._joints_positions[RIGHT].transpose().format(CSVFormat) << " , ";
-  dataLog_.outRecordJointStates << robot_._joints_velocities[LEFT].transpose().format(CSVFormat) << " , "
-                                << robot_._joints_velocities[RIGHT].transpose().format(CSVFormat) << " , ";
-  dataLog_.outRecordJointStates << robot_._joints_accelerations[LEFT].transpose().format(CSVFormat) << " , "
-                                << robot_._joints_accelerations[RIGHT].transpose().format(CSVFormat) << " , ";
-  dataLog_.outRecordJointStates << robot_._joints_torques[LEFT].transpose().format(CSVFormat) << " , "
-                                << robot_._joints_torques[RIGHT].transpose().format(CSVFormat) << " , ";
+  dataLog_.outRecordJointStates << robot_.getJointsPositions(LEFT).transpose().format(CSVFormat) << " , "
+                                << robot_.getJointsPositions(RIGHT).transpose().format(CSVFormat) << " , ";
+  dataLog_.outRecordJointStates << robot_.getJointsVelocities(LEFT).transpose().format(CSVFormat) << " , "
+                                << robot_.getJointsVelocities(RIGHT).transpose().format(CSVFormat) << " , ";
+  dataLog_.outRecordJointStates << robot_.getJointsAccelerations(LEFT).transpose().format(CSVFormat) << " , "
+                                << robot_.getJointsAccelerations(RIGHT).transpose().format(CSVFormat) << " , ";
+  dataLog_.outRecordJointStates << robot_.getJointsTorques(LEFT).transpose().format(CSVFormat) << " , "
+                                << robot_.getJointsTorques(RIGHT).transpose().format(CSVFormat) << " , ";
   dataLog_.outRecordJointStates << power_left(0, 0) << " , " << power_right(0, 0) << std::endl;
   // }
 }
@@ -2093,29 +2162,29 @@ void DualArmControl::printData() {
 
   bool isContact = true && sensedContact_ && CooperativeCtrl.getContactConfidence() == 1.0f;
 
-  std::cout << " MEASURED HAND WRENCH _filteredWrench  LEFT \t " << robot_._filteredWrench[LEFT].transpose()
+  std::cout << " MEASURED HAND WRENCH _filteredWrench  LEFT \t " << robot_.getFilteredWrench(LEFT).transpose()
             << std::endl;
-  std::cout << " MEASURED HAND WRENCH _filteredWrench RIGHT \t " << robot_._filteredWrench[RIGHT].transpose()
+  std::cout << " MEASURED HAND WRENCH _filteredWrench RIGHT \t " << robot_.getFilteredWrench(RIGHT).transpose()
             << std::endl;
   std::cout << "[DualArmControl]: _w_H_o: \n" << object_.getWHo() << std::endl;
   std::cout << "[DualArmControl]: _w_H_Do: \n" << object_.getWHDo() << std::endl;
   std::cout << "[DualArmControl]: _w_H_t: \n" << Utils<float>::quaternionToRotationMatrix(target_._qt) << std::endl;
-  std::cout << "[DualArmControl]: robot_._w_H_ee[LEFT]: \n" << robot_._w_H_ee[0] << std::endl;
+  std::cout << "[DualArmControl]: robot_._w_H_ee[LEFT]: \n" << robot_.getWHEESpecific(LEFT) << std::endl;
   std::cout << "[DualArmControl]: _w_H_Dgp[LEFT]: \n" << object_.getWHDgpSpecific(0) << std::endl;
-  std::cout << "[DualArmControl]: robot_._w_H_ee[RIGHT]: \n" << robot_._w_H_ee[1] << std::endl;
+  std::cout << "[DualArmControl]: robot_._w_H_ee[RIGHT]: \n" << robot_.getWHEESpecific(RIGHT) << std::endl;
   std::cout << "[DualArmControl]: _w_H_Dgp[RIGHT]: \n" << object_.getWHDgpSpecific(1) << std::endl;
 
   std::cout << "[DualArmControl]: 3D STATE 2 GO : \t" << target_._xt_state2go.transpose() << std::endl;
   std::cout << "[DualArmControl]:  ------------- sensedContact_: \t" << sensedContact_ << std::endl;
   std::cout << "[DualArmControl]:  ------------- isContact: \t" << isContact << std::endl;
-  std::cout << "[DualArmControl]: _Vd_ee[LEFT]:  \t" << robot_._Vd_ee[LEFT].transpose() << std::endl;
-  std::cout << "[DualArmControl]: _Vd_ee[RIGHT]: \t" << robot_._Vd_ee[RIGHT].transpose() << std::endl;
+  std::cout << "[DualArmControl]: _Vd_ee[LEFT]:  \t" << robot_.getVelDesEE(LEFT).transpose() << std::endl;
+  std::cout << "[DualArmControl]: _Vd_ee[RIGHT]: \t" << robot_.getVelDesEE(RIGHT).transpose() << std::endl;
   std::cout << " vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv " << std::endl;
-  std::cout << "[DualArmControl]: _vd[LEFT]:  \t" << robot_._vd[LEFT].transpose() << std::endl;
-  std::cout << "[DualArmControl]: _vd[RIGHT]: \t" << robot_._vd[RIGHT].transpose() << std::endl;
+  std::cout << "[DualArmControl]: _vd[LEFT]:  \t" << robot_.getVDes(LEFT).transpose() << std::endl;
+  std::cout << "[DualArmControl]: _vd[RIGHT]: \t" << robot_.getVDes(RIGHT).transpose() << std::endl;
   std::cout << " ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ " << std::endl;
-  std::cout << " COMPUTED HAND WRENCH _fxc  LEFT \t " << robot_._fxc[LEFT].transpose() << std::endl;
-  std::cout << " COMPUTED HAND WRENCH _fxc RIGHT \t " << robot_._fxc[RIGHT].transpose() << std::endl;
+  std::cout << " COMPUTED HAND WRENCH _fxc  LEFT \t " << robot_.getFXC(LEFT).transpose() << std::endl;
+  std::cout << " COMPUTED HAND WRENCH _fxc RIGHT \t " << robot_.getFXC(RIGHT).transpose() << std::endl;
   std::cout << " EEEE----------- EEEPPP   desVtoss_ IIIIIIII ----------- ONNNNNNNN \t " << desVtoss_ << std::endl;
   std::cout << " EEEE----------- EEEPPP   desiredVelImp_  IIIIIIII ----------- ONNNNNNNN \t " << desiredVelImp_
             << std::endl;

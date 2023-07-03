@@ -44,7 +44,7 @@ private:
 
   float swProxim_, swNorm_, swTang_;
 
-  Eigen::Matrix4f wHEEStandy_[NB_ROBOTS];
+  Eigen::Matrix4f wHEEStandby_[NB_ROBOTS];
 
   float swEEObsAv_, minDistEE_, safeRadius_;
   Eigen::Vector3f omegaObjectD_, integralVeeD_[NB_ROBOTS];
@@ -171,7 +171,7 @@ public:
 
   void setDt(float dt);
   void setReachableP(float reachableP);
-  void setWHEEStandy(Eigen::Matrix4f wHEEStandby, int robotID);
+  void setWHEEStandby(Eigen::Matrix4f wHEEStandby, int robotID);
   void setDesVelReach(float desVelReach);
   void setRefVelReach(float refVelReach, int robotID);
   void setModulatedReaching(bool modulatedReaching);

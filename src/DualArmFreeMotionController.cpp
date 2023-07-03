@@ -82,7 +82,7 @@ DualArmFreeMotionController::~DualArmFreeMotionController() {}
 // publishing of the reference trajectories
 bool DualArmFreeMotionController::init(Eigen::Matrix4f wHEEStandby[], Matrix6f gainAbs, Matrix6f gainRel) {
 
-  memcpy(wHEEStandy_, &wHEEStandby[0], NB_ROBOTS * sizeof *wHEEStandby);
+  memcpy(wHEEStandby_, &wHEEStandby[0], NB_ROBOTS * sizeof *wHEEStandby);
 
   reachableP_ = 1.0f;
 
@@ -120,8 +120,8 @@ void DualArmFreeMotionController::computeConstrainedMotion(Eigen::Matrix4f wHee[
   // Bimanual coordinated task-space transforms
   Utils<float>::getBimanualTransforms(wHee[LEFT], wHee[RIGHT], wHAr, lrHRR);// EE
   Utils<float>::getBimanualTransforms(wHDgpL, wHdpgR, wHAp, lpHRp);         // object's grasp points
-  Utils<float>::getBimanualTransforms(this->wHEEStandy_[LEFT],
-                                      this->wHEEStandy_[RIGHT],
+  Utils<float>::getBimanualTransforms(this->wHEEStandby_[LEFT],
+                                      this->wHEEStandby_[RIGHT],
                                       wHArStb,
                                       lrHRRStb);// standby arms
 
@@ -222,9 +222,9 @@ void DualArmFreeMotionController::computeAsyncMotion(Eigen::Matrix4f wHee[],
     Vector6f errorEE;
     errorEE.setZero();
     Eigen::Vector3f d_p_ee =
-        reachableP_ * wHgp[k].block<3, 1>(0, 3) + (1.0f - reachableP_) * this->wHEEStandy_[k].block<3, 1>(0, 3);
+        reachableP_ * wHgp[k].block<3, 1>(0, 3) + (1.0f - reachableP_) * this->wHEEStandby_[k].block<3, 1>(0, 3);
     Eigen::Matrix3f d_R_ee =
-        reachableP_ * wHgp[k].block<3, 3>(0, 0) + (1.0f - reachableP_) * this->wHEEStandy_[k].block<3, 3>(0, 0);
+        reachableP_ * wHgp[k].block<3, 3>(0, 0) + (1.0f - reachableP_) * this->wHEEStandby_[k].block<3, 3>(0, 0);
     Eigen::Matrix4f w_H_ee_t = wHee[k];
     w_H_ee_t.block<3, 3>(0, 0) =
         Utils<float>::getCombinedRotationMatrix(1.0f, wHee[k].block<3, 3>(0, 0), d_R_ee);//desired
@@ -313,7 +313,7 @@ void DualArmFreeMotionController::computeReleaseAndRetractMotion(Eigen::Matrix4f
                                                                  Eigen::Vector4f (&qd)[NB_ROBOTS],
                                                                  bool isOrient3d) {
   // Computation of desired orientation
-  this->computeDesiredOrientation(1.0f, wHee, wHEEStandy_, wHo, qd, isOrient3d);
+  this->computeDesiredOrientation(1.0f, wHee, wHEEStandby_, wHo, qd, isOrient3d);
   Eigen::Matrix4f wHDgpL = wHgp[LEFT];
   wHDgpL.block<3, 3>(0, 0) = Utils<float>::quaternionToRotationMatrix(qd[LEFT]);
   Eigen::Matrix4f wHdpgR = wHgp[RIGHT];
@@ -328,8 +328,8 @@ void DualArmFreeMotionController::computeReleaseAndRetractMotion(Eigen::Matrix4f
   Utils<float>::getBimanualTransforms(wHee[LEFT], wHee[RIGHT], wHAr, lrHRR);// EE
 
   Utils<float>::getBimanualTransforms(wHDgpL, wHdpgR, wHAp, lpHRp);// object's grasp points
-  Utils<float>::getBimanualTransforms(this->wHEEStandy_[LEFT],
-                                      this->wHEEStandy_[RIGHT],
+  Utils<float>::getBimanualTransforms(this->wHEEStandby_[LEFT],
+                                      this->wHEEStandby_[RIGHT],
                                       wHArStb,
                                       lrHRRStb);// standby arms
 
@@ -554,8 +554,8 @@ void DualArmFreeMotionController::computeCoordinatedMotion2(Eigen::Matrix4f wHee
   // Bimanual coordinated task-space transforms
   Utils<float>::getBimanualTransforms(wHee[LEFT], wHee[RIGHT], wHAr, lrHRR);// EE
   Utils<float>::getBimanualTransforms(wHDgpL, wHdpgR, wHAp, lpHRp);         // object's grasp points
-  Utils<float>::getBimanualTransforms(this->wHEEStandy_[LEFT],
-                                      this->wHEEStandy_[RIGHT],
+  Utils<float>::getBimanualTransforms(this->wHEEStandby_[LEFT],
+                                      this->wHEEStandby_[RIGHT],
                                       wHArStb,
                                       lrHRRStb);// standby arms
 
@@ -1436,8 +1436,8 @@ Vector6f DualArmFreeMotionController::computeDesiredTaskTwist(const Eigen::Matri
 void DualArmFreeMotionController::setVirtualObjectFrame(Eigen::Matrix4f w_H_vo) { wHvo_ = w_H_vo; }
 void DualArmFreeMotionController::setDt(float dt) { dt_ = dt; }
 void DualArmFreeMotionController::setReachableP(float reachableP) { reachableP_ = reachableP; }
-void DualArmFreeMotionController::setWHEEStandy(Eigen::Matrix4f wHEEStandby, int robotID) {
-  wHEEStandy_[robotID] = wHEEStandby;
+void DualArmFreeMotionController::setWHEEStandby(Eigen::Matrix4f wHEEStandby, int robotID) {
+  wHEEStandby_[robotID] = wHEEStandby;
 }
 void DualArmFreeMotionController::setDesVelReach(float desVelReach) { desVelReach_ = desVelReach; }
 void DualArmFreeMotionController::setRefVelReach(float refVelReach, int robotID) {

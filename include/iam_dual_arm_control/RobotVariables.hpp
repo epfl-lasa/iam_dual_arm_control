@@ -34,51 +34,42 @@ private:
   Eigen::Vector3f v_[NB_ROBOTS];
   Eigen::Vector3f w_[NB_ROBOTS];
   Eigen::Vector4f qd_[NB_ROBOTS];
+  Eigen::Vector3f axisAngleDes_[NB_ROBOTS];// desired axis angle
+  Eigen::Vector3f vDes_[NB_ROBOTS];
+  Eigen::Vector3f omegaDes_[NB_ROBOTS];
+  Vector6f vEE_[NB_ROBOTS];
+  Vector6f vDesEE_[NB_ROBOTS];// desired velocity twist
 
-  Vector6f wrench_[NB_ROBOTS];    // Wrench [N and Nm] (6x1)
-  Vector6f wrenchBias_[NB_ROBOTS];// Wrench bias [N and Nm] (6x1)
+  Matrix6f twistEEToolCenterPoint_
+      [NB_ROBOTS];// Velocity Twist transformation between the robot EE and the tool center point (tcp)
+  Vector6f vEEObstacleAvoidance_[NB_ROBOTS];// self collision (obstacle) avoidance
+
+  Eigen::Vector3f fxc_[NB_ROBOTS];// Desired conservative parts of the nominal DS [m/s] (3x1)
+
+  Vector6f wrench_[NB_ROBOTS];        // Wrench [N and Nm] (6x1)
+  Vector6f wrenchBias_[NB_ROBOTS];    // Wrench bias [N and Nm] (6x1)
+  Vector6f filteredWrench_[NB_ROBOTS];// Filtered wrench [N and Nm] (6x1)
 
   Eigen::Matrix4f wHRb_[NB_ROBOTS];        // Homogenenous transform of robots base frame (4x4)
   Eigen::Matrix4f rbHEEStandby_[NB_ROBOTS];// Homogenenous transform of EE standby poses relatve to robots base (4x4)
   Eigen::Vector3f xrbStandby_[NB_ROBOTS];  // quaternion orientation of EE standby poses relatve to robots base (3x1)
   Eigen::Vector4f qrbStandby_[NB_ROBOTS];  // quaternion orientation of EE standby poses relatve to robots base (4x1)
+  Eigen::Matrix4f wHEE_[NB_ROBOTS];        // Homogenenous transform of the End-effectors poses (4x4)
+  Eigen::Matrix4f wHEEStandby_[NB_ROBOTS]; // Homogenenous transform of Standby pose of the End-effectors (4x4)
 
   std::unique_ptr<SGF::SavitzkyGolayFilter> sgfDdqFilteredLeft_;
   std::unique_ptr<SGF::SavitzkyGolayFilter> sgfDdqFilteredRight_;
 
+  Vector7f jointsPositions_[NB_ROBOTS];
+  Vector7f jointsVelocities_[NB_ROBOTS];
+  Vector7f jointsAccelerations_[NB_ROBOTS];
+  Vector7f jointsTorques_[NB_ROBOTS];
+
 public:
-  Eigen::Vector3f _aad[NB_ROBOTS];// desired axis angle
-
-  Eigen::Vector3f _vd[NB_ROBOTS];
-  Eigen::Vector3f _omegad[NB_ROBOTS];
-
-  Vector6f _Vee[NB_ROBOTS];
-  Vector6f _Vd_ee[NB_ROBOTS];     // desired velocity twist
-  Matrix6f _tcp_W_EE[NB_ROBOTS];  // Velocity Twist transformation between the robot EE and the tool center point (tcp)
-  Vector6f _VEE_oa[NB_ROBOTS];    // self collision (obstacle) avoidance
-  Eigen::Vector3f _fxc[NB_ROBOTS];// Desired conservative parts of the nominal DS [m/s] (3x1)
-
-  Vector6f _filteredWrench[NB_ROBOTS];// Filtered wrench [N and Nm] (6x1)
-
-  Eigen::Matrix4f _w_H_ee[NB_ROBOTS];       // Homogenenous transform of the End-effectors poses (4x4)
-  Eigen::Matrix4f _w_H_eeStandby[NB_ROBOTS];// Homogenenous transform of Standby pose of the End-effectors (4x4)
-
-  Vector7f _joints_positions[NB_ROBOTS];
-  Vector7f _joints_velocities[NB_ROBOTS];
-  Vector7f _joints_accelerations[NB_ROBOTS];
-  Vector7f _joints_torques[NB_ROBOTS];
-
-  int getNbJoints(int robotID) { return nbJoints_[robotID]; }
-  float getNormalForceAverage(int robotID) { return normalForceAverage_[robotID]; }
-  float getNormalForce(int robotID) { return normalForce_[robotID]; }
-  Eigen::Vector3f getX(int robotID) { return x_[robotID]; }
-  Eigen::Vector4f getQ(int robotID) { return q_[robotID]; }
-  Eigen::Vector4f getQdSpecific(int robotID) { return qd_[robotID]; }
-
   RobotVariable() {}
   ~RobotVariable(){};
 
-  void init(int sgf_q[], float dt, Eigen::Vector3f gravity) {
+  void init(int sgfQ[], float dt, Eigen::Vector3f gravity) {
 
     gravity_ = gravity;
 
@@ -87,27 +78,27 @@ public:
       x_[k].setConstant(0.0f);
       q_[k].setConstant(0.0f);
       wRb_[k].setIdentity();
-      _w_H_ee[k].setConstant(0.0f);
-      _w_H_eeStandby[k].setConstant(0.0f);
+      wHEE_[k].setConstant(0.0f);
+      wHEEStandby_[k].setConstant(0.0f);
       wHRb_[k].setIdentity();
       rbHEEStandby_[k].setIdentity();
       xrbStandby_[k].setZero();
       qrbStandby_[k].setZero();
 
       // Desired values
-      _Vd_ee[k].setZero();
-      _Vee[k].setZero();
-      _tcp_W_EE[k].setIdentity();
+      vDesEE_[k].setZero();
+      vEE_[k].setZero();
+      twistEEToolCenterPoint_[k].setIdentity();
       v_[k].setZero();
       w_[k].setZero();
-      _vd[k].setZero();
-      _omegad[k].setZero();
+      vDes_[k].setZero();
+      omegaDes_[k].setZero();
       qd_[k].setZero();
-      _aad[k].setZero();
+      axisAngleDes_[k].setZero();
 
       // Forces control variables
-      _fxc[k].setZero();
-      _filteredWrench[k].setZero();
+      fxc_[k].setZero();
+      filteredWrench_[k].setZero();
       wrench_[k].setZero();
       wrenchBias_[k].setZero();
       normalForceAverage_[k] = 0.0f;
@@ -115,51 +106,51 @@ public:
       normalForce_[k] = 0.0f;
 
       // Joint variables
-      _joints_positions[k].setZero();
-      _joints_velocities[k].setZero();
-      _joints_accelerations[k].setZero();
-      _joints_torques[k].setZero();
+      jointsPositions_[k].setZero();
+      jointsVelocities_[k].setZero();
+      jointsAccelerations_[k].setZero();
+      jointsTorques_[k].setZero();
 
-      _VEE_oa[k].setZero();
+      vEEObstacleAvoidance_[k].setZero();
     }
 
     // Filtered variable (SG)
-    sgfDdqFilteredLeft_ = std::make_unique<SGF::SavitzkyGolayFilter>(sgf_q[0],//dim
-                                                                     sgf_q[1],//order
-                                                                     sgf_q[2],//window length
+    sgfDdqFilteredLeft_ = std::make_unique<SGF::SavitzkyGolayFilter>(sgfQ[0],//dim
+                                                                     sgfQ[1],//order
+                                                                     sgfQ[2],//window length
                                                                      dt);
-    sgfDdqFilteredRight_ = std::make_unique<SGF::SavitzkyGolayFilter>(sgf_q[0],//dim
-                                                                      sgf_q[1],//order
-                                                                      sgf_q[2],//window length
+    sgfDdqFilteredRight_ = std::make_unique<SGF::SavitzkyGolayFilter>(sgfQ[0],//dim
+                                                                      sgfQ[1],//order
+                                                                      sgfQ[2],//window length
                                                                       dt);
   }
 
-  void get_StandbyHmgTransformInBase() {
-    _w_H_eeStandby[0] = Utils<float>::pose2HomoMx(xrbStandby_[0], qrbStandby_[0]);//
-    _w_H_eeStandby[1] = Utils<float>::pose2HomoMx(xrbStandby_[1], qrbStandby_[1]);//
+  void getStandbyHmgTransformInBase() {
+    wHEEStandby_[0] = Utils<float>::pose2HomoMx(xrbStandby_[0], qrbStandby_[0]);
+    wHEEStandby_[1] = Utils<float>::pose2HomoMx(xrbStandby_[1], qrbStandby_[1]);
   }
 
-  void get_StandbyHmgTransformInWorld() {
-    _w_H_eeStandby[0] = wHRb_[0] * Utils<float>::pose2HomoMx(xrbStandby_[0], qrbStandby_[0]);//
-    _w_H_eeStandby[1] = wHRb_[1] * Utils<float>::pose2HomoMx(xrbStandby_[1], qrbStandby_[1]);//
+  void getStandbyHmgTransformInWorld() {
+    wHEEStandby_[0] = wHRb_[0] * Utils<float>::pose2HomoMx(xrbStandby_[0], qrbStandby_[0]);
+    wHEEStandby_[1] = wHRb_[1] * Utils<float>::pose2HomoMx(xrbStandby_[1], qrbStandby_[1]);
   }
 
-  void get_EndEffectorHmgTransform() {
-    _w_H_ee[0] = Utils<float>::pose2HomoMx(x_[0], q_[0]);// WITH EE pose wrt. the world
-    _w_H_ee[1] = Utils<float>::pose2HomoMx(x_[1], q_[1]);// WITH EE pose wrt. the world
+  void getEndEffectorHmgTransform() {
+    wHEE_[0] = Utils<float>::pose2HomoMx(x_[0], q_[0]);// WITH EE pose wrt. the world
+    wHEE_[1] = Utils<float>::pose2HomoMx(x_[1], q_[1]);// WITH EE pose wrt. the world
   }
 
-  void get_desired_lin_task_velocity(float applyVelo, float nu_Wr0) {
-    _vd[0] = applyVelo * _vd[0] + nu_Wr0 * _fxc[0];
-    _vd[1] = applyVelo * _vd[1] + nu_Wr0 * _fxc[1];
+  void getDesiredLinTaskVelocity(float applyVelo, float nuWr0) {
+    vDes_[0] = applyVelo * vDes_[0] + nuWr0 * fxc_[0];
+    vDes_[1] = applyVelo * vDes_[1] + nuWr0 * fxc_[1];
   }
 
-  void get_robotBaseFrameInWorld(Eigen::Vector3f xB, Eigen::Vector4f q, int k) {
+  void getRobotBaseFrameInWorld(Eigen::Vector3f xB, Eigen::Vector4f q, int k) {
     wHRb_[k].block(0, 3, 3, 1) = xB;
     wHRb_[k].block(0, 0, 3, 3) = Utils<float>::quaternionToRotationMatrix(q);
   }
 
-  void update_EndEffectorPosesInWorld(Eigen::Vector3f xB, Eigen::Vector4f q, int k) {
+  void updateEndEffectorPosesInWorld(Eigen::Vector3f xB, Eigen::Vector4f q, int k) {
     // update positions and Orientations of the EEs
     x_[k] = xB;
     q_[k] = q;
@@ -172,23 +163,23 @@ public:
     Eigen::Vector3f tcp = toolOffsetFromEE_[k] * wRb_[k].col(2);
     Eigen::Matrix3f skew_Mx_tcp;
     skew_Mx_tcp << 0.0f, -tcp(2), tcp(1), tcp(2), 0.0f, -tcp(0), -tcp(1), tcp(0), 0.0f;
-    _tcp_W_EE[k].block(0, 3, 3, 3) = skew_Mx_tcp;
+    twistEEToolCenterPoint_[k].block(0, 3, 3, 3) = skew_Mx_tcp;
   }
 
   void update_EndEffectorVelocity(Eigen::Vector3f vE, Eigen::Vector3f wE, int k) {
     v_[k] = vE;
     w_[k] = wE;
-    _Vee[k].head(3) = v_[k];
-    _Vee[k].tail(3) = w_[k];
-    _Vee[k] = _tcp_W_EE[k] * _Vee[k];
+    vEE_[k].head(3) = v_[k];
+    vEE_[k].tail(3) = w_[k];
+    vEE_[k] = twistEEToolCenterPoint_[k] * vEE_[k];
   }
 
-  void update_EndEffectorWrench(Eigen::Matrix<float, 6, 1> raw,
-                                Eigen::Vector3f normalObj[],
-                                float filteredForceGain,
-                                bool wrenchBiasOK[],
-                                int k) {
-    //
+  void updateEndEffectorWrench(Eigen::Matrix<float, 6, 1> raw,
+                               Eigen::Vector3f normalObj[],
+                               float filteredForceGain,
+                               bool wrenchBiasOK[],
+                               int k) {
+
     if (!wrenchBiasOK[k]) {
       Eigen::Vector3f loadForce = wRb_[k].transpose() * toolMass_[k] * gravity_;
       wrenchBias_[k].segment(0, 3) -= loadForce;
@@ -199,7 +190,6 @@ public:
       if (wrenchCount_[k] == NB_FT_SENSOR_SAMPLES) {
         wrenchBias_[k] /= NB_FT_SENSOR_SAMPLES;
         wrenchBiasOK[k] = true;
-        // std::cerr << "[robot]: Bias " << k << ": " <<wrenchBias_[k].transpose() << std::endl;
       }
     }
 
@@ -210,27 +200,27 @@ public:
       wrench_[k].segment(3, 3) -= toolComPositionFromSensor_[k].cross(loadForce);
       wrench_[k].head(3) = wRb_[k] * wrench_[k].head(3);
       wrench_[k].tail(3) = wRb_[k] * wrench_[k].tail(3);
-      _filteredWrench[k] = filteredForceGain * _filteredWrench[k] + (1.0f - filteredForceGain) * wrench_[k];
+      filteredWrench_[k] = filteredForceGain * filteredWrench_[k] + (1.0f - filteredForceGain) * wrench_[k];
       //
-      normalForce_[k] = fabs((_filteredWrench[k].segment(0, 3)).dot(normalObj[k]));
+      normalForce_[k] = fabs((filteredWrench_[k].segment(0, 3)).dot(normalObj[k]));
     }
   }
 
-  void get_estimated_joint_accelerations(int k) {
-    //
+  void getEstimatedJointAccelerations(int k) {
+
     SGF::Vec temp_acc(nbJoints_[k]);
     if (k == 0) {
-      sgfDdqFilteredLeft_->AddData(_joints_velocities[k]);
+      sgfDdqFilteredLeft_->AddData(jointsVelocities_[k]);
       sgfDdqFilteredLeft_->GetOutput(1, temp_acc);
     } else {
-      sgfDdqFilteredRight_->AddData(_joints_velocities[k]);
+      sgfDdqFilteredRight_->AddData(jointsVelocities_[k]);
       sgfDdqFilteredRight_->GetOutput(1, temp_acc);
     }
-    _joints_accelerations[k] = temp_acc.cast<float>();
+    jointsAccelerations_[k] = temp_acc.cast<float>();
   }
 
-  void get_estimated_AverageNormalForce() {
-    //
+  void getEstimatedAverageNormalForce() {
+
     for (int k = 0; k < NB_ROBOTS; k++) {
       if (normalForceWindow_[k].size() < MOVING_FORCE_WINDOW_SIZE) {
         normalForceWindow_[k].push_back(normalForce_[k]);
@@ -245,12 +235,12 @@ public:
     }
   }
 
-  void set_init_parameters(float toolMass_param[],
-                           float toolOffsetFromEE_param[],
-                           Eigen::Vector3f toolComPositionFromSensor_param[],
-                           Eigen::Vector3f xrbStandby_param[],
-                           Eigen::Vector4f qrbStandby_param[]) {
-    //
+  void setInitParameters(float toolMass_param[],
+                         float toolOffsetFromEE_param[],
+                         Eigen::Vector3f toolComPositionFromSensor_param[],
+                         Eigen::Vector3f xrbStandby_param[],
+                         Eigen::Vector4f qrbStandby_param[]) {
+
     memcpy(toolMass_, &toolMass_param[0], NB_ROBOTS * sizeof *toolMass_param);
     memcpy(toolOffsetFromEE_, &toolOffsetFromEE_param[0], NB_ROBOTS * sizeof *toolOffsetFromEE_param);
     memcpy(toolComPositionFromSensor_,
@@ -260,6 +250,47 @@ public:
     memcpy(qrbStandby_, &qrbStandby_param[0], NB_ROBOTS * sizeof *qrbStandby_param);
 
     // get stanby transformation of the EEs wrt. the dual-robot Base frame
-    this->get_StandbyHmgTransformInBase();
+    this->getStandbyHmgTransformInBase();
+  }
+  int getNbJoints(int robotID) { return nbJoints_[robotID]; }
+  float getNormalForceAverage(int robotID) { return normalForceAverage_[robotID]; }
+  float getNormalForce(int robotID) { return normalForce_[robotID]; }
+  Eigen::Vector3f getX(int robotID) { return x_[robotID]; }
+  Eigen::Vector4f getQ(int robotID) { return q_[robotID]; }
+  Eigen::Vector4f getQdSpecific(int robotID) { return qd_[robotID]; }
+  Eigen::Vector3f getAxisAngleDes(int robotID) { return axisAngleDes_[robotID]; }
+  Eigen::Vector3f getVDes(int robotID) { return vDes_[robotID]; }
+  Eigen::Vector3f getOmegaDes(int robotID) { return omegaDes_[robotID]; }
+  Vector6f getVelEESpecific(int robotID) { return vEE_[robotID]; }
+  Vector6f* getVelEE() { return vEE_; }
+  Vector6f getVelDesEE(int robotID) { return vDesEE_[robotID]; }
+  Matrix6f getTwistEEToolCenterPoint(int robotID) { return twistEEToolCenterPoint_[robotID]; }
+  Vector6f getVEEObstacleAvoidance(int robotID) { return vEEObstacleAvoidance_[robotID]; }
+  Eigen::Vector3f getFXC(int robotID) { return fxc_[robotID]; }
+  Vector6f getFilteredWrench(int robotID) { return filteredWrench_[robotID]; }
+  Eigen::Matrix4f* getWHEE() { return wHEE_; }
+  Eigen::Matrix4f getWHEESpecific(int robotID) { return wHEE_[robotID]; }
+  Eigen::Matrix4f* getWHEEStandby() { return wHEEStandby_; }
+  Eigen::Matrix4f getWHEEStandbySpecific(int robotID) { return wHEEStandby_[robotID]; }
+  Vector7f getJointsPositions(int robotID) { return jointsPositions_[robotID]; }
+  Vector7f getJointsVelocities(int robotID) { return jointsVelocities_[robotID]; }
+  Vector7f getJointsAccelerations(int robotID) { return jointsAccelerations_[robotID]; }
+  Vector7f getJointsTorques(int robotID) { return jointsTorques_[robotID]; }
+
+  void setAxisAngleDes(Eigen::Vector3f newValue, int robotID) { axisAngleDes_[robotID] = newValue; }
+  void setVDes(Eigen::Vector3f newValue, int robotID) { vDes_[robotID] = newValue; }
+  void setOmegaDes(Eigen::Vector3f newValue, int robotID) { omegaDes_[robotID] = newValue; }
+  void setFXC(Eigen::Vector3f newValue, int robotID) { fxc_[robotID] = newValue; }
+  void setQd(Eigen::Vector4f newValue[]) {
+    qd_[0] = newValue[0];
+    qd_[1] = newValue[1];
+  }
+  void setVelDesEE(Vector6f newValue[]) {
+    vDesEE_[0] = newValue[0];
+    vDesEE_[1] = newValue[1];
+  }
+  void setVEEObstacleAvoidance(Vector6f newValue[]) {
+    vEEObstacleAvoidance_[0] = newValue[0];
+    vEEObstacleAvoidance_[1] = newValue[1];
   }
 };
