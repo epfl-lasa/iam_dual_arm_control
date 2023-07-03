@@ -534,19 +534,19 @@ bool DualArmControl::initTossVar() {
     ROS_INFO("Waitinng for param: tossing/restOrient ");
   }
 
-  tossVar_.release_position =
+  tossVar_.releasePosition =
       Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(releasePosVect.data(), releasePosVect.size());
-  tossVar_.release_orientation =
+  tossVar_.releaseOrientation =
       Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(releaseOrientVect.data(), releaseOrientVect.size());
-  tossVar_.release_linear_velocity =
+  tossVar_.releaseLinearVelocity =
       Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(releaseLinVelDirVect.data(), releaseLinVelDirVect.size());
-  tossVar_.release_angular_velocity =
+  tossVar_.releaseAngularVelocity =
       Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(releaseAngVelVect.data(), releaseAngVelVect.size());
-  tossVar_.rest_position = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(restPosVect.data(), restPosVect.size());
-  tossVar_.rest_orientation =
+  tossVar_.restPosition = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(restPosVect.data(), restPosVect.size());
+  tossVar_.restOrientation =
       Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(restOrientVect.data(), restOrientVect.size());
 
-  tossVar_.release_linear_velocity = desVtoss_ * tossVar_.release_linear_velocity.normalized();
+  tossVar_.releaseLinearVelocity = desVtoss_ * tossVar_.releaseLinearVelocity.normalized();
 
   return true;
 }
@@ -677,44 +677,44 @@ bool DualArmControl::initTossParamEstimator() {
   file_gmm[2] = path2LearnedModelfolder + dataType + "_sigma.txt";
 
   tossParamEstimator_.init(file_gmm,
-                           tossVar_.release_position,
-                           tossVar_.release_orientation,
-                           tossVar_.release_linear_velocity,
-                           tossVar_.release_angular_velocity);
+                           tossVar_.releasePosition,
+                           tossVar_.releaseOrientation,
+                           tossVar_.releaseLinearVelocity,
+                           tossVar_.releaseAngularVelocity);
 
   target_._xd_landing = Eigen::Vector3f(1.0f, 0.0f, 0.0f);
 
   tossParamEstimator_.estimate_tossing_param(toss_task_param_estimator::PHYS_IDEAL,
                                              target_._xd_landing,
-                                             tossVar_.release_position);
+                                             tossVar_.releasePosition);
 
   return true;
 }
 
 bool DualArmControl::initDSThrowing() {
 
-  dsThrowing_.init(dsThrowing_.ds_param_,
-                   tossVar_.release_position,
-                   tossVar_.release_orientation,
-                   tossVar_.release_linear_velocity,
-                   tossVar_.release_angular_velocity,
-                   tossVar_.rest_position,
-                   tossVar_.rest_orientation);
+  dsThrowing_.init(dsThrowing_.getDsParam(),
+                   tossVar_.releasePosition,
+                   tossVar_.releaseOrientation,
+                   tossVar_.releaseLinearVelocity,
+                   tossVar_.releaseAngularVelocity,
+                   tossVar_.restPosition,
+                   tossVar_.restOrientation);
   // TODO  if statement?
   // IF AUTOMATICALLY DETERMINED (USING RELEASE POSE GENERATOR)
-  // dsThrowing_.init(dsThrowing_.ds_param_,
+  // dsThrowing_.init(dsThrowing_.getDsParam(),
   // 								tossParamEstimator_.get_release_position(),
   // 								tossParamEstimator_.get_release_orientation(),
   // 								tossParamEstimator_.get_release_linear_velocity(),
   // 								tossParamEstimator_.get_release_angular_velocity(),
-  // 								tossVar_.rest_position, tossVar_.rest_orientation);
+  // 								tossVar_.restPosition, tossVar_.restOrientation);
   // desVtoss_ = tossParamEstimator_.get_release_linear_velocity().norm();
   //
-  tossVar_.release_linear_velocity = desVtoss_ * (tossVar_.release_position - object_.getXo()).normalized();
+  tossVar_.releaseLinearVelocity = desVtoss_ * (tossVar_.releasePosition - object_.getXo()).normalized();
 
-  dsThrowing_.set_pickup_object_pose(object_.getXo(), object_.getQo());
-  dsThrowing_.set_toss_linear_velocity(tossVar_.release_linear_velocity);
-  dsThrowing_._refVtoss = desiredVelImp_;
+  dsThrowing_.setPickupObjectPose(object_.getXo(), object_.getQo());
+  dsThrowing_.setTossLinearVelocity(tossVar_.releaseLinearVelocity);
+  dsThrowing_.setRefVtoss(desiredVelImp_);
 
   return true;
 }
@@ -870,14 +870,14 @@ void DualArmControl::computeCommands() {
   bool isPlacing = isPlacing_ || (dualTaskSelector_ == PICK_AND_PLACE);
   bool isThrowing = isThrowing_ || (dualTaskSelector_ == TOSSING) || (dualTaskSelector_ == PICK_AND_TOSS);
   bool isPlaceTossing = isPlaceTossing_ || (dualTaskSelector_ == PLACE_TOSSING);
-  bool isClose2Release = (dsThrowing_.a_tangent_ > 0.99f);
+  bool isClose2Release = (dsThrowing_.getActivationTangent() > 0.99f);
 
   bool placingDone = (releaseFlag_) || ((object_.getWHo().block<3, 1>(0, 3) - xPlacing_).norm() <= 0.08);//0.05
   bool placeTossingDone = (releaseFlag_)
-      || (((object_.getWHo().block<3, 1>(0, 3) - tossVar_.release_position).norm() <= 0.07)
+      || (((object_.getWHo().block<3, 1>(0, 3) - tossVar_.releasePosition).norm() <= 0.07)
           || ((object_.getWHo().block<2, 1>(0, 3) - xPlacing_.head(2)).norm() <= 0.05));
   bool tossingDone =
-      (releaseFlag_) || (((object_.getWHo().block<3, 1>(0, 3) - tossVar_.release_position).norm() <= 0.035));
+      (releaseFlag_) || (((object_.getWHo().block<3, 1>(0, 3) - tossVar_.releasePosition).norm() <= 0.035));
   bool isForceDetected =
       (robot_.getNormalForceAverage(LEFT) > forceThreshold_ || robot_.getNormalForceAverage(RIGHT) > forceThreshold_);
 
@@ -899,7 +899,7 @@ void DualArmControl::computeCommands() {
                                                                         object_.getWHGp(),
                                                                         robot_.getWHEEStandby(),
                                                                         object_.getWHo(),
-                                                                        tossVar_.release_position,
+                                                                        tossVar_.releasePosition,
                                                                         desVtoss_,
                                                                         0.05f,
                                                                         0.100f,
@@ -936,7 +936,7 @@ void DualArmControl::computeCommands() {
       isPickupSet_ = true;
     } else {
       object_.setXPickup(object_.getXo());
-      dsThrowing_.set_pickup_object_pose(object_.getXPickup(), object_.getQo());
+      dsThrowing_.setPickupObjectPose(object_.getXPickup(), object_.getQo());
     }
   }
 
@@ -957,7 +957,7 @@ void DualArmControl::computeCommands() {
     robot_.setVelDesEE(vDesEE);
 
     objVelDes_ =
-        dsThrowing_.apply(object_.getXo(), object_.getQo(), object_.getVo(), Eigen::Vector3f(0.0f, 0.0f, 0.0f), 1);
+        dsThrowing_.apply(object_.getXo(), object_.getQo(), object_.getVo(), Eigen::Vector3f(0.0f, 0.0f, 0.0f));
 
     for (int i = 0; i < NB_ROBOTS; i++) {
       dirImp_[i] =
@@ -995,11 +995,11 @@ void DualArmControl::computeCommands() {
       isPickupSet_ = false;
       isPlaceTossing_ = false;
       nuWr0_ = nuWr1_ = 0.0f;
-      dsThrowing_.reset_release_flag();
+      dsThrowing_.resetReleaseFlag();
       isIntercepting_ = false;
     } else if (isContact) {// Constraint motion phase (Cooperative control)
       objVelDes_ =
-          dsThrowing_.apply(object_.getXo(), object_.getQo(), object_.getVo(), Eigen::Vector3f(0.0f, 0.0f, 0.0f), 1);
+          dsThrowing_.apply(object_.getXo(), object_.getQo(), object_.getVo(), Eigen::Vector3f(0.0f, 0.0f, 0.0f));
 
       // Desired task position and orientation vectors
       Eigen::Vector3f xDesTask = xLifting_;
@@ -1013,14 +1013,14 @@ void DualArmControl::computeCommands() {
         qDesTask = qPlacing_;
       }
       if (isThrowing) {
-        xDesTask = tossVar_.release_position;
-        qDesTask = tossVar_.release_orientation;
+        xDesTask = tossVar_.releasePosition;
+        qDesTask = tossVar_.releaseOrientation;
       }
 
       // Target to object Orientation Adaptation
       if (trackTargetRotation_) {
         this->mirrorTargetToObjectOrientation(target_._qt, qDesTask, dualAngularLimit_);
-        dsThrowing_.set_toss_pose(tossVar_.release_position, qDesTask);
+        dsThrowing_.setTossPose(tossVar_.releasePosition, qDesTask);
       }
 
       // Desired object pose
@@ -1117,7 +1117,7 @@ void DualArmControl::computeCommands() {
         robot_.setVelDesEE(vDesEE);
       }
 
-      dsThrowing_._refVtoss = desiredVelImp_;
+      dsThrowing_.setRefVtoss(desiredVelImp_);
 
       // for data logging
       objVelDes_.setZero();
@@ -1153,7 +1153,7 @@ void DualArmControl::computeCommands() {
     float filBeta = 0.10;
     betaVelMod_ = (1.f - filBeta) * betaVelMod_ + filBeta * betaVelModUnfiltered;
 
-    if ((target_._vt.norm() >= 0.05 && (!releaseAndretract_) && (dsThrowing_.a_proximity_ <= 0.99f))) {
+    if ((target_._vt.norm() >= 0.05 && (!releaseAndretract_) && (dsThrowing_.getActivationProximity() <= 0.99f))) {
       vDesEE[0] = robot_.getVelDesEE(0);//TODO
       vDesEE[1] = robot_.getVelDesEE(1);
 
@@ -1416,14 +1416,14 @@ void DualArmControl::updateStatesMachines() {
       case 'v': {
         desVtoss_ -= 0.05f;
         if (desVtoss_ < 0.2f) { desVtoss_ = 0.2f; }
-        dsThrowing_.set_toss_linear_velocity(desVtoss_ * tossVar_.release_linear_velocity.normalized());
-        dsThrowingEstim_.set_toss_linear_velocity(desVtoss_ * tossVar_.release_linear_velocity.normalized());
+        dsThrowing_.setTossLinearVelocity(desVtoss_ * tossVar_.releaseLinearVelocity.normalized());
+        dsThrowingEstim_.setTossLinearVelocity(desVtoss_ * tossVar_.releaseLinearVelocity.normalized());
       } break;
       case 'b': {
         desVtoss_ += 0.05f;
         if (desVtoss_ > 2.0f) { desVtoss_ = 2.0f; }
-        dsThrowing_.set_toss_linear_velocity(desVtoss_ * tossVar_.release_linear_velocity.normalized());
-        dsThrowingEstim_.set_toss_linear_velocity(desVtoss_ * tossVar_.release_linear_velocity.normalized());
+        dsThrowing_.setTossLinearVelocity(desVtoss_ * tossVar_.releaseLinearVelocity.normalized());
+        dsThrowingEstim_.setTossLinearVelocity(desVtoss_ * tossVar_.releaseLinearVelocity.normalized());
       } break;
       case 'y': {
         desiredVelImp_ -= 0.05f;
@@ -1448,14 +1448,14 @@ void DualArmControl::updateStatesMachines() {
       // Placing hight
       case 'x': {
         if (dualTaskSelector_ == PICK_AND_TOSS) {
-          tossVar_.release_position(1) -= 0.01;
+          tossVar_.releasePosition(1) -= 0.01;
         } else {
           xPlacing_(2) -= 0.01;
         }
       } break;
       case 'n': {
         if (dualTaskSelector_ == PICK_AND_TOSS) {
-          tossVar_.release_position(1) += 0.01;
+          tossVar_.releasePosition(1) += 0.01;
         } else {
           xPlacing_(2) += 0.01;
         }
@@ -1661,8 +1661,8 @@ void DualArmControl::resetVariables() {
 
   freeMotionCtrl_.setRefVelReach(0.0f, LEFT);
   freeMotionCtrl_.setRefVelReach(0.0f, RIGHT);
-  dsThrowing_._refVtoss = desiredVelImp_;
-  dsThrowing_.reset_release_flag();
+  dsThrowing_.setRefVtoss(desiredVelImp_);
+  dsThrowing_.resetReleaseFlag();
   objVelDes_.setZero();
 
   Vector6f* newVGpO = object_.getVGpO();
@@ -1673,7 +1673,7 @@ void DualArmControl::resetVariables() {
   }
 
   if (adaptationActive_) {
-    tossVar_.release_position(1) = 0.0f;
+    tossVar_.releasePosition(1) = 0.0f;
     xPlacing_(1) = 0.0f;// TBC !!!! TODO
   }
 }
@@ -1686,9 +1686,9 @@ void DualArmControl::updateReleasePosition() {
 
   Eigen::Vector3f posXo;
   releasePos_.toCartesian(posXo);
-  tossVar_.release_position = posXo + xLifting_;
+  tossVar_.releasePosition = posXo + xLifting_;
 
-  if (tossVar_.release_position(0) > 0.70) { tossVar_.release_position(0) = 0.70; }
+  if (tossVar_.releasePosition(0) > 0.70) { tossVar_.releasePosition(0) = 0.70; }
 }
 
 void DualArmControl::set2DPositionBoxConstraints(Eigen::Vector3f& position_Vect, float limits[]) {
@@ -1754,7 +1754,7 @@ void DualArmControl::findDesiredLandingPosition(bool isPlacing, bool isPlaceToss
   // Determine the intercept or desired landing position
   if (userSelect_) {
     if (isPlacing || isPlaceTossing) { xDesiredLand.head(2) = xPlacing_.head(2); }
-    if (isThrowing) { xDesiredLand.head(2) = tossVar_.release_position.head(2); }
+    if (isThrowing) { xDesiredLand.head(2) = tossVar_.releasePosition.head(2); }
     phiThrowing = std::atan2(xDesiredLand(1), xDesiredLand(0));
 
     if (isTargetFixed_) {
@@ -1788,26 +1788,26 @@ void DualArmControl::findReleaseConfiguration() {
   // Basic release configuration
   if (feasibleAlgo_) {
     // Generate using feasibilty algorithm
-    tossVar_.release_position.head(2) = target_._xd_landing.head(2);
+    tossVar_.releasePosition.head(2) = target_._xd_landing.head(2);
   } else if (pickupBased_) {
-    Eigen::Vector3f xReleaseBar = tossVar_.release_position - object_.getXPickup();
+    Eigen::Vector3f xReleaseBar = tossVar_.releasePosition - object_.getXPickup();
     float phiThrowBar = std::atan2(xReleaseBar(1), xReleaseBar(0));
 
-    tossVar_.release_linear_velocity << tossVar_.release_linear_velocity.head(2).norm() * std::cos(phiThrowBar),
-        tossVar_.release_linear_velocity.head(2).norm() * std::sin(phiThrowBar), tossVar_.release_linear_velocity(2);
-    tossVar_.release_linear_velocity = desVtoss_ * tossVar_.release_linear_velocity.normalized();
+    tossVar_.releaseLinearVelocity << tossVar_.releaseLinearVelocity.head(2).norm() * std::cos(phiThrowBar),
+        tossVar_.releaseLinearVelocity.head(2).norm() * std::sin(phiThrowBar), tossVar_.releaseLinearVelocity(2);
+    tossVar_.releaseLinearVelocity = desVtoss_ * tossVar_.releaseLinearVelocity.normalized();
   } else {
     // user-defined
-    tossVar_.release_position = tossVar_.release_position;
-    tossVar_.release_linear_velocity = desVtoss_ * tossVar_.release_linear_velocity.normalized();
+    tossVar_.releasePosition = tossVar_.releasePosition;
+    tossVar_.releaseLinearVelocity = desVtoss_ * tossVar_.releaseLinearVelocity.normalized();
   }
 }
 
 void DualArmControl::setReleaseState() {
   // Set the release state and the object pickup position
-  dsThrowing_.set_toss_pose(tossVar_.release_position, tossVar_.release_orientation);
-  dsThrowing_.set_toss_linear_velocity(tossVar_.release_linear_velocity);
-  dsThrowing_.set_pickup_object_pose(object_.getXPickup(), object_.getQo());
+  dsThrowing_.setTossPose(tossVar_.releasePosition, tossVar_.releaseOrientation);
+  dsThrowing_.setTossLinearVelocity(tossVar_.releaseLinearVelocity);
+  dsThrowing_.setPickupObjectPose(object_.getXPickup(), object_.getQo());
 }
 
 void DualArmControl::estimateTargetStateToGo(Eigen::Vector2f lengthPathAvgSpeedRobot,
@@ -2090,10 +2090,10 @@ void DualArmControl::saveData() {
                          << " , ";// left  grasping point
   dataLog_.outRecordPose << xgrR.transpose().format(CSVFormat) << " , " << qgrR.transpose().format(CSVFormat)
                          << " , ";// right grasping point
-  dataLog_.outRecordPose << tossVar_.release_position.transpose().format(CSVFormat) << " , "
-                         << tossVar_.release_orientation.transpose().format(CSVFormat) << " , ";// release pose
-  dataLog_.outRecordPose << tossVar_.rest_position.transpose().format(CSVFormat) << " , "
-                         << tossVar_.rest_orientation.transpose().format(CSVFormat) << " , ";// rest pose
+  dataLog_.outRecordPose << tossVar_.releasePosition.transpose().format(CSVFormat) << " , "
+                         << tossVar_.releaseOrientation.transpose().format(CSVFormat) << " , ";// release pose
+  dataLog_.outRecordPose << tossVar_.restPosition.transpose().format(CSVFormat) << " , "
+                         << tossVar_.restOrientation.transpose().format(CSVFormat) << " , ";// rest pose
   dataLog_.outRecordPose << target_._xt.transpose().format(CSVFormat) << " , "
                          << target_._qt.transpose().format(CSVFormat) << " , ";// target pose
   dataLog_.outRecordPose << target_._xd_landing.transpose().format(CSVFormat) << " , "
@@ -2114,8 +2114,8 @@ void DualArmControl::saveData() {
   dataLog_.outRecordVel << object_.getVo().transpose().format(CSVFormat) << " , "
                         << object_.getWo().transpose().format(CSVFormat) << " , ";
   dataLog_.outRecordVel << objVelDes_.transpose().format(CSVFormat) << " , ";
-  dataLog_.outRecordVel << tossVar_.release_linear_velocity.transpose().format(CSVFormat) << " , "
-                        << tossVar_.release_angular_velocity.transpose().format(CSVFormat) << " , ";
+  dataLog_.outRecordVel << tossVar_.releaseLinearVelocity.transpose().format(CSVFormat) << " , "
+                        << tossVar_.releaseAngularVelocity.transpose().format(CSVFormat) << " , ";
   dataLog_.outRecordVel << target_._vt.transpose().format(CSVFormat) << std::endl;
 
   dataLog_.outRecordEfforts << (float) (cycleCount_ * dt_) << ", ";
@@ -2133,9 +2133,9 @@ void DualArmControl::saveData() {
                           << " , " << freeMotionCtrl_.getActivationTangent() << " , "
                           << freeMotionCtrl_.getActivationRelease() << " , " << freeMotionCtrl_.getActivationRetract()
                           << " , ";
-  // dataLog_.outRecordTasks   	<< dsThrowing_.a_proximity_ << " , " << dsThrowing_.a_normal_  << " , " << dsThrowing_.a_tangent_<< " , " << dsThrowing_.a_toss_  << std::endl;
-  dataLog_.outRecordTasks << dsThrowing_.a_proximity_ << " , " << dsThrowing_.a_normal_ << " , "
-                          << dsThrowing_.a_tangent_ << " , " << dsThrowing_.a_toss_ << " , ";
+  // dataLog_.outRecordTasks   	<< dsThrowing_.getActivationProximity() << " , " << dsThrowing_.getActivationNormal()  << " , " << dsThrowing_.getActivationTangent()<< " , " << dsThrowing_.getActivationToss()  << std::endl;
+  dataLog_.outRecordTasks << dsThrowing_.getActivationProximity() << " , " << dsThrowing_.getActivationNormal() << " , "
+                          << dsThrowing_.getActivationTangent() << " , " << dsThrowing_.getActivationToss() << " , ";
   dataLog_.outRecordTasks << betaVelMod_ << " , " << dualPathLenAvgSpeed_.transpose() << std::endl;
   //
   dataLog_.outRecordJointStates << (float) (cycleCount_ * dt_) << ", ";

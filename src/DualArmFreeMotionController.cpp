@@ -737,7 +737,7 @@ Vector6f DualArmFreeMotionController::generatePlacingMotion2(Eigen::Matrix4f wHo
   return velObj_;
 }
 
-Eigen::Vector3f DualArmFreeMotionController::compute_modulated_motion(float activation,
+Eigen::Vector3f DualArmFreeMotionController::computeModulatedMotion(float activation,
                                                                       Eigen::Matrix3f basisQ,
                                                                       Eigen::Vector3f activationReachEE,
                                                                       Eigen::Vector3f activationEENorm,
@@ -772,12 +772,12 @@ Vector6f DualArmFreeMotionController::compute_modulated_motion_dual(float activa
                                                                     Vector6f activationEETang) {
   // computing the modulated second order DS (translation)
   Vector6f vdModulated = Eigen::VectorXf::Zero(6);
-  vdModulated.head(3) = this->compute_modulated_motion(activation,
+  vdModulated.head(3) = this->computeModulatedMotion(activation,
                                                        basisQ[LEFT],
                                                        dsEENominal.head(3),
                                                        activationEENorm.head(3),
                                                        activationEETang.head(3));
-  vdModulated.tail(3) = this->compute_modulated_motion(activation,
+  vdModulated.tail(3) = this->computeModulatedMotion(activation,
                                                        basisQ[RIGHT],
                                                        dsEENominal.tail(3),
                                                        activationEENorm.tail(3),

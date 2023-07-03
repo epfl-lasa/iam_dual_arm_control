@@ -44,8 +44,8 @@
 #include "iam_dual_arm_control/DualArmFreeMotionController.hpp"
 #include "iam_dual_arm_control/ObjectToGrasp.hpp"
 #include "iam_dual_arm_control/RobotVariables.hpp"
+#include "iam_dual_arm_control/ThrowingDS.h"
 #include "iam_dual_arm_control/TossingTarget.hpp"
-#include "iam_dual_arm_control/throwingDS.h"
 #include "iam_dual_arm_control/toss_task_param_estimator.h"
 
 // TODO use const or constexpr
@@ -253,11 +253,11 @@ private:
   // ---- Unconstrained and contrained motion and force generation
   DualArmFreeMotionController freeMotionCtrl_; // Motion generation
   DualArmCooperativeController CooperativeCtrl;// Force generation
-  throwingDS dsThrowing_;
+  ThrowingDS dsThrowing_;
 
   toss_task_param_estimator tossParamEstimator_;// tossing task param estimator
   DualArmFreeMotionController freeMotionCtrlEstim_;
-  throwingDS dsThrowingEstim_;
+  ThrowingDS dsThrowingEstim_;
   bool isSimulation_;
 
   tossingTaskVariables tossVar_;

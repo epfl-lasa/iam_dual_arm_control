@@ -9,7 +9,7 @@
 #include <pthread.h>
 #include <vector>
 
-#include "iam_dual_arm_control/throwingDS.h"
+#include "iam_dual_arm_control/ThrowingDS.h"
 #include "iam_dual_arm_control/tools/Utils.hpp"
 
 #define NB_ROBOTS 2// Number of robots
@@ -104,7 +104,7 @@ public:
                                  Eigen::Vector4f (&qd)[NB_ROBOTS],
                                  bool isOrient3d);
 
-  Eigen::Vector3f compute_modulated_motion(float activation,
+  Eigen::Vector3f computeModulatedMotion(float activation,
                                            Eigen::Matrix3f basisQ,
                                            Eigen::Vector3f activationReachEE,
                                            Eigen::Vector3f activationEENorm,
