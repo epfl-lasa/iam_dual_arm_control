@@ -51,7 +51,7 @@ set(SOURCES_DS  ${SRC_FOLDER}/DualArmControl.cpp
                 ${SRC_FOLDER}/DualArmFreeMotionController.cpp
                 ${SRC_FOLDER}/DualArmCooperativeController.cpp
                 ${SRC_FOLDER}/ThrowingDS.cpp
-                ${SRC_FOLDER}/toss_task_param_estimator.cpp
+                ${SRC_FOLDER}/TossTaskParamEstimator.cpp
                 ${SRC_FOLDER}/DataLogging.cpp
                 )
 

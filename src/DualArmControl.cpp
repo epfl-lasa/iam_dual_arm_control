@@ -684,9 +684,9 @@ bool DualArmControl::initTossParamEstimator() {
 
   target_._xd_landing = Eigen::Vector3f(1.0f, 0.0f, 0.0f);
 
-  tossParamEstimator_.estimate_tossing_param(toss_task_param_estimator::PHYS_IDEAL,
-                                             target_._xd_landing,
-                                             tossVar_.releasePosition);
+  tossParamEstimator_.estimateTossingParam(TossTaskParamEstimator::PHYS_IDEAL,
+                                           target_._xd_landing,
+                                           tossVar_.releasePosition);
 
   return true;
 }
@@ -703,12 +703,12 @@ bool DualArmControl::initDSThrowing() {
   // TODO  if statement?
   // IF AUTOMATICALLY DETERMINED (USING RELEASE POSE GENERATOR)
   // dsThrowing_.init(dsThrowing_.getDsParam(),
-  // 								tossParamEstimator_.get_release_position(),
-  // 								tossParamEstimator_.get_release_orientation(),
-  // 								tossParamEstimator_.get_release_linear_velocity(),
-  // 								tossParamEstimator_.get_release_angular_velocity(),
+  // 								tossParamEstimator_.getReleasePosition(),
+  // 								tossParamEstimator_.getReleaseOrientation(),
+  // 								tossParamEstimator_.getReleaseLinearVelocity(),
+  // 								tossParamEstimator_.getReleaseAngularVelocity(),
   // 								tossVar_.restPosition, tossVar_.restOrientation);
-  // desVtoss_ = tossParamEstimator_.get_release_linear_velocity().norm();
+  // desVtoss_ = tossParamEstimator_.getReleaseLinearVelocity().norm();
   //
   tossVar_.releaseLinearVelocity = desVtoss_ * (tossVar_.releasePosition - object_.getXo()).normalized();
 
@@ -908,7 +908,7 @@ void DualArmControl::computeCommands() {
 
   Eigen::Vector2f lengthPathAvgSpeedRobot = {dualPathLenAvgSpeed_(0), trackingFactor_ * dualPathLenAvgSpeed_(1)};
   Eigen::Vector2f lengthPathAvgSpeedTarget =
-      tossParamEstimator_.estimateTarget_SimpPathLength_AverageSpeed(target_._xt, target_._xd_landing, target_._vt);
+      tossParamEstimator_.estimateTargetSimplePathLengthAverageSpeed(target_._xt, target_._xd_landing, target_._vt);
 
   float flyTimeObj = 0.200f;
   timeToInterceptTgt_ = 0.0f;
@@ -1814,12 +1814,11 @@ void DualArmControl::estimateTargetStateToGo(Eigen::Vector2f lengthPathAvgSpeedR
                                              Eigen::Vector2f lengthPathAvgSpeedTarget,
                                              float flyTimeObj) {
   // Estimation of the target state-to-go
-  target_._xt_state2go = tossParamEstimator_.estimate_target_state_to_go(target_._xt,
-                                                                         target_._vt,
-                                                                         target_._xd_landing,
-                                                                         lengthPathAvgSpeedRobot,
-                                                                         lengthPathAvgSpeedTarget,
-                                                                         flyTimeObj);
+  target_._xt_state2go = tossParamEstimator_.estimateTargetStateToGo(target_._vt,
+                                                                     target_._xd_landing,
+                                                                     lengthPathAvgSpeedRobot,
+                                                                     lengthPathAvgSpeedTarget,
+                                                                     flyTimeObj);
 
   // Boolean robot's motion trigger
   Eigen::Vector3f xtBar = target_._xt - target_._xd_landing;

@@ -45,8 +45,8 @@
 #include "iam_dual_arm_control/ObjectToGrasp.hpp"
 #include "iam_dual_arm_control/RobotVariables.hpp"
 #include "iam_dual_arm_control/ThrowingDS.h"
+#include "iam_dual_arm_control/TossTaskParamEstimator.h"
 #include "iam_dual_arm_control/TossingTarget.hpp"
-#include "iam_dual_arm_control/toss_task_param_estimator.h"
 
 // TODO use const or constexpr
 #define NB_ROBOTS 2// Number of robots
@@ -255,7 +255,7 @@ private:
   DualArmCooperativeController CooperativeCtrl;// Force generation
   ThrowingDS dsThrowing_;
 
-  toss_task_param_estimator tossParamEstimator_;// tossing task param estimator
+  TossTaskParamEstimator tossParamEstimator_;// tossing task param estimator
   DualArmFreeMotionController freeMotionCtrlEstim_;
   ThrowingDS dsThrowingEstim_;
   bool isSimulation_;
