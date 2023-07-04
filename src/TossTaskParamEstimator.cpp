@@ -169,7 +169,7 @@ void TossTaskParamEstimator::projectileMotion2d(float T,
   int iter = 0;
   bool isStopping = true;
 
-  myRK4_.InitializeFilter(T, 1.f, 0.f, rz);
+  myRK4_.initializeFilter(T, 1.f, 0.f, rz);
   flytime = 0.0f;
 
   while (isStopping) {

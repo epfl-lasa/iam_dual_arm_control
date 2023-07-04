@@ -243,7 +243,7 @@ void DualArmFreeMotionController::computeAsyncMotion(Eigen::Matrix4f wHee[],
     // ---------------------------------
     vDesEE[k].head(3) = -2.0f * gainPosAbs_ * errorEE.head(3);
     vDesEE[k].tail(3) = -3.0f * jacMuTheta_ee.inverse() * gainOriAbs_ * errorEE.tail(3);
-    vDesEE[k] = Utils<float>::SaturationTwist(vMax_, wMax_, vDesEE[k]);
+    vDesEE[k] = Utils<float>::saturationTwist(vMax_, wMax_, vDesEE[k]);
   }
 
   // Computation of desired orientation
@@ -408,8 +408,8 @@ void DualArmFreeMotionController::computeReleaseAndRetractMotion(Eigen::Matrix4f
     vDesEE[k].tail(3) = -4.0f * jacMuTheta_ee.inverse() * gainOriAbs_ * error_ee_o;
   }
 
-  vDesEE[LEFT] = Utils<float>::SaturationTwist(vMax_, wMax_, vDesEE[LEFT]);
-  vDesEE[RIGHT] = Utils<float>::SaturationTwist(vMax_, wMax_, vDesEE[RIGHT]);
+  vDesEE[LEFT] = Utils<float>::saturationTwist(vMax_, wMax_, vDesEE[LEFT]);
+  vDesEE[RIGHT] = Utils<float>::saturationTwist(vMax_, wMax_, vDesEE[RIGHT]);
 }
 
 void DualArmFreeMotionController::generatePlacingMotion(Eigen::Matrix4f wHee[],
@@ -521,8 +521,8 @@ void DualArmFreeMotionController::generatePlacingMotion(Eigen::Matrix4f wHee[],
 
   // applying velocity
   // ========================================
-  vDesEE[LEFT] = Utils<float>::SaturationTwist(vMax_, wMax_, vDesEE[LEFT]);
-  vDesEE[RIGHT] = Utils<float>::SaturationTwist(vMax_, wMax_, vDesEE[RIGHT]);
+  vDesEE[LEFT] = Utils<float>::saturationTwist(vMax_, wMax_, vDesEE[LEFT]);
+  vDesEE[RIGHT] = Utils<float>::saturationTwist(vMax_, wMax_, vDesEE[RIGHT]);
 
   std::cout << "[dual_arm_control]: CCCCCCCCCCC cplOZ: \t" << cplOZ << std::endl;
   std::cout << "[dual_arm_control]: CCCCCCCCCCC cplDOXY: \t" << cplDOXY << std::endl;
@@ -673,8 +673,8 @@ void DualArmFreeMotionController::computeCoordinatedMotion2(Eigen::Matrix4f wHee
   vDesEE[LEFT].tail(3) = -3.0f * jacMuThetaLeft.inverse() * gainOriRel_ * errorOriLeft;
   vDesEE[RIGHT].tail(3) = -3.0f * jacMuThetaRight.inverse() * gainOriRel_ * errorOriRight;
 
-  vDesEE[LEFT] = Utils<float>::SaturationTwist(vMax_, wMax_, vDesEE[LEFT]);
-  vDesEE[RIGHT] = Utils<float>::SaturationTwist(vMax_, wMax_, vDesEE[RIGHT]);
+  vDesEE[LEFT] = Utils<float>::saturationTwist(vMax_, wMax_, vDesEE[LEFT]);
+  vDesEE[RIGHT] = Utils<float>::saturationTwist(vMax_, wMax_, vDesEE[RIGHT]);
 }
 
 Vector6f DualArmFreeMotionController::generatePlacingMotion2(Eigen::Matrix4f wHo,
@@ -738,10 +738,10 @@ Vector6f DualArmFreeMotionController::generatePlacingMotion2(Eigen::Matrix4f wHo
 }
 
 Eigen::Vector3f DualArmFreeMotionController::computeModulatedMotion(float activation,
-                                                                      Eigen::Matrix3f basisQ,
-                                                                      Eigen::Vector3f activationReachEE,
-                                                                      Eigen::Vector3f activationEENorm,
-                                                                      Eigen::Vector3f activationEETang) {
+                                                                    Eigen::Matrix3f basisQ,
+                                                                    Eigen::Vector3f activationReachEE,
+                                                                    Eigen::Vector3f activationEENorm,
+                                                                    Eigen::Vector3f activationEETang) {
   Eigen::MatrixXf denTemp = activationReachEE.transpose() * activationReachEE;
   Eigen::RowVector3f betaJ = 1.0f / (denTemp(0, 0) + 1e-10) * (activationReachEE.transpose() * basisQ);
 
@@ -773,15 +773,15 @@ Vector6f DualArmFreeMotionController::compute_modulated_motion_dual(float activa
   // computing the modulated second order DS (translation)
   Vector6f vdModulated = Eigen::VectorXf::Zero(6);
   vdModulated.head(3) = this->computeModulatedMotion(activation,
-                                                       basisQ[LEFT],
-                                                       dsEENominal.head(3),
-                                                       activationEENorm.head(3),
-                                                       activationEETang.head(3));
+                                                     basisQ[LEFT],
+                                                     dsEENominal.head(3),
+                                                     activationEENorm.head(3),
+                                                     activationEETang.head(3));
   vdModulated.tail(3) = this->computeModulatedMotion(activation,
-                                                       basisQ[RIGHT],
-                                                       dsEENominal.tail(3),
-                                                       activationEENorm.tail(3),
-                                                       activationEETang.tail(3));
+                                                     basisQ[RIGHT],
+                                                     dsEENominal.tail(3),
+                                                     activationEENorm.tail(3),
+                                                     activationEETang.tail(3));
 
   return vdModulated;
 }
@@ -960,7 +960,7 @@ void DualArmFreeMotionController::dualArmMotion(Eigen::Matrix4f wHee[],
       Vector6f vTaskBi = (a * tbi_ * (xDual - xStarDual) + 1.0f * swNormDo * xDotBi);
 
       // Apply velocity limits
-      vTaskBi = Utils<float>::SaturationTwist(vdO.head(3).norm(), wMax_, vTaskBi);
+      vTaskBi = Utils<float>::saturationTwist(vdO.head(3).norm(), wMax_, vTaskBi);
       activationEENorm = tbi_.inverse() * vTaskBi;
       activationEETang = tbi_.inverse() * vTaskBi;
       activation = 1.0f;
@@ -1428,7 +1428,7 @@ Vector6f DualArmFreeMotionController::computeDesiredTaskTwist(const Eigen::Matri
   float gnAdapt = (1 + 2.f * gainTheta);
   desTwistEE.head(3) = -4.0f * gainPosAbs_ * errorEE.head(3);
   desTwistEE.tail(3) = -1.0f * gainOriAbs_ * gnAdapt * errorEE.tail(3);
-  desTwistEE = Utils<float>::SaturationTwist(vMax_, wMax_, desTwistEE);
+  desTwistEE = Utils<float>::saturationTwist(vMax_, wMax_, desTwistEE);
 
   return desTwistEE;
 }

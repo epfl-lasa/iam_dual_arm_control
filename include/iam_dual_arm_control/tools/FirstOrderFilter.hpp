@@ -3,79 +3,79 @@
 #include "Eigen/Eigen"
 
 class FirstOrderFilter {
-  double Ts;
+private:
+  double ts_;
 
-  // Eigen::VectorXf init_fn;
-  Eigen::VectorXf init_fn2;
-  Eigen::VectorXf init_fn3;
-  Eigen::VectorXf init_fn4;
-  Eigen::VectorXf delta1;
-  Eigen::VectorXf delta2;
-  Eigen::VectorXf delta3;
-  Eigen::VectorXf delta4;
-  Eigen::VectorXf y_t;
+  Eigen::VectorXf initFn2_;
+  Eigen::VectorXf initFn3_;
+  Eigen::VectorXf initFn4_;
+  Eigen::VectorXf delta1_;
+  Eigen::VectorXf delta2_;
+  Eigen::VectorXf delta3_;
+  Eigen::VectorXf delta4_;
+  Eigen::VectorXf yt_;
+
+  float pole_;
+  float gain_;
+  Eigen::VectorXf initFn_;
 
 public:
-  float pole;
-  float gain;
-  Eigen::VectorXf init_fn;
-
   FirstOrderFilter() {}
-  //
-  void InitializeFilter(float T, float gn, float pl, Eigen::VectorXf init_fn_val) {
-    Ts = T;
-    gain = gn;
-    pole = pl;
-
-    init_fn.resize(init_fn_val.rows(), init_fn_val.cols());
-    init_fn2.resize(init_fn_val.rows(), init_fn_val.cols());
-    init_fn3.resize(init_fn_val.rows(), init_fn_val.cols());
-    init_fn4.resize(init_fn_val.rows(), init_fn_val.cols());
-
-    delta1.resize(init_fn_val.rows(), init_fn_val.cols());
-    delta2.resize(init_fn_val.rows(), init_fn_val.cols());
-    delta3.resize(init_fn_val.rows(), init_fn_val.cols());
-    delta4.resize(init_fn_val.rows(), init_fn_val.cols());
-
-    y_t.resize(init_fn_val.rows(), init_fn_val.cols());
-    init_fn = init_fn_val;
-  }
-
   ~FirstOrderFilter() {}
 
-  Eigen::VectorXf function_dot(float gn, float pl, const Eigen::VectorXf& init_fn_val, const Eigen::VectorXf& fn_t) {
-    return -pl * init_fn_val + gn * fn_t;
+  void initializeFilter(float t, float gn, float pl, Eigen::VectorXf initFnVal) {
+    ts_ = t;
+    gain_ = gn;
+    pole_ = pl;
+
+    initFn_.resize(initFnVal.rows(), initFnVal.cols());
+    initFn2_.resize(initFnVal.rows(), initFnVal.cols());
+    initFn3_.resize(initFnVal.rows(), initFnVal.cols());
+    initFn4_.resize(initFnVal.rows(), initFnVal.cols());
+
+    delta1_.resize(initFnVal.rows(), initFnVal.cols());
+    delta2_.resize(initFnVal.rows(), initFnVal.cols());
+    delta3_.resize(initFnVal.rows(), initFnVal.cols());
+    delta4_.resize(initFnVal.rows(), initFnVal.cols());
+
+    yt_.resize(initFnVal.rows(), initFnVal.cols());
+    initFn_ = initFnVal;
   }
 
-  // compute the integral of first order differential eq. using RK4
-  Eigen::VectorXf getRK4Integral(const Eigen::VectorXf& fn_t) {
-    delta1 = Ts * function_dot(gain, pole, init_fn, fn_t);
-    init_fn2 = init_fn + 0.5 * delta1;
-    delta2 = Ts * function_dot(gain, pole, init_fn2, fn_t);
-    init_fn3 = init_fn + 0.5 * delta2;
-    delta3 = Ts * function_dot(gain, pole, init_fn3, fn_t);
-    init_fn4 = init_fn + 0.5 * delta3;
-    delta4 = Ts * function_dot(gain, pole, init_fn4, fn_t);
-
-    // solution
-    y_t = init_fn + 1 / 6. * (delta1 + 2. * delta2 + 2. * delta3 + delta4);
-    init_fn = y_t;
-
-    return y_t;
+  Eigen::VectorXf functionDot(float gn, float pl, const Eigen::VectorXf& initFnVal, const Eigen::VectorXf& fnT) {
+    return -pl * initFnVal + gn * fnT;
   }
 
-  Eigen::VectorXf getEulerIntegral(const Eigen::VectorXf& fn_t) {
-    delta1 = Ts * function_dot(gain, pole, init_fn, fn_t);
-    // solution
-    y_t = init_fn + delta1;
-    init_fn = y_t;
+  // Compute the integral of first order differential eq. using RK4
+  Eigen::VectorXf getRK4Integral(const Eigen::VectorXf& fnT) {
+    delta1_ = ts_ * functionDot(gain_, pole_, initFn_, fnT);
+    initFn2_ = initFn_ + 0.5 * delta1_;
+    delta2_ = ts_ * functionDot(gain_, pole_, initFn2_, fnT);
+    initFn3_ = initFn_ + 0.5 * delta2_;
+    delta3_ = ts_ * functionDot(gain_, pole_, initFn3_, fnT);
+    initFn4_ = initFn_ + 0.5 * delta3_;
+    delta4_ = ts_ * functionDot(gain_, pole_, initFn4_, fnT);
 
-    return y_t;
+    // Solution
+    yt_ = initFn_ + 1 / 6. * (delta1_ + 2. * delta2_ + 2. * delta3_ + delta4_);
+    initFn_ = yt_;
+
+    return yt_;
   }
 
-  void setGain(float _gain) { gain = _gain; }
+  Eigen::VectorXf getEulerIntegral(const Eigen::VectorXf& fnT) {
+    delta1_ = ts_ * functionDot(gain_, pole_, initFn_, fnT);
 
-  void setPole(float _pole) { pole = _pole; }
+    // Solution
+    yt_ = initFn_ + delta1_;
+    initFn_ = yt_;
 
-  void setSampleTime(float T) { Ts = T; }
+    return yt_;
+  }
+
+  void setGain(float _gain) { gain_ = _gain; }
+
+  void setPole(float _pole) { pole_ = _pole; }
+
+  void setSampleTime(float t) { ts_ = t; }
 };

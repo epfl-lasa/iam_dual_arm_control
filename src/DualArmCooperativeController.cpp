@@ -1,6 +1,7 @@
 
 #include "iam_dual_arm_control/DualArmCooperativeController.hpp"
 
+// BWC Solver variables
 bwc_Vars bwc_vars;
 bwc_Params bwc_params;
 bwc_Workspace bwc_work;
@@ -10,18 +11,18 @@ DualArmCooperativeController::DualArmCooperativeController() {}
 DualArmCooperativeController::~DualArmCooperativeController() {}
 
 bool DualArmCooperativeController::init() {
-  toleranceDistToContact_ = 0.055f;// 0.045
+  toleranceDistToContact_ = 0.055f;
   contactConfidence_ = 0.0f;
-  minFz_ = 30.0f;//30.0 20.0;  // 40.0f;
-  minNF_ = 30.0f;//30.0 20.0;  // 40.0f;
-  maxNF_ = 45.0f;// 45.0f; //  60.0f;
+  minFz_ = 30.0f;
+  minNF_ = 30.0f;
+  maxNF_ = 45.0f;
 
-  muEE_ = 0.9f;     //0.9f; //0.4f;
-  gammaEE_ = 0.9f;  //0.9f; //0.4f;
-  deltaXEE_ = 0.05f;//0.5f;
-  deltaYEE_ = 0.05f;//0.5f;
+  muEE_ = 0.9f;
+  gammaEE_ = 0.9f;
+  deltaXEE_ = 0.05f;
+  deltaYEE_ = 0.05f;
   contactOccured_ = false;
-  targetForce_ = 45.0f;// 45.0f; //  40
+  targetForce_ = 45.0f;
 
   graspMatrixEEs_.setZero();
   optimalContactWrenchEE_.setZero();
@@ -31,7 +32,6 @@ bool DualArmCooperativeController::init() {
 
   for (int k = 0; k < NB_ROBOTS; k++) {
     distToContact_[k] = 1.0f;
-
     worldXstartDesiredEE_[k].setIdentity();
     wrenchCorrectionEE_[k].setZero();
     complementaryConstraintMatrix_[k].setZero();
@@ -43,10 +43,10 @@ bool DualArmCooperativeController::init() {
   }
 
   weigthEEsWrench_.setOnes();
-  weigthEEsWrench_.segment(0, 3) *= 50.0e-2; //1.0e-02  Forces
-  weigthEEsWrench_.segment(3, 3) *= 500.0e-2;//1.0e-02 	Moments
-  weigthEEsWrench_.segment(6, 3) *= 50.0e-2; //1.0e-02 	Forces
-  weigthEEsWrench_.segment(9, 3) *= 500.0e-2;//1.0e-02	Moments
+  weigthEEsWrench_.segment(0, 3) *= 50.0e-2; //Forces
+  weigthEEsWrench_.segment(3, 3) *= 500.0e-2;//Moments
+  weigthEEsWrench_.segment(6, 3) *= 50.0e-2; //Forces
+  weigthEEsWrench_.segment(9, 3) *= 500.0e-2;//Moments
 
   weigthEEsSlack_.setZero();
   weigthEEsSlack_ << 100.0, 100.0, 100.0, 200.0, 200.0, 200.0;

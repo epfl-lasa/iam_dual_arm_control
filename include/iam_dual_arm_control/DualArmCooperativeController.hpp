@@ -1,24 +1,24 @@
 
 #pragma once
 
-#include "eigen3/Eigen/Core"
-#include "eigen3/Eigen/Dense"
-#include "eigen3/Eigen/Geometry"
 #include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <pthread.h>
 #include <vector>
 
-#include "iam_dual_arm_control/tools/Utils.hpp"
+#include "eigen3/Eigen/Core"
+#include "eigen3/Eigen/Dense"
+#include "eigen3/Eigen/Geometry"
 
 extern "C" {
 #include "bwc_solver.h"
 }
 
+#include "iam_dual_arm_control/tools/Utils.hpp"
+
 #define NB_ROBOTS 2// Number of robots
 
-typedef Eigen::Matrix<float, 7, 1> Vector7f;
 typedef Eigen::Matrix<float, 6, 1> Vector6f;
 typedef Eigen::Matrix<float, 6, 6> Matrix6f;
 
@@ -61,6 +61,7 @@ private:
   Vector6f ForceInEE_[NB_ROBOTS];
 
 public:
+
   // Robot ID: left or right
   enum ROBOT { LEFT = 0, RIGHT = 1 };
   // Contact state:

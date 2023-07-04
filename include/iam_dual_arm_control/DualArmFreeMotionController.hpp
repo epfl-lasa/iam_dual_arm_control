@@ -1,13 +1,14 @@
 #pragma once
 
-#include "eigen3/Eigen/Core"
-#include "eigen3/Eigen/Dense"
-#include "eigen3/Eigen/Geometry"
 #include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <pthread.h>
 #include <vector>
+
+#include "eigen3/Eigen/Core"
+#include "eigen3/Eigen/Dense"
+#include "eigen3/Eigen/Geometry"
 
 #include "iam_dual_arm_control/ThrowingDS.h"
 #include "iam_dual_arm_control/tools/Utils.hpp"
@@ -105,10 +106,10 @@ public:
                                  bool isOrient3d);
 
   Eigen::Vector3f computeModulatedMotion(float activation,
-                                           Eigen::Matrix3f basisQ,
-                                           Eigen::Vector3f activationReachEE,
-                                           Eigen::Vector3f activationEENorm,
-                                           Eigen::Vector3f activationEETang);
+                                         Eigen::Matrix3f basisQ,
+                                         Eigen::Vector3f activationReachEE,
+                                         Eigen::Vector3f activationEENorm,
+                                         Eigen::Vector3f activationEETang);
 
   Vector6f compute_modulated_motion_dual(float activation,
                                          Eigen::Matrix3f basisQ[],

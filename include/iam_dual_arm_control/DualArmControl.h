@@ -1,22 +1,23 @@
 #pragma once
 
+#include <chrono>
+#include <ctime>
 #include <deque>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <mutex>
 #include <pthread.h>
+#include <ros/package.h>
 #include <signal.h>
 #include <sstream>
 #include <stdio.h>
 #include <termios.h>
 #include <vector>
 
-#include "iam_dual_arm_control/tools/Keyboard.h"
-#include "iam_dual_arm_control/tools/Utils.hpp"
-#include <chrono>
-#include <ctime>
-
+#include "eigen3/Eigen/Core"
+#include "eigen3/Eigen/Dense"
+#include "eigen3/Eigen/Geometry"
 #include "geometry_msgs/PointStamped.h"
 #include "geometry_msgs/Pose.h"
 #include "geometry_msgs/Quaternion.h"
@@ -27,17 +28,12 @@
 #include "nav_msgs/Path.h"
 #include "ros/ros.h"
 #include "sensor_msgs/JointState.h"
+#include "sg_filter.h"
 #include "std_msgs/Float64.h"
 #include "std_msgs/Float64MultiArray.h"
 #include "std_msgs/Int32.h"
 #include "std_msgs/String.h"
 #include "visualization_msgs/Marker.h"
-#include <ros/package.h>
-
-#include "eigen3/Eigen/Core"
-#include "eigen3/Eigen/Dense"
-#include "eigen3/Eigen/Geometry"
-#include "sg_filter.h"
 
 #include "iam_dual_arm_control/DataLogging.hpp"
 #include "iam_dual_arm_control/DualArmCooperativeController.hpp"
@@ -47,6 +43,8 @@
 #include "iam_dual_arm_control/ThrowingDS.h"
 #include "iam_dual_arm_control/TossTaskParamEstimator.h"
 #include "iam_dual_arm_control/TossingTarget.hpp"
+#include "iam_dual_arm_control/tools/Keyboard.h"
+#include "iam_dual_arm_control/tools/Utils.hpp"
 
 // TODO use const or constexpr
 #define NB_ROBOTS 2// Number of robots

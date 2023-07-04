@@ -1085,7 +1085,7 @@ void DualArmControl::computeCommands() {
         robot_.setQd(robotQd);
         robot_.setVelDesEE(vDesEE);
 
-        Eigen::Vector3f errPosAbs = object_.getWHo().block(0, 3, 3, 1) - Utils<float>::get_abs_3d(robot_.getWHEE());
+        Eigen::Vector3f errPosAbs = object_.getWHo().block(0, 3, 3, 1) - Utils<float>::getAbs3D(robot_.getWHEE());
         Eigen::Vector3f objErrPosAbs = object_.getWHo().block<3, 3>(0, 0).transpose() * errPosAbs;
         Eigen::Vector3f objErrPosAbsParallel = Eigen::Vector3f(objErrPosAbs(0), 0.0f, objErrPosAbs(2));
         float cp_ap = Utils<float>::computeCouplingFactor(objErrPosAbsParallel, 50.0f, 0.17f, 1.0f, true);
@@ -1232,7 +1232,7 @@ void DualArmControl::updateContactState() {
   Eigen::Matrix4f leftEERightEE = robot_.getWHEESpecific(LEFT).inverse() * robot_.getWHEESpecific(RIGHT);
   Eigen::Matrix4f leftGripPoseRightGripPose = object_.getWHGpSpecific(LEFT).inverse() * object_.getWHGpSpecific(RIGHT);
   Eigen::Vector3f errorObjPosVect =
-      Utils<float>::get_abs_3d(object_.getWHGp()) - Utils<float>::get_abs_3d(robot_.getWHEE());
+      Utils<float>::getAbs3D(object_.getWHGp()) - Utils<float>::getAbs3D(robot_.getWHEE());
   errorObjDim_ = fabs(leftEERightEE(2, 3)) - fabs(leftGripPoseRightGripPose(2, 3));
   errorObjPos_ = errorObjPosVect.norm();
 

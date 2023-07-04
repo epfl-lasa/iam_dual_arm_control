@@ -1,12 +1,13 @@
 #pragma once
 
-#include "ros/ros.h"
 #include <Eigen/Dense>
 #include <chrono>
 #include <cmath>
 #include <ctime>
 #include <fstream>
 #include <iostream>
+
+#include "ros/ros.h"
 
 using namespace std;
 
@@ -28,8 +29,7 @@ public:
   bool closeFiles();
 
   // Function to log data from file
-  bool loadDataFromFile(std::string file_name, Eigen::VectorXf& data_all_val);
+  bool loadDataFromFile(std::string fileName, Eigen::VectorXf& dataAllVal);
 
-  bool
-  loadGMMParam(std::string file_name[], Eigen::VectorXf& Priors_, Eigen::MatrixXf& Means_, Eigen::MatrixXf& Covars_);
+  bool loadGMMParam(std::string fileName[], Eigen::VectorXf& priors, Eigen::MatrixXf& means, Eigen::MatrixXf& covars);
 };

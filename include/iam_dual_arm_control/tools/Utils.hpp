@@ -379,17 +379,8 @@ public:
       H[4] = getDHMatrix(-0.0825f, -M_PI / 2.0f, 0.384f, joints(4), convention);
       H[5] = getDHMatrix(0.0f, M_PI / 2.0f, 0.0f, joints(5), convention);
       H[6] = getDHMatrix(0.088f, M_PI / 2.0f, 0.107f, joints(6), convention);
-      // H[7] = getDHMatrix(0.0f,0.0f,0.107f,0.0f,MODIFIED);
       Hee = H[0] * H[1] * H[2] * H[3] * H[4] * H[5] * H[6];
     }
-
-    // std::cerr << H[0] << std::endl << std::endl;
-    // std::cerr << H[0]*H[1] << std::endl << std::endl;
-    // std::cerr << H[0]*H[1]*H[2] << std::endl << std::endl;
-    // std::cerr << H[0]*H[1]*H[2]*H[3] << std::endl << std::endl;
-    // std::cerr << H[0]*H[1]*H[2]*H[3]*H[4] << std::endl << std::endl;
-    // std::cerr << H[0]*H[1]*H[2]*H[3]*H[4]*H[5] << std::endl << std::endl;
-    // std::cerr << H[0]*H[1]*H[2]*H[3]*H[4]*H[5]*H[6] << std::endl << std::endl;
 
     Eigen::Matrix<T, 3, 1> xEE, z0, x0, xk, zk;
 
@@ -427,210 +418,215 @@ public:
   }
 
   static Eigen::Matrix<T, 3, 3>
-  getCombinedRotationMatrix(T weight, Eigen::Matrix<T, 3, 3> w_R_c, Eigen::Matrix<T, 3, 3> w_R_d) {
-    Eigen::Quaternion<T> qc(w_R_c);// current
-    Eigen::Quaternion<T> qd(w_R_d);// desired
-    Eigen::Quaternion<T> q_t = qc.slerp(weight, qd);
-    Eigen::Matrix<T, 3, 3> w_R_cd_t = q_t.toRotationMatrix();
+  getCombinedRotationMatrix(T weight, Eigen::Matrix<T, 3, 3> wRc, Eigen::Matrix<T, 3, 3> wRd) {
+    Eigen::Quaternion<T> qc(wRc);// current
+    Eigen::Quaternion<T> qd(wRd);// desired
+    Eigen::Quaternion<T> qT = qc.slerp(weight, qd);
 
-    return q_t.toRotationMatrix();
+    return qT.toRotationMatrix();
   }
 
   static Eigen::Matrix<T, 4, 1>
-  getSlerpInterpolation(T weight, Eigen::Matrix<T, 3, 3> w_R_c, Eigen::Matrix<T, 3, 3> w_R_d) {
-    Eigen::Quaternion<T> qc(w_R_c);// current
-    Eigen::Quaternion<T> qd(w_R_d);// desired
-    Eigen::Quaternion<T> q_t = qc.slerp(weight, qd);
+  getSlerpInterpolation(T weight, Eigen::Matrix<T, 3, 3> wRc, Eigen::Matrix<T, 3, 3> wRd) {
+    Eigen::Quaternion<T> qc(wRc);// current
+    Eigen::Quaternion<T> qd(wRd);// desired
+    Eigen::Quaternion<T> qT = qc.slerp(weight, qd);
 
-    Eigen::Matrix<T, 4, 1> q_out;
-    q_out << q_t.w(), q_t.x(), q_t.y(), q_t.z();
+    Eigen::Matrix<T, 4, 1> qOut;
+    qOut << qT.w(), qT.x(), qT.y(), qT.z();
 
-    return q_out;
+    return qOut;
   }
 
-  static Eigen::Matrix<T, 6, 1> getPoseErrorCur2Des(Eigen::Matrix<T, 4, 4> d_H_c) {
+  static Eigen::Matrix<T, 6, 1> getPoseErrorCur2Des(Eigen::Matrix<T, 4, 4> dHc) {
     // Pass
-    Eigen::Matrix<T, 6, 1> d_eta_c(6);
-    d_eta_c.segment(0, 3) << d_H_c(0, 3), d_H_c(1, 3), d_H_c(2, 3);
-    // extracrion of the rotation
-    Eigen::Matrix<T, 3, 3> d_R_c = d_H_c.block(0, 0, 3, 3);
-    Eigen::AngleAxis<T> d_AxisAngle_c(d_R_c);
-    Eigen::Matrix<T, 3, 1> d_Axis_c = d_AxisAngle_c.axis();
-    d_eta_c(3) = d_Axis_c(0) * d_AxisAngle_c.angle();
-    d_eta_c(4) = d_Axis_c(1) * d_AxisAngle_c.angle();
-    d_eta_c(5) = d_Axis_c(2) * d_AxisAngle_c.angle();
+    Eigen::Matrix<T, 6, 1> dEtaC(6);
+    dEtaC.segment(0, 3) << dHc(0, 3), dHc(1, 3), dHc(2, 3);
 
-    return d_eta_c;
+    // Extraction of the rotation
+    Eigen::Matrix<T, 3, 3> dRc = dHc.block(0, 0, 3, 3);
+    Eigen::AngleAxis<T> dAxisAngleC(dRc);
+    Eigen::Matrix<T, 3, 1> dAxisC = dAxisAngleC.axis();
+    dEtaC(3) = dAxisC(0) * dAxisAngleC.angle();
+    dEtaC(4) = dAxisC(1) * dAxisAngleC.angle();
+    dEtaC(5) = dAxisC(2) * dAxisAngleC.angle();
+
+    return dEtaC;
   }
 
-  static Eigen::Matrix<T, 3, 1> getOrientationErrorCur2Des(Eigen::Matrix<T, 3, 3> d_R_c) {
+  static Eigen::Matrix<T, 3, 1> getOrientationErrorCur2Des(Eigen::Matrix<T, 3, 3> dRc) {
     // Pass
-    Eigen::Matrix<T, 3, 1> d_eta_c(3);
-    // extracrion of the rotation
-    Eigen::AngleAxis<T> d_AxisAngle_c(d_R_c);
-    Eigen::Matrix<T, 3, 1> d_Axis_c = d_AxisAngle_c.axis();
-    d_eta_c(0) = d_Axis_c(0) * d_AxisAngle_c.angle();
-    d_eta_c(1) = d_Axis_c(1) * d_AxisAngle_c.angle();
-    d_eta_c(2) = d_Axis_c(2) * d_AxisAngle_c.angle();
+    Eigen::Matrix<T, 3, 1> dEtaC(3);
 
-    return d_eta_c;
+    // Extraction of the rotation
+    Eigen::AngleAxis<T> dAxisAngleC(dRc);
+    Eigen::Matrix<T, 3, 1> dAxisC = dAxisAngleC.axis();
+    dEtaC(0) = dAxisC(0) * dAxisAngleC.angle();
+    dEtaC(1) = dAxisC(1) * dAxisAngleC.angle();
+    dEtaC(2) = dAxisC(2) * dAxisAngleC.angle();
+
+    return dEtaC;
   }
 
-  static Eigen::Matrix<T, 3, 3> getMuThetaJacobian(Eigen::Matrix<T, 3, 3> d_R_c) {
-    // extracrion of the rotation
-    Eigen::AngleAxis<T> d_AxisAngle_c(d_R_c);
+  static Eigen::Matrix<T, 3, 3> getMuThetaJacobian(Eigen::Matrix<T, 3, 3> dRc) {
+    // Extraction of the rotation
+    Eigen::AngleAxis<T> dAxisAngleC(dRc);
+
     // function sinc(theta) and sinc(theta/2)
-    T sinc_theta, sinc_theta_2;
-    sinc_theta = sin(d_AxisAngle_c.angle() + 1e-6) / (d_AxisAngle_c.angle() + 1e-6);
-    sinc_theta_2 = sin((d_AxisAngle_c.angle() + 1e-6) / 2.) / ((d_AxisAngle_c.angle() + 1e-6) / 2.);
-    //
-    Eigen::Matrix<T, 3, 1> d_Axis_c = d_AxisAngle_c.axis();
-    Eigen::Matrix<T, 3, 3> Skew_Mu;
-    Skew_Mu.setZero(3, 3);
-    //
-    Skew_Mu << 0.0, -d_Axis_c(2), d_Axis_c(1), d_Axis_c(2), 0.0, -d_Axis_c(0), -d_Axis_c(1), d_Axis_c(0), 0.0;
+    T sincTheta, sincTheta2;
+    sincTheta = sin(dAxisAngleC.angle() + 1e-6) / (dAxisAngleC.angle() + 1e-6);
+    sincTheta2 = sin((dAxisAngleC.angle() + 1e-6) / 2.) / ((dAxisAngleC.angle() + 1e-6) / 2.);
+
+    Eigen::Matrix<T, 3, 1> dAxisC = dAxisAngleC.axis();
+    Eigen::Matrix<T, 3, 3> skewMu;
+    skewMu.setZero(3, 3);
+
+    skewMu << 0.0, -dAxisC(2), dAxisC(1), dAxisC(2), 0.0, -dAxisC(0), -dAxisC(1), dAxisC(0), 0.0;
 
     // Jacobian of the rotation
-    Eigen::Matrix<T, 3, 3> L_Mu_Theta;
-    L_Mu_Theta.setIdentity(3, 3);
-    L_Mu_Theta = L_Mu_Theta - (d_AxisAngle_c.angle() / 2.) * Skew_Mu
-        + (1. - (sinc_theta / pow(sinc_theta_2, 2.))) * Skew_Mu * Skew_Mu;
+    Eigen::Matrix<T, 3, 3> lMuTheta;
+    lMuTheta.setIdentity(3, 3);
+    lMuTheta =
+        lMuTheta - (dAxisAngleC.angle() / 2.) * skewMu + (1. - (sincTheta / pow(sincTheta2, 2.))) * skewMu * skewMu;
 
-    return L_Mu_Theta;
+    return lMuTheta;
   }
 
-  static Eigen::Matrix<T, 3, 1> SaturationVect3(T lim, Eigen::Matrix<T, 3, 1> vel) {
-    Eigen::Matrix<T, 3, 1> v_ = vel;
+  static Eigen::Matrix<T, 3, 1> saturationVect3(T lim, Eigen::Matrix<T, 3, 1> vel) {
+    Eigen::Matrix<T, 3, 1> v = vel;
 
-    if ((fabs(vel(0)) > lim) || (fabs(vel(1)) > lim) || (fabs(vel(2)) > lim)) { v_ = lim * (1. / vel.norm() * vel); }
-    return v_;
+    if ((fabs(vel(0)) > lim) || (fabs(vel(1)) > lim) || (fabs(vel(2)) > lim)) { v = lim * (1. / vel.norm() * vel); }
+    return v;
   }
 
-  static Eigen::Matrix<T, 6, 1> SaturationTwist(T lim_l, T lim_a, Eigen::Matrix<T, 6, 1> vel) {
-    Eigen::Matrix<T, 3, 1> lin_, ang_;
-    lin_ = vel.head(3);
-    ang_ = vel.tail(3);
+  static Eigen::Matrix<T, 6, 1> saturationTwist(T limL, T limA, Eigen::Matrix<T, 6, 1> vel) {
+    Eigen::Matrix<T, 3, 1> lin, ang;
+    lin = vel.head(3);
+    ang = vel.tail(3);
 
-    if ((fabs(lin_(0)) > lim_l) || (fabs(lin_(1)) > lim_l) || (fabs(lin_(2)) > lim_l)) {
-      lin_ = lim_l * (1. / lin_.norm() * lin_);
+    if ((fabs(lin(0)) > limL) || (fabs(lin(1)) > limL) || (fabs(lin(2)) > limL)) {
+      lin = limL * (1. / lin.norm() * lin);
     }
-    if ((fabs(ang_(0)) > lim_a) || (fabs(ang_(1)) > lim_a) || (fabs(ang_(2)) > lim_a)) {
-      ang_ = lim_a * (1. / ang_.norm() * ang_);
+    if ((fabs(ang(0)) > limA) || (fabs(ang(1)) > limA) || (fabs(ang(2)) > limA)) {
+      ang = limA * (1. / ang.norm() * ang);
     }
 
-    Eigen::Matrix<T, 6, 1> Vsat;
-    Vsat.head(3) = lin_;
-    Vsat.tail(3) = ang_;
+    Eigen::Matrix<T, 6, 1> vSat;
+    vSat.head(3) = lin;
+    vSat.tail(3) = ang;
 
-    return Vsat;
+    return vSat;
   }
 
-  static Eigen::Matrix<T, 12, 12> getBimanualTaskTwistMapInv(T a_bi, T b_bi) {
-    //
-    T a_bi_ = a_bi;
-    T b_bi_ = b_bi;
-    if (a_bi_ != 0.0) b_bi_ = 1.0;
-    else if (a_bi_ == 1.0)
-      b_bi_ = 0.0;
+  static Eigen::Matrix<T, 12, 12> getBimanualTaskTwistMapInv(T aBiIn, T bBiIn) {
 
-    Eigen::Matrix<T, 12, 12> C_hands;
-    C_hands.setZero();
-    Eigen::Matrix<T, 6, 6> Idn;
-    Idn.setIdentity();
+    T aBi = aBiIn;
+    T bBi = bBiIn;
+    if (aBi != 0.0) bBi = 1.0;
+    else if (aBi == 1.0)
+      bBi = 0.0;
+
+    Eigen::Matrix<T, 12, 12> cHands;
+    cHands.setZero();
+    Eigen::Matrix<T, 6, 6> idn;
+    idn.setIdentity();
     // Bimanual transformation
-    C_hands.topLeftCorner(6, 6) = Idn;
-    C_hands.topRightCorner(6, 6) = -(1. - a_bi_) * Idn;
-    C_hands.bottomLeftCorner(6, 6) = b_bi_ * Idn;
-    C_hands.bottomRightCorner(6, 6) = a_bi_ * Idn;
+    cHands.topLeftCorner(6, 6) = idn;
+    cHands.topRightCorner(6, 6) = -(1. - aBi) * idn;
+    cHands.bottomLeftCorner(6, 6) = bBi * idn;
+    cHands.bottomRightCorner(6, 6) = aBi * idn;
 
-    return C_hands;
+    return cHands;
   }
 
-  static void getBimanualTransforms(Eigen::Matrix<T, 4, 4> w_H_l,
-                                    Eigen::Matrix<T, 4, 4> w_H_r,
-                                    Eigen::Matrix<T, 4, 4>& w_H_a_,
-                                    Eigen::Matrix<T, 4, 4>& l_H_r_) {
-    w_H_a_.setIdentity(4, 4);
-    l_H_r_.setIdentity(4, 4);
-    // relative transformation
+  static void getBimanualTransforms(Eigen::Matrix<T, 4, 4> wHl,
+                                    Eigen::Matrix<T, 4, 4> wHr,
+                                    Eigen::Matrix<T, 4, 4>& wHa,
+                                    Eigen::Matrix<T, 4, 4>& lHr) {
+    wHa.setIdentity(4, 4);
+    lHr.setIdentity(4, 4);
+
+    // Relative transformation
     // ========================
-    // l_H_r = W_H_l.inverse() * W_H_r;
-    l_H_r_.block(0, 3, 3, 1) = w_H_r.block(0, 3, 3, 1) - w_H_l.block(0, 3, 3, 1);// translation expresse wrt. the world
-    l_H_r_.block(0, 0, 3, 3) =
-        w_H_l.block(0, 0, 3, 3).transpose() * w_H_r.block(0, 0, 3, 3);// orienatation wrt. the left hand
-    // find the abolute transformation
+
+    // translation expresse wrt. the world
+    lHr.block(0, 3, 3, 1) = wHr.block(0, 3, 3, 1) - wHl.block(0, 3, 3, 1);
+    // orientation wrt. the left hand
+    lHr.block(0, 0, 3, 3) = wHl.block(0, 0, 3, 3).transpose() * wHr.block(0, 0, 3, 3);
+
+    // Find the abolute transformation
     // ======================================================
     // Axis angle of relative hands orientation
-    Eigen::Matrix<T, 3, 3> l_R_r_ = l_H_r_.block(0, 0, 3, 3);
-    Eigen::AngleAxis<T> l_orientation_r(l_R_r_);
+    Eigen::Matrix<T, 3, 3> lRr = lHr.block(0, 0, 3, 3);
+    Eigen::AngleAxis<T> lOrientationR(lRr);
     // Average orientation between hands
-    Eigen::Matrix<T, 3, 1> axis_ = l_orientation_r.axis();
-    T theta_ = 0.5 * l_orientation_r.angle();
-    Eigen::AngleAxis<T> av_rot(theta_, axis_);
+    Eigen::Matrix<T, 3, 1> axis = lOrientationR.axis();
+    T theta = 0.5 * lOrientationR.angle();
+    Eigen::AngleAxis<T> avRot(theta, axis);
 
     // Rotation matrix of the absolute hand frame expressed in the asbolute foot frame
-    Eigen::Matrix<T, 3, 3> W_R_a = w_H_l.block(0, 0, 3, 3) * av_rot.toRotationMatrix();
-    w_H_a_.block(0, 3, 3, 1) = 0.5 * (w_H_l.block(0, 3, 3, 1) + w_H_r.block(0, 3, 3, 1));
+    Eigen::Matrix<T, 3, 3> wRa = wHl.block(0, 0, 3, 3) * avRot.toRotationMatrix();
+    wHa.block(0, 3, 3, 1) = 0.5 * (wHl.block(0, 3, 3, 1) + wHr.block(0, 3, 3, 1));
 
-    Eigen::Matrix<T, 3, 3> w_R_l = w_H_l.block(0, 0, 3, 3);
-    Eigen::Matrix<T, 3, 3> w_R_r = w_H_r.block(0, 0, 3, 3);
-    Eigen::Quaternion<T> qc(w_R_l);// current
-    Eigen::Quaternion<T> qd(w_R_r);// desired
+    Eigen::Matrix<T, 3, 3> wRl = wHl.block(0, 0, 3, 3);
+    Eigen::Matrix<T, 3, 3> wRr = wHr.block(0, 0, 3, 3);
+    Eigen::Quaternion<T> qc(wRl);// current
+    Eigen::Quaternion<T> qd(wRr);// desired
     T weight = 0.5;
-    Eigen::Quaternion<T> q_t = qc.slerp(weight, qd);
-    Eigen::Matrix<T, 3, 3> w_R_cd_t = q_t.toRotationMatrix();
+    Eigen::Quaternion<T> qT = qc.slerp(weight, qd);
+    Eigen::Matrix<T, 3, 3> wRCdT = qT.toRotationMatrix();
 
-    w_H_a_.block(0, 0, 3, 3) = w_R_cd_t;//getCombinedRotationMatrix(weight, w_R_l, w_R_r);
+    wHa.block(0, 0, 3, 3) = wRCdT;
   }
 
-  static void getBimanualTwistDistribution(T a_bi,
-                                           T b_bi,
-                                           Eigen::Matrix<T, 6, 1> vel_a,
-                                           Eigen::Matrix<T, 6, 1> vel_r,
-                                           Eigen::Matrix<T, 6, 1>& left_V,
-                                           Eigen::Matrix<T, 6, 1>& right_V) {
-    Eigen::Matrix<T, 12, 12> Th = Utils<T>::getBimanualTaskTwistMapInv(a_bi, b_bi);
-    //
-    left_V = Th.topLeftCorner(6, 6) * vel_a + Th.topRightCorner(6, 6) * vel_r;
-    //
-    right_V = Th.bottomLeftCorner(6, 6) * vel_a + Th.bottomRightCorner(6, 6) * vel_r;
+  static void getBimanualTwistDistribution(T aBiIn,
+                                           T bBiIn,
+                                           Eigen::Matrix<T, 6, 1> velA,
+                                           Eigen::Matrix<T, 6, 1> velR,
+                                           Eigen::Matrix<T, 6, 1>& leftV,
+                                           Eigen::Matrix<T, 6, 1>& rightV) {
+    Eigen::Matrix<T, 12, 12> Th = Utils<T>::getBimanualTaskTwistMapInv(aBiIn, bBiIn);
+
+    leftV = Th.topLeftCorner(6, 6) * velA + Th.topRightCorner(6, 6) * velR;
+
+    rightV = Th.bottomLeftCorner(6, 6) * velA + Th.bottomRightCorner(6, 6) * velR;
   }
 
   static Eigen::Matrix<T, 3, 1> getEulerAnglesXYZ_FixedFrame(Eigen::Matrix<T, 3, 3> R) {
-    // this function computed for a given rotation matrix the rotation angles around X, Y and Z axis considered as fixed.
+    // This function computed for a given rotation matrix the rotation angles around X, Y and Z axis considered as fixed.
     // the rotation matrix is assumed to be a Euler rotation matrix of type ZYX
-    Eigen::Matrix<T, 3, 1> Angles;
-    T Psi_X, Theta_Y, Phi_Z;
-    Psi_X = std::atan2(R(2, 1), R(2, 2));
-    Theta_Y = std::atan2(-R(2, 0), fabs(std::sqrt(std::pow(R(0, 0), 2.) + std::pow(R(1, 0), 2.))));
-    Phi_Z = std::atan2(R(1, 0), R(0, 0));
-    if ((Theta_Y > M_PI / 2.) || (Theta_Y < -M_PI / 2.)) {
-      Psi_X = std::atan2(-R(2, 1), -R(2, 2));
-      Theta_Y = std::atan2(-R(2, 0), -fabs(std::sqrt(std::pow(R(0, 0), 2.) + std::pow(R(1, 0), 2.))));
-      Phi_Z = std::atan2(-R(1, 0), -R(0, 0));
+    Eigen::Matrix<T, 3, 1> angles;
+    T psiX, thetaY, phiZ;
+    psiX = std::atan2(R(2, 1), R(2, 2));
+    thetaY = std::atan2(-R(2, 0), fabs(std::sqrt(std::pow(R(0, 0), 2.) + std::pow(R(1, 0), 2.))));
+    phiZ = std::atan2(R(1, 0), R(0, 0));
+    if ((thetaY > M_PI / 2.) || (thetaY < -M_PI / 2.)) {
+      psiX = std::atan2(-R(2, 1), -R(2, 2));
+      thetaY = std::atan2(-R(2, 0), -fabs(std::sqrt(std::pow(R(0, 0), 2.) + std::pow(R(1, 0), 2.))));
+      phiZ = std::atan2(-R(1, 0), -R(0, 0));
     }
-    Angles(0) = Psi_X;
-    Angles(1) = Theta_Y;
-    Angles(2) = Phi_Z;
+    angles(0) = psiX;
+    angles(1) = thetaY;
+    angles(2) = phiZ;
 
-    return Angles;
+    return angles;
   }
 
-  static T computeCouplingFactor(Eigen::Matrix<T, 3, 1> ep_, T alpha_, T beta_, T gamma_, bool secondOrder) {
-    T t_cpl_ = 1.0 / (alpha_ * ep_.norm() + 1e-15);
-    T cpl_ = 0.0;
-    t_cpl_ = pow(t_cpl_, gamma_);
-    if (secondOrder) cpl_ = 1.0 - exp(-t_cpl_ / beta_) * (1.0 + t_cpl_ / beta_);// 2nd order critically damped
+  static T computeCouplingFactor(Eigen::Matrix<T, 3, 1> ep, T alpha, T beta, T gamma, bool secondOrder) {
+    T tCpl = 1.0 / (alpha * ep.norm() + 1e-15);
+    T cpl = 0.0;
+    tCpl = pow(tCpl, gamma);
+    if (secondOrder) cpl = 1.0 - exp(-tCpl / beta) * (1.0 + tCpl / beta);// 2nd order critically damped
     else
-      cpl_ = 1.0 - exp(-t_cpl_ / beta_);// 1st order increase
+      cpl = 1.0 - exp(-tCpl / beta);// 1st order increase
 
-    return cpl_;
+    return cpl;
   }
 
   static Eigen::Matrix<T, 3, 3> create3dOrthonormalMatrixFromVector(Eigen::Matrix<T, 3, 1> inVec) {
-    //
+
     int n = inVec.rows();
-    Eigen::Matrix<T, 3, 3> basis;// = Eigen::MatrixXf::Random(n,n);
+    Eigen::Matrix<T, 3, 3> basis;
     basis.setRandom(3, 3);
     basis.col(0) = 1. / inVec.norm() * inVec;
 
@@ -671,103 +667,102 @@ public:
     Eigen::Matrix<T, 3, 1> jd = j;
     Eigen::Matrix<T, 3, 1> k = i.cross(j);
     Eigen::Matrix<T, 3, 1> kd = id.cross(jd);
-    //
+
     R1.col(0) = i;
     R1.col(1) = j;
     R1.col(2) = k;
-    //
+
     R0.col(0) = id;
     R0.col(1) = jd;
     R0.col(2) = kd;
   }
 
-  static void
-  UpdatePose_From_VelocityTwist(T dt, Eigen::Matrix<T, 6, 1> in_veloTwist, Eigen::Matrix<T, 4, 4>& Hmg_Trsf) {
-    //
-    Eigen::Matrix<T, 3, 1> pos = Hmg_Trsf.block(0, 3, 3, 1);
-    Eigen::Matrix<T, 3, 3> rot = Hmg_Trsf.block(0, 0, 3, 3);
+  static void updatePoseFromVelocityTwist(T dt, Eigen::Matrix<T, 6, 1> inVeloTwist, Eigen::Matrix<T, 4, 4>& HmgTrsf) {
+
+    Eigen::Matrix<T, 3, 1> pos = HmgTrsf.block(0, 3, 3, 1);
+    Eigen::Matrix<T, 3, 3> rot = HmgTrsf.block(0, 0, 3, 3);
 
     // update position
-    pos = pos + dt * in_veloTwist.head(3);
+    pos = pos + dt * inVeloTwist.head(3);
 
     // update orientation
     Eigen::Quaternion<T> q(rot);
 
-    Eigen::Matrix<T, 4, 3> Trf_quat;
-    Trf_quat << -q.x(), -q.y(), -q.z(), q.w(), q.z(), -q.y(), -q.z(), q.w(), q.x(), q.y(), -q.x(), q.w();
+    Eigen::Matrix<T, 4, 3> TrfQuat;
+    TrfQuat << -q.x(), -q.y(), -q.z(), q.w(), q.z(), -q.y(), -q.z(), q.w(), q.x(), q.y(), -q.x(), q.w();
     // update the quaternion
     Eigen::Matrix<T, 4, 1> qcoeff;
     qcoeff << q.w(), q.x(), q.y(), q.z();
-    qcoeff = qcoeff + dt * 0.5 * Trf_quat * in_veloTwist.tail(3);
+    qcoeff = qcoeff + dt * 0.5 * TrfQuat * inVeloTwist.tail(3);
 
     // normalizing the quaternion
     qcoeff.normalize();
     if (qcoeff.norm() <= 1e-8) { qcoeff = Eigen::Matrix<T, 4, 1>(1.0, 0.0, 0.0, 0.0); }
-    //
-    Eigen::Quaternion<T> q_new(qcoeff(0), qcoeff(1), qcoeff(2), qcoeff(3));// w, x, y, z
-    //
-    Hmg_Trsf.setZero();
-    //
-    Hmg_Trsf.block(0, 0, 3, 3) = q_new.toRotationMatrix();//rot; //
-    Hmg_Trsf.block(0, 3, 3, 1) = pos;
-    Hmg_Trsf(3, 3) = 1.0;
+
+    Eigen::Quaternion<T> qNew(qcoeff(0), qcoeff(1), qcoeff(2), qcoeff(3));// w, x, y, z
+
+    HmgTrsf.setZero();
+
+    HmgTrsf.block(0, 0, 3, 3) = qNew.toRotationMatrix();
+    HmgTrsf.block(0, 3, 3, 1) = pos;
+    HmgTrsf(3, 3) = 1.0;
   }
 
-  static void UpdatePose_From_VelocityTwist(T dt,
-                                            Eigen::Matrix<T, 6, 1> in_veloTwist,
-                                            Eigen::Matrix<T, 3, 1>& curPos,
-                                            Eigen::Matrix<T, 4, 1>& curOrient) {
-    //
+  static void updatePoseFromVelocityTwist(T dt,
+                                          Eigen::Matrix<T, 6, 1> inVeloTwist,
+                                          Eigen::Matrix<T, 3, 1>& curPos,
+                                          Eigen::Matrix<T, 4, 1>& curOrient) {
+
     Eigen::Matrix<T, 4, 4> cur_Hmg_Trsf = Utils<T>::pose2HomoMx(curPos, curOrient);
 
     // update position
-    curPos = curPos + dt * in_veloTwist.head(3);
+    curPos = curPos + dt * inVeloTwist.head(3);
 
     // update orientation
-    Eigen::Matrix<T, 4, 3> Trf_quat;
-    Trf_quat << -curOrient(1), -curOrient(2), -curOrient(3), curOrient(0), curOrient(3), -curOrient(2), -curOrient(3),
+    Eigen::Matrix<T, 4, 3> TrfQuat;
+    TrfQuat << -curOrient(1), -curOrient(2), -curOrient(3), curOrient(0), curOrient(3), -curOrient(2), -curOrient(3),
         curOrient(0), curOrient(1), curOrient(2), -curOrient(1), curOrient(0);
     // update the quaternion
-    curOrient = curOrient + dt * 0.5 * Trf_quat * in_veloTwist.tail(3);
+    curOrient = curOrient + dt * 0.5 * TrfQuat * inVeloTwist.tail(3);
 
     // normalizing the quaternion
     curOrient.normalize();
     if (curOrient.norm() <= 1e-8) { curOrient = Eigen::Matrix<T, 4, 1>(1.0, 0.0, 0.0, 0.0); }
   }
 
-  static Eigen::Matrix<T, 3, 1> cartesian2planar(Eigen::Matrix<T, 3, 1> Pos_d) {
+  static Eigen::Matrix<T, 3, 1> cartesian2planar(Eigen::Matrix<T, 3, 1> posD) {
 
     Eigen::Matrix<T, 3, 1> out;
     out.setZero();
-    out(0) = Pos_d.head(2).norm();          // r
-    out(1) = Pos_d(2);                      // z
-    out(2) = std::atan2(Pos_d(1), Pos_d(0));// phi
+    out(0) = posD.head(2).norm();         // r
+    out(1) = posD(2);                     // z
+    out(2) = std::atan2(posD(1), posD(0));// phi
     return out;
   }
 
-  static Eigen::Matrix<T, 3, 1> cartesian2spherical(Eigen::Matrix<T, 3, 1> Pos_d) {
+  static Eigen::Matrix<T, 3, 1> cartesian2spherical(Eigen::Matrix<T, 3, 1> posD) {
     //
     Eigen::Matrix<T, 3, 1> out;
     out.setZero();
-    out(0) = Pos_d.norm();// r
-    // out(1) = std::acos( Pos_d(2), out(0));							// theta
-    out(1) = std::atan2(Pos_d.head(2).norm(), Pos_d(2));// theta
-    out(2) = std::atan2(Pos_d(1), Pos_d(0));            // phi
+    out(0) = posD.norm();                             // r
+    out(1) = std::atan2(posD.head(2).norm(), posD(2));// theta
+    out(2) = std::atan2(posD(1), posD(0));            // phi
 
     return out;
   }
 
-  static Eigen::Matrix<T, 3, 1> get_abs_3d(Eigen::Matrix<T, 3, 1> v_left, Eigen::Matrix<T, 3, 1> v_right) {
-    return 0.5 * (v_left + v_right);
-  }
-  static Eigen::Matrix<T, 3, 1> get_abs_3d(Eigen::Matrix<T, 4, 4> H_left, Eigen::Matrix<T, 4, 4> H_right) {
-    return 0.5 * (H_left.block(0, 3, 3, 1) + H_right.block(0, 3, 3, 1));
+  static Eigen::Matrix<T, 3, 1> getAbs3D(Eigen::Matrix<T, 3, 1> vLeft, Eigen::Matrix<T, 3, 1> vRight) {
+    return 0.5 * (vLeft + vRight);
   }
 
-  static Eigen::Matrix<T, 3, 1> get_abs_3d(Eigen::Matrix<T, 3, 1> Vec[2]) { return 0.5 * (Vec[0] + Vec[1]); }
+  static Eigen::Matrix<T, 3, 1> getAbs3D(Eigen::Matrix<T, 4, 4> hLeft, Eigen::Matrix<T, 4, 4> hRight) {
+    return 0.5 * (hLeft.block(0, 3, 3, 1) + hRight.block(0, 3, 3, 1));
+  }
 
-  static Eigen::Matrix<T, 3, 1> get_abs_3d(Eigen::Matrix<T, 6, 1> Vec[2], bool top) {
-    //
+  static Eigen::Matrix<T, 3, 1> getAbs3D(Eigen::Matrix<T, 3, 1> Vec[2]) { return 0.5 * (Vec[0] + Vec[1]); }
+
+  static Eigen::Matrix<T, 3, 1> getAbs3D(Eigen::Matrix<T, 6, 1> Vec[2], bool top) {
+
     if (!top) {
       return 0.5 * (Vec[0].tail(3) + Vec[1].tail(3));
     } else {
@@ -775,7 +770,7 @@ public:
     }
   }
 
-  static Eigen::Matrix<T, 3, 1> get_abs_3d(Eigen::Matrix<T, 4, 4> H[2]) {
+  static Eigen::Matrix<T, 3, 1> getAbs3D(Eigen::Matrix<T, 4, 4> H[2]) {
     return 0.5 * (H[0].block(0, 3, 3, 1) + H[1].block(0, 3, 3, 1));
   }
 };

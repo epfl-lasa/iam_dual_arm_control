@@ -55,7 +55,7 @@ public:
     xtFiltered_->GetOutput(1, temp);
     vt_ = temp;
     xtKalmanFiltered_.update(vt_);
-    vt_ = xtKalmanFiltered_.get_estimate_position();
+    vt_ = xtKalmanFiltered_.getEstimatePosition();
   }
 
   Eigen::Vector3f getXt() { return xt_; }

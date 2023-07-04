@@ -13,25 +13,25 @@
 class KalmanFilter {
 private:
   // Matrices for computation
-  Eigen::MatrixXf A, C, Q, R, P, K, P0;
+  Eigen::MatrixXf A_, C_, Q_, R_, P_, K_, P0_;
 
   // System dimensions
-  int m, n;
+  int m_, n_;
 
   // Initial and current time
-  float t0, t;
+  float t0_, t_;
 
   // Discrete time step
-  float dt;
+  float dt_;
 
   // Is the filter initialized?
-  bool initialized;
+  bool isInitialized_;
 
   // n-size identity
-  Eigen::MatrixXf I;
+  Eigen::MatrixXf I_;
 
   // Estimated states
-  Eigen::VectorXf x_hat, x_hat_new;
+  Eigen::VectorXf xHat_, xHatNew_;
 
 public:
   KalmanFilter(float dt,
@@ -40,9 +40,10 @@ public:
                const Eigen::MatrixXf& Q,
                const Eigen::MatrixXf& R,
                const Eigen::MatrixXf& P) :
-      A(A),
-      C(C), Q(Q), R(R), P0(P), m(C.rows()), n(A.rows()), dt(dt), initialized(false), I(n, n), x_hat(n), x_hat_new(n) {
-    I.setIdentity();
+      A_(A),
+      C_(C), Q_(Q), R_(R), P0_(P), m_(C_.rows()), n_(A_.rows()), dt_(dt), isInitialized_(false), I_(n_, n_), xHat_(n_),
+      xHatNew_(n_) {
+    I_.setIdentity();
   }
 
   /**
@@ -54,22 +55,22 @@ public:
   * @brief Initialize the filter with initial states as zero.
   */
   void init() {
-    x_hat.setZero();
-    P = P0;
-    t0 = 0;
-    t = t0;
-    initialized = true;
+    xHat_.setZero();
+    P_ = P0_;
+    t0_ = 0;
+    t_ = t0_;
+    isInitialized_ = true;
   }
 
   /**
   * @brief Initialize the filter with a guess for initial states.
   */
   void init(float t0, const Eigen::VectorXf& x0) {
-    x_hat = x0;
-    P = P0;
-    this->t0 = t0;
-    t = t0;
-    initialized = true;
+    xHat_ = x0;
+    P_ = P0_;
+    this->t0_ = t0;
+    t_ = t0_;
+    isInitialized_ = true;
   }
   /**
   * @brief Update the estimated state based on measured values. The
@@ -77,16 +78,16 @@ public:
   */
   void update(const Eigen::VectorXf& y) {
 
-    if (!initialized) throw std::runtime_error("Filter is not initialized!");
+    if (!isInitialized_) throw std::runtime_error("Filter is not initialized!");
 
-    x_hat_new = A * x_hat;
-    P = A * P * A.transpose() + Q;
-    K = P * C.transpose() * (C * P * C.transpose() + R).inverse();
-    x_hat_new += K * (y - C * x_hat_new);
-    P = (I - K * C) * P;
-    x_hat = x_hat_new;
+    xHatNew_ = A_ * xHat_;
+    P_ = A_ * P_ * A_.transpose() + Q_;
+    K_ = P_ * C_.transpose() * (C_ * P_ * C_.transpose() + R_).inverse();
+    xHatNew_ += K_ * (y - C_ * xHatNew_);
+    P_ = (I_ - K_ * C_) * P_;
+    xHat_ = xHatNew_;
 
-    t += dt;
+    t_ += dt_;
   }
   /**
   * @brief Update the estimated state based on measured values,
@@ -94,15 +95,15 @@ public:
   */
   void update(const Eigen::VectorXf& y, float dt, const Eigen::MatrixXf A) {
 
-    this->A = A;
-    this->dt = dt;
+    this->A_ = A;
+    this->dt_ = dt;
     update(y);
   }
   /**
   * @brief Return the current state and time.
   */
-  Eigen::VectorXf state() { return x_hat; };
-  float time() { return t; };
+  Eigen::VectorXf state() { return xHat_; };
+  float time() { return t_; };
 
-  void setState(const Eigen::VectorXf& x_hat_1) { x_hat = x_hat_1; }
+  void setState(const Eigen::VectorXf& x_hat_1) { xHat_ = x_hat_1; }
 };

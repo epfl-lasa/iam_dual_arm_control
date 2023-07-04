@@ -85,62 +85,61 @@ bool DataLogging::closeFiles() {
 }
 
 // Function to log data from file
-bool DataLogging::loadDataFromFile(std::string file_name, Eigen::VectorXf& data_all_val) {
+bool DataLogging::loadDataFromFile(std::string fileName, Eigen::VectorXf& dataAllVal) {
 
   ifstream inFile;
-  inFile.open(file_name);
+  inFile.open(fileName);
   if (!inFile) {
     cout << "Unable to open file \n";
     exit(1);// terminate with error
   }
 
-  std::vector<float> data_val;
+  std::vector<float> dataVal;
   float x;
-  while (inFile >> x) { data_val.push_back(x); }
+  while (inFile >> x) { dataVal.push_back(x); }
 
-  int size_data_val = data_val.size();
-  data_all_val.resize(size_data_val);
-  for (int i = 0; i < size_data_val; i++) data_all_val(i) = data_val[i];
+  int sizeDataVal = dataVal.size();
+  dataAllVal.resize(sizeDataVal);
+  for (int i = 0; i < sizeDataVal; i++) dataAllVal(i) = dataVal[i];
 
   return true;
 }
 
-bool DataLogging::loadGMMParam(std::string file_name[],
-                               Eigen::VectorXf& Priors_,
-                               Eigen::MatrixXf& Means_,
-                               Eigen::MatrixXf& Covars_) {
+bool DataLogging::loadGMMParam(std::string fileName[],
+                               Eigen::VectorXf& priors,
+                               Eigen::MatrixXf& means,
+                               Eigen::MatrixXf& covars) {
 
-  std::string Priors_file_name = file_name[0];// + "_prio.txt";
-  std::string Means_file_name = file_name[1]; // + "_mu.txt";
-  std::string Covar_file_name = file_name[2]; // + "_sigma.txt";
+  std::string priorsFileName = fileName[0];
+  std::string meansFileName = fileName[1];
+  std::string covarFileName = fileName[2];
+  Eigen::VectorXf priorsAllVal;
+  Eigen::VectorXf meansAllVal;
+  Eigen::VectorXf covarsAllVal;
 
-  Eigen::VectorXf priors_all_val;
-  Eigen::VectorXf means_all_val;
-  Eigen::VectorXf covars_all_val;
-
-  this->loadDataFromFile(Priors_file_name, priors_all_val);
-  this->loadDataFromFile(Means_file_name, means_all_val);
-  this->loadDataFromFile(Covar_file_name, covars_all_val);
+  this->loadDataFromFile(priorsFileName, priorsAllVal);
+  this->loadDataFromFile(meansFileName, meansAllVal);
+  this->loadDataFromFile(covarFileName, covarsAllVal);
 
   // Priors
-  Priors_ = priors_all_val;
+  priors = priorsAllVal;
 
-  int nbStates = priors_all_val.rows();
-  int dataDim = int(means_all_val.rows() / nbStates);
+  int nbStates = priorsAllVal.rows();
+  int dataDim = int(meansAllVal.rows() / nbStates);
 
   // Means
-  Eigen::Map<Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> Means_Mx(means_all_val.data(),
-                                                                                             dataDim,
-                                                                                             nbStates);
-  Means_ = Means_Mx;
+  Eigen::Map<Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> meansMx(meansAllVal.data(),
+                                                                                            dataDim,
+                                                                                            nbStates);
+  means = meansMx;
 
-  int row_cov = dataDim * nbStates;
+  int rowCov = dataDim * nbStates;
 
   // Covariance
-  Eigen::Map<Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> Covar_Mx(covars_all_val.data(),
-                                                                                             row_cov,
-                                                                                             dataDim);
-  Covars_ = Covar_Mx;
+  Eigen::Map<Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> covarMx(covarsAllVal.data(),
+                                                                                            rowCov,
+                                                                                            dataDim);
+  covars = covarMx;
 
   return true;
 }

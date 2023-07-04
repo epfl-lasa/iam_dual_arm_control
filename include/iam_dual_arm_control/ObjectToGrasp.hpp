@@ -1,12 +1,14 @@
 #pragma once
 
+#include <deque>
+#include <vector>
+
 #include "eigen3/Eigen/Core"
 #include "eigen3/Eigen/Dense"
 #include "eigen3/Eigen/Geometry"
-#include "iam_dual_arm_control/tools/Utils.hpp"
 #include "sg_filter.h"
-#include <deque>
-#include <vector>
+
+#include "iam_dual_arm_control/tools/Utils.hpp"
 
 #define NB_ROBOTS 2                // Number of robots
 #define NB_FT_SENSOR_SAMPLES 50    // Number of FT sensors' samples used for initial calibration (compute the offsets)

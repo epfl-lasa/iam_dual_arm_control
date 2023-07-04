@@ -22,10 +22,9 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <mutex>
 #include <sstream>
 #include <stdio.h>
-
-#include <mutex>
 #include <vector>
 
 #include "eigen3/Eigen/Core"

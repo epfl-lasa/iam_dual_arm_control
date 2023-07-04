@@ -166,7 +166,7 @@ Vector6f ThrowingDS::apply(Eigen::Vector3f curPos,
   bool releaseFlag = false;
 
   Vector6f vDesObj = this->generateThrowingMotion(wHce, vEE, wHde_, wHre_, basisQp_, vToss_, releaseFlag);
-  vDesObj = Utils<float>::SaturationTwist(vMax_, wMax_, vDesObj);
+  vDesObj = Utils<float>::saturationTwist(vMax_, wMax_, vDesObj);
   float alp = 0.10f;
   refVtoss_ = (1.0f - alp) * refVtoss_ + alp * vToss_.norm();
   vDesObj.head(3) = vDesObj.head(3) / (vDesObj.head(3).norm() + 1e-10) * refVtoss_;
