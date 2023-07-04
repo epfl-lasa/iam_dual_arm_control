@@ -682,10 +682,10 @@ bool DualArmControl::initTossParamEstimator() {
                            tossVar_.releaseLinearVelocity,
                            tossVar_.releaseAngularVelocity);
 
-  target_._xd_landing = Eigen::Vector3f(1.0f, 0.0f, 0.0f);
+  target_.setXdLanding(Eigen::Vector3f(1.0f, 0.0f, 0.0f));
 
   tossParamEstimator_.estimateTossingParam(TossTaskParamEstimator::PHYS_IDEAL,
-                                           target_._xd_landing,
+                                           target_.getXdLanding(),
                                            tossVar_.releasePosition);
 
   return true;
@@ -764,7 +764,7 @@ bool DualArmControl::init() {
   initRobotParam();
   initObjectParam();
 
-  target_.init_target(3, 3, 10, dt_);
+  target_.init(3, 3, 10, dt_);
 
   // -------- Motion and Force generation: DS --------
 
@@ -778,8 +778,8 @@ bool DualArmControl::init() {
   initTossParamEstimator();
 
   // Object tossing DS
-  target_._xd_landing = Eigen::Vector3f(1.0f, 0.0f, 0.0f);
-  target_._x_intercept = target_._xd_landing;
+  target_.setXdLanding(Eigen::Vector3f(1.0f, 0.0f, 0.0f));
+  target_.setXIntercept(target_.getXdLanding());
   object_.setXPickup(object_.getXo());
 
   // Initialize throwing object
@@ -883,8 +883,10 @@ void DualArmControl::computeCommands() {
 
   // ---------- Intercept/ landing location ----------
   // Compute intercept position with yaw angle limits for throwing object
-  Eigen::Vector3f interceptMin = this->computeInterceptWithTarget(target_._xt, target_._vt, -dualAngularLimit_(2));
-  Eigen::Vector3f interceptMax = this->computeInterceptWithTarget(target_._xt, target_._vt, dualAngularLimit_(2));
+  Eigen::Vector3f interceptMin =
+      this->computeInterceptWithTarget(target_.getXt(), target_.getVt(), -dualAngularLimit_(2));
+  Eigen::Vector3f interceptMax =
+      this->computeInterceptWithTarget(target_.getXt(), target_.getVt(), dualAngularLimit_(2));
 
   // Self imposed limits on intercept region (placing on moving target)
   float intercepLimits[4];
@@ -908,7 +910,9 @@ void DualArmControl::computeCommands() {
 
   Eigen::Vector2f lengthPathAvgSpeedRobot = {dualPathLenAvgSpeed_(0), trackingFactor_ * dualPathLenAvgSpeed_(1)};
   Eigen::Vector2f lengthPathAvgSpeedTarget =
-      tossParamEstimator_.estimateTargetSimplePathLengthAverageSpeed(target_._xt, target_._xd_landing, target_._vt);
+      tossParamEstimator_.estimateTargetSimplePathLengthAverageSpeed(target_.getXt(),
+                                                                     target_.getXdLanding(),
+                                                                     target_.getVt());
 
   float flyTimeObj = 0.200f;
   timeToInterceptTgt_ = 0.0f;
@@ -918,7 +922,7 @@ void DualArmControl::computeCommands() {
   this->findDesiredLandingPosition(isPlacing, isPlaceTossing, isThrowing);
 
   // TODO need logging?
-  ROS_INFO_STREAM(" DDDDDDDDDDDDDDDD  XD LANDING IS : \t " << target_._xd_landing.transpose());
+  ROS_INFO_STREAM(" DDDDDDDDDDDDDDDD  XD LANDING IS : \t " << target_.getXdLanding().transpose());
 
   // Estimate the target state to go
   this->estimateTargetStateToGo(lengthPathAvgSpeedRobot, lengthPathAvgSpeedTarget, flyTimeObj);
@@ -1019,7 +1023,7 @@ void DualArmControl::computeCommands() {
 
       // Target to object Orientation Adaptation
       if (trackTargetRotation_) {
-        this->mirrorTargetToObjectOrientation(target_._qt, qDesTask, dualAngularLimit_);
+        this->mirrorTargetToObjectOrientation(target_.getQt(), qDesTask, dualAngularLimit_);
         dsThrowing_.setTossPose(tossVar_.releasePosition, qDesTask);
       }
 
@@ -1153,7 +1157,7 @@ void DualArmControl::computeCommands() {
     float filBeta = 0.10;
     betaVelMod_ = (1.f - filBeta) * betaVelMod_ + filBeta * betaVelModUnfiltered;
 
-    if ((target_._vt.norm() >= 0.05 && (!releaseAndretract_) && (dsThrowing_.getActivationProximity() <= 0.99f))) {
+    if ((target_.getVt().norm() >= 0.05 && (!releaseAndretract_) && (dsThrowing_.getActivationProximity() <= 0.99f))) {
       vDesEE[0] = robot_.getVelDesEE(0);//TODO
       vDesEE[1] = robot_.getVelDesEE(1);
 
@@ -1477,9 +1481,9 @@ void DualArmControl::updatePoses() {
     object_.setQDo(object_.getQo());
     object_.getDesiredHmgTransform();
 
-    target_._x_intercept = Eigen::Vector3f(object_.getXoSpecific(0), 0.0, object_.getXoSpecific(2));
+    target_.setXIntercept(Eigen::Vector3f(object_.getXoSpecific(0), 0.0, object_.getXoSpecific(2)));
     // For catching
-    freeMotionCtrl_.setVirtualObjectFrame(Utils<float>::pose2HomoMx(target_._x_intercept, object_.getQo()));
+    freeMotionCtrl_.setVirtualObjectFrame(Utils<float>::pose2HomoMx(target_.getXIntercept(), object_.getQo()));
 
     initPoseCount_++;
   }
@@ -1748,7 +1752,7 @@ float DualArmControl::getDesiredYawAngleTarget(const Eigen::Vector4f& qt, const 
 }
 
 void DualArmControl::findDesiredLandingPosition(bool isPlacing, bool isPlaceTossing, bool isThrowing) {
-  Eigen::Vector3f xDesiredLand = target_._xt;
+  Eigen::Vector3f xDesiredLand = target_.getXt();
   float phiThrowing = 0.0;
 
   // Determine the intercept or desired landing position
@@ -1758,28 +1762,30 @@ void DualArmControl::findDesiredLandingPosition(bool isPlacing, bool isPlaceToss
     phiThrowing = std::atan2(xDesiredLand(1), xDesiredLand(0));
 
     if (isTargetFixed_) {
-      target_._xd_landing = xDesiredLand;
+      target_.setXdLanding(xDesiredLand);
     } else {
-      target_._xd_landing = this->computeInterceptWithTarget(target_._xt, target_._vt, phiThrowing);
+      target_.setXdLanding(this->computeInterceptWithTarget(target_.getXt(), target_.getVt(), phiThrowing));
     }
   } else {
-    phiThrowing = this->getDesiredYawAngleTarget(target_._qt, dualAngularLimit_);
+    phiThrowing = this->getDesiredYawAngleTarget(target_.getQt(), dualAngularLimit_);
 
-    target_._xd_landing = this->computeInterceptWithTarget(target_._xt, target_._vt, phiThrowing);
+    target_.setXdLanding(this->computeInterceptWithTarget(target_.getXt(), target_.getVt(), phiThrowing));
   }
 }
 
 void DualArmControl::updateInterceptPosition(float flyTimeObj, float intercepLimits[]) {
 
-  Eigen::Vector3f xTargetIntercept = target_._xt + target_._vt * (timeToInterceptBot_ + flyTimeObj);
+  Eigen::Vector3f xTargetIntercept = target_.getXt() + target_.getVt() * (timeToInterceptBot_ + flyTimeObj);
 
   // Apply constraints
   this->set2DPositionBoxConstraints(xTargetIntercept, intercepLimits);
 
   if (adaptationActive_) {
-    target_._xd_landing.head(2) = xTargetIntercept.head(2);
+    Eigen::Vector3f newXtLanding = target_.getXdLanding();
+    newXtLanding.head(2) = xTargetIntercept.head(2);
+    target_.setXdLanding(newXtLanding);
     if (isPlaceTossing_ || (dualTaskSelector_ == PLACE_TOSSING)) {
-      xPlacing_.head(2) = target_._xt.head(2) + 0.35 * target_._vt.head(2) * (timeToInterceptBot_ + flyTimeObj);
+      xPlacing_.head(2) = target_.getXt().head(2) + 0.35 * target_.getVt().head(2) * (timeToInterceptBot_ + flyTimeObj);
     }
   }
 }
@@ -1788,7 +1794,7 @@ void DualArmControl::findReleaseConfiguration() {
   // Basic release configuration
   if (feasibleAlgo_) {
     // Generate using feasibilty algorithm
-    tossVar_.releasePosition.head(2) = target_._xd_landing.head(2);
+    tossVar_.releasePosition.head(2) = target_.getXdLanding().head(2);
   } else if (pickupBased_) {
     Eigen::Vector3f xReleaseBar = tossVar_.releasePosition - object_.getXPickup();
     float phiThrowBar = std::atan2(xReleaseBar(1), xReleaseBar(0));
@@ -1814,16 +1820,17 @@ void DualArmControl::estimateTargetStateToGo(Eigen::Vector2f lengthPathAvgSpeedR
                                              Eigen::Vector2f lengthPathAvgSpeedTarget,
                                              float flyTimeObj) {
   // Estimation of the target state-to-go
-  target_._xt_state2go = tossParamEstimator_.estimateTargetStateToGo(target_._vt,
-                                                                     target_._xd_landing,
+  target_.setXtStateToGo(tossParamEstimator_.estimateTargetStateToGo(target_.getVt(),
+                                                                     target_.getXdLanding(),
                                                                      lengthPathAvgSpeedRobot,
                                                                      lengthPathAvgSpeedTarget,
-                                                                     flyTimeObj);
+                                                                     flyTimeObj));
 
   // Boolean robot's motion trigger
-  Eigen::Vector3f xtBar = target_._xt - target_._xd_landing;
-  Eigen::Vector3f xtToGoBar = target_._xt_state2go - target_._xd_landing;
-  isMotionTriggered_ = (-xtBar.dot(target_._vt) > 0) && ((initPoseCount_ > 50) && ((xtBar - xtToGoBar).norm() < 0.04f));
+  Eigen::Vector3f xtBar = target_.getXt() - target_.getXdLanding();
+  Eigen::Vector3f xtToGoBar = target_.getXtStateToGo() - target_.getXdLanding();
+  isMotionTriggered_ =
+      (-xtBar.dot(target_.getVt()) > 0) && ((initPoseCount_ > 50) && ((xtBar - xtToGoBar).norm() < 0.04f));
 }
 
 void DualArmControl::computeAdaptationFactors(Eigen::Vector2f lengthPathAvgSpeedRobot,
@@ -1856,8 +1863,9 @@ void DualArmControl::computeAdaptationFactors(Eigen::Vector2f lengthPathAvgSpeed
     // Attractor-based adaptation factor
     freeMotionCtrl_.setActivationAperture(
         adaptationActive_ ? 0.5f
-                * (std::tanh(switchSlopeAdapt_
-                             * ((target_._xd_landing - target_._xt).normalized().dot(target_._vt) - tolAttractor_))
+                * (std::tanh(
+                       switchSlopeAdapt_
+                       * ((target_.getXdLanding() - target_.getXt()).normalized().dot(target_.getVt()) - tolAttractor_))
                    + 1.0)
                           : 1.0f);
   } else {
@@ -1892,10 +1900,15 @@ void DualArmControl::objectPoseCallback(const geometry_msgs::Pose::ConstPtr& msg
 }
 
 void DualArmControl::targetPoseCallback(const geometry_msgs::Pose::ConstPtr& msg) {
-  target_._xt << msg->position.x, msg->position.y, msg->position.z;
-  target_._qt << msg->orientation.w, msg->orientation.x, msg->orientation.y, msg->orientation.z;
+  Eigen::Vector3f newXt;
+  newXt << msg->position.x, msg->position.y, msg->position.z;
+  target_.setXt(newXt);
+
+  Eigen::Vector4f newQt;
+  newQt << msg->orientation.w, msg->orientation.x, msg->orientation.y, msg->orientation.z;
+  target_.setQt(newQt);
   // filtered object position
-  target_.get_filtered_state();
+  target_.getFilteredState();
 }
 
 void DualArmControl::updateBasePoseCallback(const geometry_msgs::Pose::ConstPtr& msg, int k) {
@@ -2093,12 +2106,12 @@ void DualArmControl::saveData() {
                          << tossVar_.releaseOrientation.transpose().format(CSVFormat) << " , ";// release pose
   dataLog_.outRecordPose << tossVar_.restPosition.transpose().format(CSVFormat) << " , "
                          << tossVar_.restOrientation.transpose().format(CSVFormat) << " , ";// rest pose
-  dataLog_.outRecordPose << target_._xt.transpose().format(CSVFormat) << " , "
-                         << target_._qt.transpose().format(CSVFormat) << " , ";// target pose
-  dataLog_.outRecordPose << target_._xd_landing.transpose().format(CSVFormat) << " , "
-                         << target_._x_intercept.transpose().format(CSVFormat)
+  dataLog_.outRecordPose << target_.getXt().transpose().format(CSVFormat) << " , "
+                         << target_.getQt().transpose().format(CSVFormat) << " , ";// target pose
+  dataLog_.outRecordPose << target_.getXdLanding().transpose().format(CSVFormat) << " , "
+                         << target_.getXIntercept().transpose().format(CSVFormat)
                          << " , ";// landing and intercept position
-  dataLog_.outRecordPose << target_._xt_state2go.transpose().format(CSVFormat) << " , "
+  dataLog_.outRecordPose << target_.getXtStateToGo().transpose().format(CSVFormat) << " , "
                          << xPlacing_.transpose().format(CSVFormat) << std::endl;// target state to go
 
   dataLog_.outRecordVel << (float) (cycleCount_ * dt_) << ", ";
@@ -2115,7 +2128,7 @@ void DualArmControl::saveData() {
   dataLog_.outRecordVel << objVelDes_.transpose().format(CSVFormat) << " , ";
   dataLog_.outRecordVel << tossVar_.releaseLinearVelocity.transpose().format(CSVFormat) << " , "
                         << tossVar_.releaseAngularVelocity.transpose().format(CSVFormat) << " , ";
-  dataLog_.outRecordVel << target_._vt.transpose().format(CSVFormat) << std::endl;
+  dataLog_.outRecordVel << target_.getVt().transpose().format(CSVFormat) << std::endl;
 
   dataLog_.outRecordEfforts << (float) (cycleCount_ * dt_) << ", ";
   dataLog_.outRecordEfforts << robot_.getFilteredWrench(LEFT).transpose().format(CSVFormat) << " , ";
@@ -2167,13 +2180,13 @@ void DualArmControl::printData() {
             << std::endl;
   std::cout << "[DualArmControl]: _w_H_o: \n" << object_.getWHo() << std::endl;
   std::cout << "[DualArmControl]: _w_H_Do: \n" << object_.getWHDo() << std::endl;
-  std::cout << "[DualArmControl]: _w_H_t: \n" << Utils<float>::quaternionToRotationMatrix(target_._qt) << std::endl;
+  std::cout << "[DualArmControl]: _w_H_t: \n" << Utils<float>::quaternionToRotationMatrix(target_.getQt()) << std::endl;
   std::cout << "[DualArmControl]: robot_._w_H_ee[LEFT]: \n" << robot_.getWHEESpecific(LEFT) << std::endl;
   std::cout << "[DualArmControl]: _w_H_Dgp[LEFT]: \n" << object_.getWHDgpSpecific(0) << std::endl;
   std::cout << "[DualArmControl]: robot_._w_H_ee[RIGHT]: \n" << robot_.getWHEESpecific(RIGHT) << std::endl;
   std::cout << "[DualArmControl]: _w_H_Dgp[RIGHT]: \n" << object_.getWHDgpSpecific(1) << std::endl;
 
-  std::cout << "[DualArmControl]: 3D STATE 2 GO : \t" << target_._xt_state2go.transpose() << std::endl;
+  std::cout << "[DualArmControl]: 3D STATE 2 GO : \t" << target_.getXtStateToGo().transpose() << std::endl;
   std::cout << "[DualArmControl]:  ------------- sensedContact_: \t" << sensedContact_ << std::endl;
   std::cout << "[DualArmControl]:  ------------- isContact: \t" << isContact << std::endl;
   std::cout << "[DualArmControl]: _Vd_ee[LEFT]:  \t" << robot_.getVelDesEE(LEFT).transpose() << std::endl;
@@ -2223,7 +2236,8 @@ void DualArmControl::printData() {
   std::cout << " AAAA  TRACKING FACTOR AAAAA is  \t " << trackingFactor_ << std::endl;
   std::cout << " AAAA  ADAPTATION STATUS AAAAA is  -----------> : \t " << adaptationActive_ << std::endl;
   std::cout << " PPPPPPPPPPPPPPP xPlacing_ PPPPPPPPPP  is  -----------> : \t " << xPlacing_.transpose() << std::endl;
-  std::cout << " TTTTTTTTTTTTTTT _xTarget TTTTTTTTTTT  is  -----------> : \t " << target_._xt.transpose() << std::endl;
+  std::cout << " TTTTTTTTTTTTTTT _xTarget TTTTTTTTTTT  is  -----------> : \t " << target_.getXt().transpose()
+            << std::endl;
 
   std::cout << " PPPPPPPPPPPPPPP _dual_PathLen PPPPPPPPPP  is  -----------> : \t " << dualPathLenAvgSpeed_(0)
             << std::endl;

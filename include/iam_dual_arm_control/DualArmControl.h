@@ -165,7 +165,7 @@ private:
   Vector6f desiredObjectWrench_;
 
   // ---- Tossing target
-  tossing_target target_;
+  TossingTarget target_;
 
   int initPoseCount_;// Counter of received initial poses measurements
 
