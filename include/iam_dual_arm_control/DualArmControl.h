@@ -46,7 +46,6 @@
 #include "iam_dual_arm_control/tools/Keyboard.h"
 #include "iam_dual_arm_control/tools/Utils.hpp"
 
-// TODO use const or constexpr
 #define NB_ROBOTS 2// Number of robots
 #define NB_FT_SENSOR_SAMPLES                                                                                           \
   50// Number of force torque sensors' samples used for initial calibration (compute the offsets)

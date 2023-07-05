@@ -281,10 +281,6 @@ Vector6f ThrowingDS::generateThrowingMotion(Eigen::Matrix4f wHce,
     // DS for retracting after the tossing position
     Eigen::Vector3f activationRetractEE = Kp_[RETRACT] * (x - xRetr);
 
-    // TODO printing needed?
-    std::cout << "[ThrowingDS]:  -------------XXXXXXXXXXXXXXXXXXXXX ------ activationEETang   : \t"
-              << activationEETang.transpose() << std::endl;
-
     // Get the modulated motion (out_motion: Velocity)
     outMotion.head(3) = (1.0 - activationRetract_)
             * this->computeModulatedMotion(activation, basisQ, activationReachEE, activationEENorm, activationEETang)

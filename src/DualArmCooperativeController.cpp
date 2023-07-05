@@ -103,9 +103,6 @@ void DualArmCooperativeController::checkContactProximity(Eigen::Matrix4f wHee[],
   } else {
     contactConfidence_ = 0.0;
   }
-
-  //   TODO need printing?
-  std::cout << " contactConfidence_ 	aaaaaaaaaaaaaaaaaa	---------- is  \t" << contactConfidence_ << std::endl;
 }
 
 bool DualArmCooperativeController::computeBimanualGraspMatrix(Eigen::Matrix4f wHo,
@@ -199,9 +196,6 @@ void DualArmCooperativeController::computeOptimalWrench(Vector6f desiredObjectWr
 
   // slack variables
   for (int i = 0; i < 6; i++) { optimalSlack_(i) = bwc_vars.w[i]; }
-
-  // TODO need printing?
-  std::cout << " compute controller solved in " << ros::Time::now().toSec() - t_ctrl << std::endl;
 }
 
 bool DualArmCooperativeController::getContactConstraints(Matrix6f worldXstarEE[]) {
@@ -334,13 +328,6 @@ void DualArmCooperativeController::computeControlWrench(Eigen::Matrix4f wHo,
   forceApplied_[RIGHT].head(3) =
       (normalVectToObjSurface_[RIGHT].transpose() * forceApplied_[RIGHT].head(3)) * normalVectToObjSurface_[RIGHT]
       + (z_axis.transpose() * forceApplied_[RIGHT].head(3)) * z_axis;
-
-  // Printing some results
-  //   TODO need printing?
-  std::cout << " OPTIMAL HAND WRENCH   LEFT \t " << optimalContactWrenchEE_.head(6).transpose() << std::endl;
-  std::cout << " OPTIMAL HAND WRENCH  RIGHT \t " << optimalContactWrenchEE_.tail(6).transpose() << std::endl;
-  std::cout << " APPLIED HAND WRENCH  LEFT \t " << forceApplied_[LEFT].transpose() << std::endl;
-  std::cout << " APPLIED HAND WRENCH RIGHT \t " << forceApplied_[RIGHT].transpose() << std::endl;
 }
 
 void DualArmCooperativeController::getPredefinedContactForceProfile(bool goHome,
@@ -371,10 +358,6 @@ void DualArmCooperativeController::getPredefinedContactForceProfile(bool goHome,
       forceApplied_[RIGHT].setZero();
     }
   }
-
-  // TODO need printing?
-  std::cout << " APPLIED HAND WRENCH  LEFT \t " << forceApplied_[LEFT].transpose() << std::endl;
-  std::cout << " APPLIED HAND WRENCH RIGHT \t " << forceApplied_[RIGHT].transpose() << std::endl;
 }
 
 void DualArmCooperativeController::getPredefinedContactForceProfile(bool goHome,
@@ -408,10 +391,6 @@ void DualArmCooperativeController::getPredefinedContactForceProfile(bool goHome,
       forceApplied_[RIGHT].setZero();
     }
   }
-
-  // TODO need printing?
-  std::cout << " APPLIED HAND WRENCH  LEFT \t " << forceApplied_[LEFT].transpose() << std::endl;
-  std::cout << " APPLIED HAND WRENCH RIGHT \t " << forceApplied_[RIGHT].transpose() << std::endl;
 }
 
 void DualArmCooperativeController::getAppliedWrenches(bool goHome,
@@ -429,10 +408,6 @@ void DualArmCooperativeController::getAppliedWrenches(bool goHome,
     // Using Predefined normal forcve
     this->getPredefinedContactForceProfile(goHome, contactState, wHo, wHee, wHcp, objectMass, isForceDetected);
   }
-
-  //   TODO need printing?
-  std::cout << " APPLIED HAND WRENCH  LEFT \t " << forceApplied_[LEFT].transpose() << std::endl;
-  std::cout << " APPLIED HAND WRENCH RIGHT \t " << forceApplied_[RIGHT].transpose() << std::endl;
 }
 
 float DualArmCooperativeController::getContactConfidence() { return contactConfidence_; }

@@ -134,9 +134,6 @@ void DualArmFreeMotionController::computeConstrainedMotion(Eigen::Matrix4f wHee[
   Eigen::Vector3f dPAbs = reachableP_ * wHAp.block<3, 1>(0, 3) + (1.0f - reachableP_) * wHArStb.block<3, 1>(0, 3);
   errorAbs_.head(3) = wHAr.block<3, 1>(0, 3) - dPAbs;
 
-  // TODO printing needed?
-  std::cout << "[dual_arm_control]: Absolute Error: \n" << velAbs_.transpose() << std::endl;
-
   // Coupling the orientation with the position error
   float cplAbs = 1.0f;
 
@@ -158,9 +155,6 @@ void DualArmFreeMotionController::computeConstrainedMotion(Eigen::Matrix4f wHee[
   // ~~~~~~~~~~~~~~~~~~~~~~~
   velAbs_.head(3) = -4.0f * gainPosAbs_ * errorAbs_.head(3);
   velAbs_.tail(3) = -1.0f * jacMuThetaAbs.inverse() * gainOriAbs_ * errorAbs_.tail(3);
-
-  // TODO printing needed?
-  std::cout << "[dual_arm_control]: Absolute Velo: \n" << velAbs_.transpose() << std::endl;
 
   // =====================================
   // Relative velocity of the hands
@@ -198,9 +192,6 @@ void DualArmFreeMotionController::computeConstrainedMotion(Eigen::Matrix4f wHee[
   // computing the velocity
   velRel_.head(3) = -4.0f * gainPosRel_ * errorRel_.head(3);
   velRel_.tail(3) = -4.0f * jacMuThetaRel.inverse() * gainOriRel_ * errorRel_.tail(3);
-
-  // TODO printing needed?
-  std::cout << "[dual_arm_control]: Relative Velo: \n" << velRel_.transpose() << std::endl;
 
   // ========================================
   // Computation of individual EE motion
@@ -730,10 +721,6 @@ Vector6f DualArmFreeMotionController::generatePlacingMotion2(Eigen::Matrix4f wHo
   velObj_.head(3) = -3.0 * gainPosAbs_ * errorObj_.head(3);
   velObj_.tail(3) = -3.0 * jacMuThetaObj.inverse() * gainOriAbs_ * errorObj_.tail(3);
 
-  // TODO need printing?
-  std::cout << "[dual_arm_control]: CCCCCCCCCCC cplOZ: \t" << cplOZ << std::endl;
-  std::cout << "[dual_arm_control]: CCCCCCCCCCC cplDOXY: \t" << cplDOXY << std::endl;
-
   return velObj_;
 }
 
@@ -864,10 +851,6 @@ void DualArmFreeMotionController::dualArmMotion(Eigen::Matrix4f wHee[],
   wHGpT[LEFT].block<3, 1>(0, 3) = Xb[LEFT];
   wHGpT[RIGHT].block<3, 1>(0, 3) = Xb[RIGHT];
 
-  // TODO need printing?
-  std::cout << " POSITION : ---------- [wHGpT] \t" << wHGpT[LEFT].block<3, 1>(0, 3).transpose() << " and \t"
-            << wHGpT[RIGHT].block<3, 1>(0, 3).transpose() << std::endl;
-
   Vector6f vdEENorm[NB_ROBOTS];
   Eigen::Vector4f qdNorm[NB_ROBOTS];
 
@@ -923,10 +906,10 @@ void DualArmFreeMotionController::dualArmMotion(Eigen::Matrix4f wHee[],
   switch (taskType) {
     // Reaching with impact
     case 0: {
-      // TODO: add (Michael todo)
+      // TODO: add
       xStarDual = (1.0 - activationNormal_) * xbDual + activationNormal_ * (xDual - aPrime.inverse() * vdImpDual);
       if (VdImp[LEFT].norm() <= 0.01f || VdImp[RIGHT].norm() <= 0.01f) {
-        // TODO: add (Michael todo)
+        // TODO: add
         xStarDual = (1.0 - activationNormal_) * xbDual + activationNormal_ * xDesDual;
       }
 
@@ -1146,18 +1129,12 @@ void DualArmFreeMotionController::dualArmMotion(Eigen::Matrix4f wHee[],
     speedEE[LEFT] = refVelReach_[LEFT];
     speedEE[RIGHT] = refVelReach_[RIGHT];
 
-    // TODO need printing?
-    std::cout << " XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX HERE IN MOD REACH XXXXXXXXXXXXXXXX " << std::endl;
-
   } else if (isNormImpactVel_) {
     cpAp2 = 0.0f;
     refVelReach_[LEFT] = VdImp[LEFT].norm();
     refVelReach_[RIGHT] = VdImp[RIGHT].norm();
     speedEE[LEFT] = refVelReach_[LEFT];
     speedEE[RIGHT] = refVelReach_[RIGHT];
-
-    // TODO need printing?
-    std::cout << " IIIIIIIIIIIIIIIIIIIIIIIIIIIIII HERE IN NORM IMPACT IIIIIIIIIIIIIII " << std::endl;
   } else {
     cpAp2 = Utils<float>::computeCouplingFactor(oErrorPosAbsParal, 50.0f, 0.10f, 1.5f, true);
     alp = 0.10f;
@@ -1167,9 +1144,6 @@ void DualArmFreeMotionController::dualArmMotion(Eigen::Matrix4f wHee[],
         + alp * ((1.0f - cpAp) * dsEENominal.tail(3).norm() + cpAp * VdImp[RIGHT].norm());
     speedEE[LEFT] = refVelReach_[LEFT];
     speedEE[RIGHT] = refVelReach_[RIGHT];
-
-    // TODO need printing?
-    std::cout << " NNNNNNNNNNNNNNNNNNNNNNNNNNNNNN HERE IN CLASSICAL NNNNNNNNNNNNNNNNN " << std::endl;
   }
 
   if (taskType == 0) {
@@ -1370,9 +1344,6 @@ Eigen::Vector2f DualArmFreeMotionController::predictRobotTranslation(Eigen::Matr
   float vAvg = 0.0f;
   float lpXdX = 0.0f;
 
-  // TODO printing needed?
-  std::cout << " PREDICTION HORIZON is : \t " << sizeXNext << std::endl;
-
   for (int i = 0; i < sizeXNext; i++) {
     vAvg += 0.5f * (dxNextLeft[i].norm() + dxNextRight[i].norm()) / sizeXNext;
     lpXdX += 0.5f * (xNextLeft[i].norm() + xNextRight[i].norm());
@@ -1417,9 +1388,6 @@ Vector6f DualArmFreeMotionController::computeDesiredTaskTwist(const Eigen::Matri
 
   errorEE.head(3) = wHc.block<3, 1>(0, 3) - wHd.block<3, 1>(0, 3);
   errorEE.tail(3) = dAxisAngleC.axis().normalized() * dAxisAngleC.angle();
-
-  // TODO need printing?
-  std::cout << " EEEEEEEEEEEEEEEEEEEEEEOOOOOOOOO errorEE.tail(3) \t" << errorEE.tail(3).transpose() << std::endl;
 
   // ---------------------------------
   // computing of desired ee velocity

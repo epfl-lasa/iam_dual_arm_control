@@ -606,8 +606,6 @@ bool DualArmControl::initDampingTopicCtrl() {
   std::string paramDampingTopicTorqueCtrlLeft;
   std::string paramDampingTopicTorqueCtrlRight;
 
-  // TODO the topic-params set in parameter.yaml doesn't exist for the Torque controller
-
   while (!nh_.getParam("dual_system/passiveDS/dampingTopic/CustomController/left", paramDampingTopicCustomCtrlLeft)) {
     ROS_INFO("Waitinng for param : CustomController/left");
   }
@@ -836,8 +834,6 @@ void DualArmControl::run() {
     // Estimation of the running period
     auto stop = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
-
-    ROS_INFO_STREAM(" [DualArmControl] RUNNING PERIOD ------------> : \t " << duration.count() << " ms");
   }
 
   // Send zero command
@@ -921,9 +917,6 @@ void DualArmControl::computeCommands() {
   // Determine the desired landing position
   this->findDesiredLandingPosition(isPlacing, isPlaceTossing, isThrowing);
 
-  // TODO need logging?
-  ROS_INFO_STREAM(" DDDDDDDDDDDDDDDD  XD LANDING IS : \t " << target_.getXdLanding().transpose());
-
   // Estimate the target state to go
   this->estimateTargetStateToGo(lengthPathAvgSpeedRobot, lengthPathAvgSpeedTarget, flyTimeObj);
 
@@ -946,10 +939,11 @@ void DualArmControl::computeCommands() {
 
   // Adaptation of the desired motion
   this->computeAdaptationFactors(lengthPathAvgSpeedRobot, lengthPathAvgSpeedTarget, flyTimeObj);
-  Eigen::Vector4f robotQd[NB_ROBOTS];//TODO
+  Eigen::Vector4f robotQd[NB_ROBOTS];
   robotQd[0] = robot_.getQdSpecific(0);
   robotQd[1] = robot_.getQdSpecific(1);
-  Vector6f vDesEE[NB_ROBOTS];//TODO
+
+  Vector6f vDesEE[NB_ROBOTS];
   vDesEE[0] = robot_.getVelDesEE(0);
   vDesEE[1] = robot_.getVelDesEE(1);
 
@@ -977,10 +971,10 @@ void DualArmControl::computeCommands() {
 
   } else {//  release_and_retract || release
     if (releaseAndretract_) {
-      robotQd[NB_ROBOTS];//TODO
+      robotQd[NB_ROBOTS];
       robotQd[0] = robot_.getQdSpecific(0);
       robotQd[1] = robot_.getQdSpecific(1);
-      vDesEE[NB_ROBOTS];//TODO
+      vDesEE[NB_ROBOTS];
       vDesEE[0] = robot_.getVelDesEE(0);
       vDesEE[1] = robot_.getVelDesEE(1);
 
@@ -1039,10 +1033,10 @@ void DualArmControl::computeCommands() {
       }
 
       // Motion generation
-      robotQd[NB_ROBOTS];//TODO
+      robotQd[NB_ROBOTS];
       robotQd[0] = robot_.getQdSpecific(0);
       robotQd[1] = robot_.getQdSpecific(1);
-      vDesEE[NB_ROBOTS];//TODO
+      vDesEE[NB_ROBOTS];
       vDesEE[0] = robot_.getVelDesEE(0);
       vDesEE[1] = robot_.getVelDesEE(1);
 
@@ -1073,10 +1067,10 @@ void DualArmControl::computeCommands() {
           (robot_.getWHEESpecific(LEFT)(0, 3) >= 0.72f || robot_.getWHEESpecific(RIGHT)(0, 3) >= 0.72f) ? 0.0f : 1.0f);
 
       if (false || oldDualMethod_) {
-        robotQd[NB_ROBOTS];//TODO
+        robotQd[NB_ROBOTS];
         robotQd[0] = robot_.getQdSpecific(0);
         robotQd[1] = robot_.getQdSpecific(1);
-        vDesEE[NB_ROBOTS];//TODO
+        vDesEE[NB_ROBOTS];
         vDesEE[0] = robot_.getVelDesEE(0);
         vDesEE[1] = robot_.getVelDesEE(1);
 
@@ -1091,16 +1085,16 @@ void DualArmControl::computeCommands() {
         float cp_ap = Utils<float>::computeCouplingFactor(objErrPosAbsParallel, 50.0f, 0.17f, 1.0f, true);
 
         // Create impact at grabbing
-        vDesEE[0] = robot_.getVelDesEE(0);//TODO
+        vDesEE[0] = robot_.getVelDesEE(0);
         vDesEE[1] = robot_.getVelDesEE(1);
         vDesEE[LEFT].head(3) = vDesEE[LEFT].head(3) + dirImp_[LEFT] * cp_ap * desiredVelImp_;
         vDesEE[RIGHT].head(3) = vDesEE[RIGHT].head(3) + dirImp_[RIGHT] * cp_ap * desiredVelImp_;
         robot_.setVelDesEE(vDesEE);
       } else {
-        robotQd[NB_ROBOTS];//TODO
+        robotQd[NB_ROBOTS];
         robotQd[0] = robot_.getQdSpecific(0);
         robotQd[1] = robot_.getQdSpecific(1);
-        vDesEE[NB_ROBOTS];//TODO
+        vDesEE[NB_ROBOTS];
         vDesEE[0] = robot_.getVelDesEE(0);
         vDesEE[1] = robot_.getVelDesEE(1);
 
@@ -1142,7 +1136,7 @@ void DualArmControl::computeCommands() {
         absForceCorrection = absForceCorrection / fabs(absForceCorrection) * 0.2f;
       }
 
-      vDesEE[0] = robot_.getVelDesEE(0);//TODO
+      vDesEE[0] = robot_.getVelDesEE(0);
       vDesEE[1] = robot_.getVelDesEE(1);
       vDesEE[LEFT].head(3) =
           vDesEE[LEFT].head(3) - 0.40 * absForceCorrection * object_.getNormalVectSurfObjSpecific(LEFT);
@@ -1158,7 +1152,7 @@ void DualArmControl::computeCommands() {
     betaVelMod_ = (1.f - filBeta) * betaVelMod_ + filBeta * betaVelModUnfiltered;
 
     if ((target_.getVt().norm() >= 0.05 && (!releaseAndretract_) && (dsThrowing_.getActivationProximity() <= 0.99f))) {
-      vDesEE[0] = robot_.getVelDesEE(0);//TODO
+      vDesEE[0] = robot_.getVelDesEE(0);
       vDesEE[1] = robot_.getVelDesEE(1);
 
       vDesEE[LEFT].head(3) *=
@@ -1196,16 +1190,16 @@ void DualArmControl::computeCommands() {
 
   // Compute the velocity to avoid EE collision
   Vector6f vEEOA[NB_ROBOTS];
-  vEEOA[0] = robot_.getVEEObstacleAvoidance(0);//TODO
+  vEEOA[0] = robot_.getVEEObstacleAvoidance(0);
   vEEOA[1] = robot_.getVEEObstacleAvoidance(1);
   freeMotionCtrl_.computeEEAvoidanceVelocity(robot_.getWHEE(), vEEOA);
   robot_.setVEEObstacleAvoidance(vEEOA);
 
   // Extract linear velocity commands and desired axis angle command
   robotQd[NB_ROBOTS];
-  robotQd[0] = robot_.getQdSpecific(0);//TODO
+  robotQd[0] = robot_.getQdSpecific(0);
   robotQd[1] = robot_.getQdSpecific(1);
-  vDesEE[NB_ROBOTS];//TODO
+  vDesEE[NB_ROBOTS];
   vDesEE[0] = robot_.getVelDesEE(0);
   vDesEE[1] = robot_.getVelDesEE(1);
   this->prepareCommands(vDesEE, robotQd, object_.getVGpO());
@@ -1219,8 +1213,6 @@ void DualArmControl::computeCommands() {
                                    + (int) isDisturbTarget_ * magniturePertConveyorBelt_
                                        * sin((omegaPert + deltaOmegaPert) * dt_ * cycleCount_));
   }
-
-  printData();
 }
 
 // ---- Update
@@ -1253,13 +1245,6 @@ void DualArmControl::updateContactState() {
   sensedContact_ = ((fabs(robot_.getNormalForce(LEFT)) >= forceThreshold_)
                     || (fabs(robot_.getNormalForce(RIGHT)) >= forceThreshold_))
       && (isContact_ == 1.0f);
-
-  // TODO print needed?
-  std::cerr << "[DualArmControl]: contact state: " << (int) contactState_ << " c: " << isContact_ << std::endl;
-  std::cerr << "[DualArmControl]: robot_._normalForceAverage[LEFT]: " << robot_.getNormalForceAverage(LEFT)
-            << std::endl;
-  std::cerr << "[DualArmControl]: robot_._normalForceAverage[RIGHT]: " << robot_.getNormalForceAverage(RIGHT)
-            << std::endl;
 }
 
 void DualArmControl::updateStatesMachines() {
@@ -1593,14 +1578,8 @@ void DualArmControl::mirrorTargetToObjectOrientation(Eigen::Vector4f qt,
     eulerAngleTarget(2) = -angleLimit(2);
   }
 
-  // TODO Need logging?
-  ROS_INFO_STREAM(" QUAT q0 before is : \t" << qo.transpose());
-
   qo = Utils<float>::rotationMatrixToQuaternion(
       Utils<float>::eulerAnglesToRotationMatrix(eulerAngleDesired(0), eulerAngleDesired(1), eulerAngleTarget(2)));
-
-  // TODO Need logging?
-  ROS_INFO_STREAM(" QUAT q0 after is : \t" << qo.transpose());
 }
 
 // control of object position through keyboad
@@ -1617,7 +1596,6 @@ void DualArmControl::keyboardVirtualObjectControl() {
   wHo = object_.getWHo();
   wHo(2, 3) += deltaPos_(2);
   object_.setWHo(wHo);
-  // deltaPos_.setZero(); // TODO should be here? (wasn't here at first but cf keyboardReferenceObjectControl)
 }
 
 // control of attractor position through keyboad
@@ -1717,9 +1695,6 @@ Eigen::Vector3f DualArmControl::computeInterceptWithTarget(const Eigen::Vector3f
   float xCoordLand = xTarget(0);
   float yCoordLand = xTarget(1);
   float phiInitTangent = std::tan(phiInit);
-
-  // TODO need printing?
-  ROS_INFO_STREAM(" TTTTTTTTTTTTTTTTT PHI Throw  TTTTTTTTTTT is  -----------> : \t " << 180.f / M_PI * phiInit);
 
   if (vTarget.head(2).norm() > 1e-2) {
     float phiConveyor = std::atan2(vTarget(1), vTarget(0));
@@ -1891,11 +1866,6 @@ void DualArmControl::objectPoseCallback(const geometry_msgs::Pose::ConstPtr& msg
   // _w_H_o = Utils<float>::pose2HomoMx(_xo, _qo);
   Eigen::Matrix3f w_R_o = Utils<float>::quaternionToRotationMatrix(object_.getQo());
   object_.setXo(xom + w_R_o * t_xo_xom);
-
-  // TODO Never used only set
-  //   _Vo.head(3) = object_.getVo();
-  //   _Vo.tail(3) = object_.getWo();
-  // _w_H_o = Utils<float>::pose2HomoMx(_xo, _qo);
   object_.getHmgTransform();
 }
 
@@ -2025,7 +1995,7 @@ void DualArmControl::publishData() {
 
     // Normal forces
     std_msgs::Float64 msg;
-    msg.data = normalForce_[k];// TODO normalForce_ never set ?! should it be robot_._normalForce ?
+    msg.data = normalForce_[k];
     pubNormalForce_[k].publish(msg);
 
     // Distance EE - attractor
@@ -2168,81 +2138,4 @@ void DualArmControl::publishConveyorBeltCmds() {
   std_msgs::Int32 modeMessage;
   modeMessage.data = modeConveyorBelt_;
   pubConveyorBeltMode_.publish(modeMessage);
-}
-
-void DualArmControl::printData() {
-
-  bool isContact = true && sensedContact_ && CooperativeCtrl.getContactConfidence() == 1.0f;
-
-  std::cout << " MEASURED HAND WRENCH _filteredWrench  LEFT \t " << robot_.getFilteredWrench(LEFT).transpose()
-            << std::endl;
-  std::cout << " MEASURED HAND WRENCH _filteredWrench RIGHT \t " << robot_.getFilteredWrench(RIGHT).transpose()
-            << std::endl;
-  std::cout << "[DualArmControl]: _w_H_o: \n" << object_.getWHo() << std::endl;
-  std::cout << "[DualArmControl]: _w_H_Do: \n" << object_.getWHDo() << std::endl;
-  std::cout << "[DualArmControl]: _w_H_t: \n" << Utils<float>::quaternionToRotationMatrix(target_.getQt()) << std::endl;
-  std::cout << "[DualArmControl]: robot_._w_H_ee[LEFT]: \n" << robot_.getWHEESpecific(LEFT) << std::endl;
-  std::cout << "[DualArmControl]: _w_H_Dgp[LEFT]: \n" << object_.getWHDgpSpecific(0) << std::endl;
-  std::cout << "[DualArmControl]: robot_._w_H_ee[RIGHT]: \n" << robot_.getWHEESpecific(RIGHT) << std::endl;
-  std::cout << "[DualArmControl]: _w_H_Dgp[RIGHT]: \n" << object_.getWHDgpSpecific(1) << std::endl;
-
-  std::cout << "[DualArmControl]: 3D STATE 2 GO : \t" << target_.getXtStateToGo().transpose() << std::endl;
-  std::cout << "[DualArmControl]:  ------------- sensedContact_: \t" << sensedContact_ << std::endl;
-  std::cout << "[DualArmControl]:  ------------- isContact: \t" << isContact << std::endl;
-  std::cout << "[DualArmControl]: _Vd_ee[LEFT]:  \t" << robot_.getVelDesEE(LEFT).transpose() << std::endl;
-  std::cout << "[DualArmControl]: _Vd_ee[RIGHT]: \t" << robot_.getVelDesEE(RIGHT).transpose() << std::endl;
-  std::cout << " vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv " << std::endl;
-  std::cout << "[DualArmControl]: _vd[LEFT]:  \t" << robot_.getVDes(LEFT).transpose() << std::endl;
-  std::cout << "[DualArmControl]: _vd[RIGHT]: \t" << robot_.getVDes(RIGHT).transpose() << std::endl;
-  std::cout << " ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ " << std::endl;
-  std::cout << " COMPUTED HAND WRENCH _fxc  LEFT \t " << robot_.getFXC(LEFT).transpose() << std::endl;
-  std::cout << " COMPUTED HAND WRENCH _fxc RIGHT \t " << robot_.getFXC(RIGHT).transpose() << std::endl;
-  std::cout << " EEEE----------- EEEPPP   desVtoss_ IIIIIIII ----------- ONNNNNNNN \t " << desVtoss_ << std::endl;
-  std::cout << " EEEE----------- EEEPPP   desiredVelImp_  IIIIIIII ----------- ONNNNNNNN \t " << desiredVelImp_
-            << std::endl;
-  std::cout << " EEEE- OBJECT MASS is  \t " << object_.getObjectMass() << std::endl;
-  std::cout << " CONVEYOR_BELT SPEED is  \t " << desSpeedConveyorBelt_ << std::endl;
-  std::cout << " CONVEYOR_BELT DISTURBED is  \t " << isDisturbTarget_ << std::endl;
-  std::cout << " INTERCEPT STATUS is  \t " << hasCaughtOnce_ << std::endl;
-
-  std::cout << " HOME STATUS is --------------------------> : \t " << goHome_ << std::endl;
-  std::cout << " RELEASE_AND_RETRACT STATUS is -----------> : \t " << releaseAndretract_ << std::endl;
-  switch (dualTaskSelector_) {
-    case 0:
-      std::cout << " DUAL_ARM MODE is -----------------------> : \t "
-                << "REACHING-TO-GRASP" << std::endl;
-      break;
-    case 1:
-      std::cout << " DUAL_ARM MODE is -----------------------> : \t "
-                << "LIFTING" << std::endl;
-      break;
-    case 2:
-      std::cout << " DUAL_ARM MODE is -----------------------> : \t "
-                << "TOSSING" << std::endl;
-      break;
-    case 3:
-      std::cout << " DUAL_ARM MODE is -----------------------> : \t "
-                << "PICK_AND_TOSS" << std::endl;
-      break;
-    case 4:
-      std::cout << " DUAL_ARM MODE is -----------------------> : \t "
-                << "PICK_AND_PLACE" << std::endl;
-      break;
-    case 5:
-      std::cout << " DUAL_ARM MODE is -----------------------> : \t "
-                << "PLACE-TOSSING" << std::endl;
-      break;
-  }
-  std::cout << " AAAA  TRACKING FACTOR AAAAA is  \t " << trackingFactor_ << std::endl;
-  std::cout << " AAAA  ADAPTATION STATUS AAAAA is  -----------> : \t " << adaptationActive_ << std::endl;
-  std::cout << " PPPPPPPPPPPPPPP xPlacing_ PPPPPPPPPP  is  -----------> : \t " << xPlacing_.transpose() << std::endl;
-  std::cout << " TTTTTTTTTTTTTTT _xTarget TTTTTTTTTTT  is  -----------> : \t " << target_.getXt().transpose()
-            << std::endl;
-
-  std::cout << " PPPPPPPPPPPPPPP _dual_PathLen PPPPPPPPPP  is  -----------> : \t " << dualPathLenAvgSpeed_(0)
-            << std::endl;
-  std::cout << " PPPPPPPPPPPPPPP _dual_Path_AvgSpeed(1) PPPPPPPPPP  is  -----------> : \t " << dualPathLenAvgSpeed_(1)
-            << std::endl;
-
-  std::cout << "[DualArmControl]: desiredObjectWrench_:  WWWWWWWW  \t" << desiredObjectWrench_.transpose() << std::endl;
 }
