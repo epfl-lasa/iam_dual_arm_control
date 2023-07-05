@@ -1852,20 +1852,19 @@ void DualArmControl::computeAdaptationFactors(Eigen::Vector2f lengthPathAvgSpeed
 // ---- Callback functions
 
 void DualArmControl::objectPoseCallback(const geometry_msgs::Pose::ConstPtr& msg) {
-  // _xo << msg->position.x, 	msg->position.y, 	msg->position.z;
-  Eigen::Vector3f xom, t_xo_xom;
-  Eigen::Vector4f newQo;// _objectDim
+  Eigen::Vector3f xom, tXoXom;
+  Eigen::Vector4f newQo;
   if (!isSimulation_) {
-    t_xo_xom << 0.0f, 0.0f, -object_.getObjectDimSpecific(2) / 2.0f;
+    tXoXom << 0.0f, 0.0f, -object_.getObjectDimSpecific(2) / 2.0f;
   } else {
-    t_xo_xom << 0.0f, 0.0f, 0.0f;
+    tXoXom << 0.0f, 0.0f, 0.0f;
   }
   xom << msg->position.x, msg->position.y, msg->position.z;
   newQo << msg->orientation.w, msg->orientation.x, msg->orientation.y, msg->orientation.z;
   object_.setQo(newQo);
-  // _w_H_o = Utils<float>::pose2HomoMx(_xo, _qo);
+
   Eigen::Matrix3f w_R_o = Utils<float>::quaternionToRotationMatrix(object_.getQo());
-  object_.setXo(xom + w_R_o * t_xo_xom);
+  object_.setXo(xom + w_R_o * tXoXom);
   object_.getHmgTransform();
 }
 
@@ -1877,6 +1876,7 @@ void DualArmControl::targetPoseCallback(const geometry_msgs::Pose::ConstPtr& msg
   Eigen::Vector4f newQt;
   newQt << msg->orientation.w, msg->orientation.x, msg->orientation.y, msg->orientation.z;
   target_.setQt(newQt);
+
   // filtered object position
   target_.getFilteredState();
 }
@@ -1908,17 +1908,23 @@ void DualArmControl::updateRobotWrenchCallback(const geometry_msgs::WrenchStampe
   raw(3) = msg->wrench.torque.x;
   raw(4) = msg->wrench.torque.y;
   raw(5) = msg->wrench.torque.z;
-  //
+
   robot_.updateEndEffectorWrench(raw, object_.getNormalVectSurfObj(), filteredForceGain_, wrenchBiasOK_, k);
 }
 
 void DualArmControl::updateRobotStatesCallback(const sensor_msgs::JointState::ConstPtr& msg, int k) {
-  //
+  Vector7f jointPosition, jointVelocity, jointTorques;
+
   for (int i = 0; i < robot_.getNbJoints(k); i++) {
-    robot_.getJointsPositions(k)(i) = (float) msg->position[i];
-    robot_.getJointsVelocities(k)(i) = (float) msg->velocity[i];
-    robot_.getJointsTorques(k)(i) = (float) msg->effort[i];
-    robot_.getEstimatedJointAccelerations(k);
+    jointPosition(i) = (float) msg->position[i];
+    jointVelocity(i) = (float) msg->velocity[i];
+    jointTorques(i) = (float) msg->effort[i];
+    if (i == robot_.getNbJoints(k) - 1) {
+      robot_.setJointsPositions(jointPosition, k);
+      robot_.setJointsVelocities(jointVelocity, k);
+      robot_.setJointsTorques(jointTorques, k);
+      robot_.getEstimatedJointAccelerations(k);
+    }
   }
 }
 
@@ -2109,17 +2115,15 @@ void DualArmControl::saveData() {
   dataLog_.outRecordTasks << (float) (cycleCount_ * dt_) << ", ";
   dataLog_.outRecordTasks << desiredVelImp_ << " , " << desVtoss_ << " , ";
   dataLog_.outRecordTasks << goHome_ << " , " << goToAttractors_ << " , " << releaseAndretract_ << " , " << isThrowing_
-                          << " , " << isPlacing_ << " , " << isContact_
-                          << " , ";//CooperativeCtrl.getContactConfidence() << " , ";
+                          << " , " << isPlacing_ << " , " << isContact_ << " , ";
   dataLog_.outRecordTasks << freeMotionCtrl_.getActivationProximity() << " , " << freeMotionCtrl_.getActivationNormal()
                           << " , " << freeMotionCtrl_.getActivationTangent() << " , "
                           << freeMotionCtrl_.getActivationRelease() << " , " << freeMotionCtrl_.getActivationRetract()
                           << " , ";
-  // dataLog_.outRecordTasks   	<< dsThrowing_.getActivationProximity() << " , " << dsThrowing_.getActivationNormal()  << " , " << dsThrowing_.getActivationTangent()<< " , " << dsThrowing_.getActivationToss()  << std::endl;
   dataLog_.outRecordTasks << dsThrowing_.getActivationProximity() << " , " << dsThrowing_.getActivationNormal() << " , "
                           << dsThrowing_.getActivationTangent() << " , " << dsThrowing_.getActivationToss() << " , ";
   dataLog_.outRecordTasks << betaVelMod_ << " , " << dualPathLenAvgSpeed_.transpose() << std::endl;
-  //
+
   dataLog_.outRecordJointStates << (float) (cycleCount_ * dt_) << ", ";
   dataLog_.outRecordJointStates << robot_.getJointsPositions(LEFT).transpose().format(CSVFormat) << " , "
                                 << robot_.getJointsPositions(RIGHT).transpose().format(CSVFormat) << " , ";
@@ -2130,7 +2134,6 @@ void DualArmControl::saveData() {
   dataLog_.outRecordJointStates << robot_.getJointsTorques(LEFT).transpose().format(CSVFormat) << " , "
                                 << robot_.getJointsTorques(RIGHT).transpose().format(CSVFormat) << " , ";
   dataLog_.outRecordJointStates << power_left(0, 0) << " , " << power_right(0, 0) << std::endl;
-  // }
 }
 
 void DualArmControl::publishConveyorBeltCmds() {

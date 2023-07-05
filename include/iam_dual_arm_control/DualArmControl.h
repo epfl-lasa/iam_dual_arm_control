@@ -57,6 +57,7 @@
 
 typedef Eigen::Matrix<float, 6, 1> Vector6f;
 typedef Eigen::Matrix<float, 6, 6> Matrix6f;
+typedef Eigen::Matrix<float, 7, 1> Vector7f;
 
 struct SphericalPosition {
   float r;

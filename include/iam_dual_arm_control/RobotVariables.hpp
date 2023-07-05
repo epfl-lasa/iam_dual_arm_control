@@ -15,6 +15,8 @@
   50// Number of force torque sensors' samples used for initial calibration (compute the offsets)
 #define MOVING_FORCE_WINDOW_SIZE 10// Window's size used to average the force data and detect peristent contact
 
+typedef Eigen::Matrix<float, 7, 1> Vector7f;
+
 class RobotVariable {
 
 private:
@@ -279,6 +281,9 @@ public:
   Vector7f getJointsAccelerations(int robotID) { return jointsAccelerations_[robotID]; }
   Vector7f getJointsTorques(int robotID) { return jointsTorques_[robotID]; }
 
+  Vector7f setJointsTorques(Vector7f newValue, int robotID) { jointsTorques_[robotID] = newValue; }
+  Vector7f setJointsVelocities(Vector7f newValue, int robotID) { jointsVelocities_[robotID] = newValue; }
+  Vector7f setJointsPositions(Vector7f newValue, int robotID) { jointsPositions_[robotID] = newValue; }
   void setAxisAngleDes(Eigen::Vector3f newValue, int robotID) { axisAngleDes_[robotID] = newValue; }
   void setVDes(Eigen::Vector3f newValue, int robotID) { vDes_[robotID] = newValue; }
   void setOmegaDes(Eigen::Vector3f newValue, int robotID) { omegaDes_[robotID] = newValue; }
