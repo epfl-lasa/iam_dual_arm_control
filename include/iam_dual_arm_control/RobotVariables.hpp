@@ -262,12 +262,14 @@ public:
   Eigen::Vector3f getX(int robotID) { return x_[robotID]; }
   Eigen::Vector4f getQ(int robotID) { return q_[robotID]; }
   Eigen::Vector4f getQdSpecific(int robotID) { return qd_[robotID]; }
+  Eigen::Vector4f* getQd() { return qd_; }
   Eigen::Vector3f getAxisAngleDes(int robotID) { return axisAngleDes_[robotID]; }
   Eigen::Vector3f getVDes(int robotID) { return vDes_[robotID]; }
   Eigen::Vector3f getOmegaDes(int robotID) { return omegaDes_[robotID]; }
   Vector6f getVelEESpecific(int robotID) { return vEE_[robotID]; }
   Vector6f* getVelEE() { return vEE_; }
-  Vector6f getVelDesEE(int robotID) { return vDesEE_[robotID]; }
+  Vector6f getVelDesEESpecific(int robotID) { return vDesEE_[robotID]; }
+  Vector6f* getVelDesEE() { return vDesEE_; }
   Matrix6f getTwistEEToolCenterPoint(int robotID) { return twistEEToolCenterPoint_[robotID]; }
   Vector6f getVEEObstacleAvoidance(int robotID) { return vEEObstacleAvoidance_[robotID]; }
   Eigen::Vector3f getFXC(int robotID) { return fxc_[robotID]; }

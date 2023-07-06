@@ -75,34 +75,34 @@ public:
   void computeAsyncMotion(Eigen::Matrix4f wHee[],
                           Eigen::Matrix4f wHgp[],
                           Eigen::Matrix4f wHo,
-                          Vector6f (&vDesEE)[NB_ROBOTS],
-                          Eigen::Vector4f (&qd)[NB_ROBOTS],
+                          Vector6f vDesEE[],
+                          Eigen::Vector4f qd[],
                           bool isOrient3d);
   void computeDesiredOrientation(float weight,
                                  Eigen::Matrix4f wHee[],
                                  Eigen::Matrix4f wHgp[],
                                  Eigen::Matrix4f wHo,
-                                 Eigen::Vector4f (&_qd)[NB_ROBOTS],
+                                 Eigen::Vector4f _qd[],
                                  bool isOrient3d);
 
   void computeConstrainedMotion(Eigen::Matrix4f wHee[],
                                 Eigen::Matrix4f wHgp[],
                                 Eigen::Matrix4f wHo,
-                                Vector6f (&vDesEE)[NB_ROBOTS],
-                                Eigen::Vector4f (&qd)[NB_ROBOTS],
+                                Vector6f vDesEE[],
+                                Eigen::Vector4f qd[],
                                 bool isOrient3d);
   void computeReleaseAndRetractMotion(Eigen::Matrix4f wHee[],
                                       Eigen::Matrix4f wHgp[],
                                       Eigen::Matrix4f wHo,
-                                      Vector6f (&vDesEE)[NB_ROBOTS],
-                                      Eigen::Vector4f (&qd)[NB_ROBOTS],
+                                      Vector6f vDesEE[],
+                                      Eigen::Vector4f qd[],
                                       bool isOrient3d);
 
   void computeCoordinatedMotion2(Eigen::Matrix4f wHee[],
                                  Eigen::Matrix4f wHgp[],
                                  Eigen::Matrix4f wHo,
-                                 Vector6f (&vDesEE)[NB_ROBOTS],
-                                 Eigen::Vector4f (&qd)[NB_ROBOTS],
+                                 Vector6f vDesEE[],
+                                 Eigen::Vector4f qd[],
                                  bool isOrient3d);
 
   Eigen::Vector3f computeModulatedMotion(float activation,
@@ -127,8 +127,8 @@ public:
                      Eigen::Vector3f VdImp[],
                      bool isOrient3d,
                      int taskType,
-                     Vector6f (&vDesEE)[NB_ROBOTS],
-                     Eigen::Vector4f (&qd)[NB_ROBOTS],
+                     Vector6f vDesEE[],
+                     Eigen::Vector4f qd[],
                      bool& release_flag);
 
   Eigen::Vector3f getAbsoluteTangentError(Eigen::Matrix4f wHo, Eigen::Matrix4f wHee[], Eigen::Matrix4f wHgp[]);
@@ -138,8 +138,8 @@ public:
                              Eigen::Matrix4f wHo,
                              Eigen::Matrix4f wHDo,
                              float via_height,
-                             Vector6f (&vDesEE)[NB_ROBOTS],
-                             Eigen::Vector4f (&qd)[NB_ROBOTS],
+                             Vector6f vDesEE[],
+                             Eigen::Vector4f qd[],
                              bool isOrient3d);
 
   Vector6f

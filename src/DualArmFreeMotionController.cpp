@@ -101,8 +101,8 @@ bool DualArmFreeMotionController::init(Eigen::Matrix4f wHEEStandby[], Matrix6f g
 void DualArmFreeMotionController::computeConstrainedMotion(Eigen::Matrix4f wHee[],
                                                            Eigen::Matrix4f wHgp[],
                                                            Eigen::Matrix4f wHo,
-                                                           Vector6f (&vDesEE)[NB_ROBOTS],
-                                                           Eigen::Vector4f (&qd)[NB_ROBOTS],
+                                                           Vector6f vDesEE[],
+                                                           Eigen::Vector4f qd[],
                                                            bool isOrient3d) {
   // Computation of desired orientation
   this->computeDesiredOrientation(1.0f, wHee, wHgp, wHo, qd, isOrient3d);
@@ -205,8 +205,8 @@ void DualArmFreeMotionController::computeConstrainedMotion(Eigen::Matrix4f wHee[
 void DualArmFreeMotionController::computeAsyncMotion(Eigen::Matrix4f wHee[],
                                                      Eigen::Matrix4f wHgp[],
                                                      Eigen::Matrix4f wHo,
-                                                     Vector6f (&vDesEE)[NB_ROBOTS],
-                                                     Eigen::Vector4f (&qd)[NB_ROBOTS],
+                                                     Vector6f vDesEE[],
+                                                     Eigen::Vector4f qd[],
                                                      bool isOrient3d) {
 
   for (int k = 0; k < NB_ROBOTS; k++) {
@@ -245,7 +245,7 @@ void DualArmFreeMotionController::computeDesiredOrientation(float weight,
                                                             Eigen::Matrix4f wHee[],
                                                             Eigen::Matrix4f wHgp[],
                                                             Eigen::Matrix4f wHo,
-                                                            Eigen::Vector4f (&qd)[NB_ROBOTS],
+                                                            Eigen::Vector4f qd[],
                                                             bool isOrient3d) {
 
   if (isOrient3d) {
@@ -300,8 +300,8 @@ void DualArmFreeMotionController::computeDesiredOrientation(float weight,
 void DualArmFreeMotionController::computeReleaseAndRetractMotion(Eigen::Matrix4f wHee[],
                                                                  Eigen::Matrix4f wHgp[],
                                                                  Eigen::Matrix4f wHo,
-                                                                 Vector6f (&vDesEE)[NB_ROBOTS],
-                                                                 Eigen::Vector4f (&qd)[NB_ROBOTS],
+                                                                 Vector6f vDesEE[],
+                                                                 Eigen::Vector4f qd[],
                                                                  bool isOrient3d) {
   // Computation of desired orientation
   this->computeDesiredOrientation(1.0f, wHee, wHEEStandby_, wHo, qd, isOrient3d);
@@ -408,8 +408,8 @@ void DualArmFreeMotionController::generatePlacingMotion(Eigen::Matrix4f wHee[],
                                                         Eigen::Matrix4f wHo,
                                                         Eigen::Matrix4f wHDo,
                                                         float viaHeight,
-                                                        Vector6f (&vDesEE)[NB_ROBOTS],
-                                                        Eigen::Vector4f (&qd)[NB_ROBOTS],
+                                                        Vector6f vDesEE[],
+                                                        Eigen::Vector4f qd[],
                                                         bool isOrient3d) {
   // Computation of desired orientation
   this->computeDesiredOrientation(1.0f, wHee, wHgp, wHo, qd, isOrient3d);
@@ -522,8 +522,8 @@ void DualArmFreeMotionController::generatePlacingMotion(Eigen::Matrix4f wHee[],
 void DualArmFreeMotionController::computeCoordinatedMotion2(Eigen::Matrix4f wHee[],
                                                             Eigen::Matrix4f wHgp[],
                                                             Eigen::Matrix4f wHo,
-                                                            Vector6f (&vDesEE)[NB_ROBOTS],
-                                                            Eigen::Vector4f (&qd)[NB_ROBOTS],
+                                                            Vector6f vDesEE[],
+                                                            Eigen::Vector4f qd[],
                                                             bool isOrient3d) {
 
   float coordAbs = Utils<float>::computeCouplingFactor(errorAbs_.head(3), 50.0f, 0.02f, 1.0f, true);
@@ -783,8 +783,8 @@ void DualArmFreeMotionController::dualArmMotion(Eigen::Matrix4f wHee[],
                                                 Eigen::Vector3f VdImp[],
                                                 bool isOrient3d,
                                                 int taskType,
-                                                Vector6f (&vDesEE)[NB_ROBOTS],
-                                                Eigen::Vector4f (&qd)[NB_ROBOTS],
+                                                Vector6f vDesEE[],
+                                                Eigen::Vector4f qd[],
                                                 bool& releaseFlag) {
   // States and desired states
   Eigen::Vector3f X[NB_ROBOTS],// position of ee

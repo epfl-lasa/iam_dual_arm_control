@@ -834,6 +834,7 @@ void DualArmControl::run() {
     // Estimation of the running period
     auto stop = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+    std::cout << "GO releaseAndretract_ : " << releaseAndretract_ << std::endl;
   }
 
   // Send zero command
@@ -877,6 +878,7 @@ void DualArmControl::computeCommands() {
   bool isForceDetected =
       (robot_.getNormalForceAverage(LEFT) > forceThreshold_ || robot_.getNormalForceAverage(RIGHT) > forceThreshold_);
 
+  Vector6f vDesEE[NB_ROBOTS];
   // ---------- Intercept/ landing location ----------
   // Compute intercept position with yaw angle limits for throwing object
   Eigen::Vector3f interceptMin =
@@ -939,20 +941,14 @@ void DualArmControl::computeCommands() {
 
   // Adaptation of the desired motion
   this->computeAdaptationFactors(lengthPathAvgSpeedRobot, lengthPathAvgSpeedTarget, flyTimeObj);
-  Eigen::Vector4f robotQd[NB_ROBOTS];
-  robotQd[0] = robot_.getQdSpecific(0);
-  robotQd[1] = robot_.getQdSpecific(1);
-
-  Vector6f vDesEE[NB_ROBOTS];
-  vDesEE[0] = robot_.getVelDesEE(0);
-  vDesEE[1] = robot_.getVelDesEE(1);
 
   if (goHome_) {
-    freeMotionCtrl_
-        .computeAsyncMotion(robot_.getWHEE(), robot_.getWHEEStandby(), object_.getWHo(), vDesEE, robotQd, true);
-
-    robot_.setQd(robotQd);
-    robot_.setVelDesEE(vDesEE);
+    freeMotionCtrl_.computeAsyncMotion(robot_.getWHEE(),
+                                       robot_.getWHEEStandby(),
+                                       object_.getWHo(),
+                                       robot_.getVelDesEE(),
+                                       robot_.getQd(),
+                                       true);
 
     objVelDes_ =
         dsThrowing_.apply(object_.getXo(), object_.getQo(), object_.getVo(), Eigen::Vector3f(0.0f, 0.0f, 0.0f));
@@ -971,23 +967,13 @@ void DualArmControl::computeCommands() {
 
   } else {//  release_and_retract || release
     if (releaseAndretract_) {
-      robotQd[NB_ROBOTS];
-      robotQd[0] = robot_.getQdSpecific(0);
-      robotQd[1] = robot_.getQdSpecific(1);
-      vDesEE[NB_ROBOTS];
-      vDesEE[0] = robot_.getVelDesEE(0);
-      vDesEE[1] = robot_.getVelDesEE(1);
 
       freeMotionCtrl_.computeReleaseAndRetractMotion(robot_.getWHEE(),
                                                      object_.getWHDgp(),
                                                      object_.getWHo(),
-                                                     vDesEE,
-                                                     robotQd,
+                                                     robot_.getVelDesEE(),
+                                                     robot_.getQd(),
                                                      true);
-
-      robot_.setQd(robotQd);
-      robot_.setVelDesEE(vDesEE);
-
       isThrowing_ = false;
       isPlacing_ = false;
       isPickupSet_ = false;
@@ -1033,13 +1019,6 @@ void DualArmControl::computeCommands() {
       }
 
       // Motion generation
-      robotQd[NB_ROBOTS];
-      robotQd[0] = robot_.getQdSpecific(0);
-      robotQd[1] = robot_.getQdSpecific(1);
-      vDesEE[NB_ROBOTS];
-      vDesEE[0] = robot_.getVelDesEE(0);
-      vDesEE[1] = robot_.getVelDesEE(1);
-
       freeMotionCtrl_.dualArmMotion(robot_.getWHEE(),
                                     robot_.getVelEE(),
                                     object_.getWHDgp(),
@@ -1050,12 +1029,9 @@ void DualArmControl::computeCommands() {
                                     vdImpact_,
                                     false,
                                     dualTaskSelector_,
-                                    vDesEE,
-                                    robotQd,
+                                    robot_.getVelDesEE(),
+                                    robot_.getQd(),
                                     releaseFlag_);
-
-      robot_.setQd(robotQd);
-      robot_.setVelDesEE(vDesEE);
 
       // Release and Retract condition
       if ((isPlacing && placingDone) || (isPlaceTossing && placeTossingDone) || (isThrowing && tossingDone)) {
@@ -1067,17 +1043,13 @@ void DualArmControl::computeCommands() {
           (robot_.getWHEESpecific(LEFT)(0, 3) >= 0.72f || robot_.getWHEESpecific(RIGHT)(0, 3) >= 0.72f) ? 0.0f : 1.0f);
 
       if (false || oldDualMethod_) {
-        robotQd[NB_ROBOTS];
-        robotQd[0] = robot_.getQdSpecific(0);
-        robotQd[1] = robot_.getQdSpecific(1);
-        vDesEE[NB_ROBOTS];
-        vDesEE[0] = robot_.getVelDesEE(0);
-        vDesEE[1] = robot_.getVelDesEE(1);
 
-        freeMotionCtrl_
-            .computeCoordinatedMotion2(robot_.getWHEE(), object_.getWHGp(), object_.getWHo(), vDesEE, robotQd, false);
-        robot_.setQd(robotQd);
-        robot_.setVelDesEE(vDesEE);
+        freeMotionCtrl_.computeCoordinatedMotion2(robot_.getWHEE(),
+                                                  object_.getWHGp(),
+                                                  object_.getWHo(),
+                                                  robot_.getVelDesEE(),
+                                                  robot_.getQd(),
+                                                  false);
 
         Eigen::Vector3f errPosAbs = object_.getWHo().block(0, 3, 3, 1) - Utils<float>::getAbs3D(robot_.getWHEE());
         Eigen::Vector3f objErrPosAbs = object_.getWHo().block<3, 3>(0, 0).transpose() * errPosAbs;
@@ -1085,18 +1057,10 @@ void DualArmControl::computeCommands() {
         float cp_ap = Utils<float>::computeCouplingFactor(objErrPosAbsParallel, 50.0f, 0.17f, 1.0f, true);
 
         // Create impact at grabbing
-        vDesEE[0] = robot_.getVelDesEE(0);
-        vDesEE[1] = robot_.getVelDesEE(1);
+        Vector6f* vDesEETest = robot_.getVelDesEE();
         vDesEE[LEFT].head(3) = vDesEE[LEFT].head(3) + dirImp_[LEFT] * cp_ap * desiredVelImp_;
         vDesEE[RIGHT].head(3) = vDesEE[RIGHT].head(3) + dirImp_[RIGHT] * cp_ap * desiredVelImp_;
-        robot_.setVelDesEE(vDesEE);
       } else {
-        robotQd[NB_ROBOTS];
-        robotQd[0] = robot_.getQdSpecific(0);
-        robotQd[1] = robot_.getQdSpecific(1);
-        vDesEE[NB_ROBOTS];
-        vDesEE[0] = robot_.getVelDesEE(0);
-        vDesEE[1] = robot_.getVelDesEE(1);
 
         freeMotionCtrl_.dualArmMotion(robot_.getWHEE(),
                                       robot_.getVelEE(),
@@ -1108,11 +1072,9 @@ void DualArmControl::computeCommands() {
                                       vdImpact_,
                                       false,
                                       0,
-                                      vDesEE,
-                                      robotQd,
+                                      robot_.getVelDesEE(),
+                                      robot_.getQd(),
                                       releaseFlag_);
-        robot_.setQd(robotQd);
-        robot_.setVelDesEE(vDesEE);
       }
 
       dsThrowing_.setRefVtoss(desiredVelImp_);
@@ -1136,13 +1098,11 @@ void DualArmControl::computeCommands() {
         absForceCorrection = absForceCorrection / fabs(absForceCorrection) * 0.2f;
       }
 
-      vDesEE[0] = robot_.getVelDesEE(0);
-      vDesEE[1] = robot_.getVelDesEE(1);
+      Vector6f* vDesEETest = robot_.getVelDesEE();
       vDesEE[LEFT].head(3) =
           vDesEE[LEFT].head(3) - 0.40 * absForceCorrection * object_.getNormalVectSurfObjSpecific(LEFT);
       vDesEE[RIGHT].head(3) =
           vDesEE[RIGHT].head(3) - 0.40 * absForceCorrection * object_.getNormalVectSurfObjSpecific(RIGHT);
-      robot_.setVelDesEE(vDesEE);
     }
 
     // ---------- Adaptation ----------
@@ -1152,15 +1112,13 @@ void DualArmControl::computeCommands() {
     betaVelMod_ = (1.f - filBeta) * betaVelMod_ + filBeta * betaVelModUnfiltered;
 
     if ((target_.getVt().norm() >= 0.05 && (!releaseAndretract_) && (dsThrowing_.getActivationProximity() <= 0.99f))) {
-      vDesEE[0] = robot_.getVelDesEE(0);
-      vDesEE[1] = robot_.getVelDesEE(1);
+
+      Vector6f* vDesEETest = robot_.getVelDesEE();
 
       vDesEE[LEFT].head(3) *=
           initSpeedScaling_ * ((float) adaptationActive_ * betaVelMod_ + (1. - (float) adaptationActive_));
       vDesEE[RIGHT].head(3) *=
           initSpeedScaling_ * ((float) adaptationActive_ * betaVelMod_ + (1. - (float) adaptationActive_));
-
-      robot_.setVelDesEE(vDesEE);
     }
 
     // ---------- Compute the object's grasp points velocity ----------
@@ -1196,13 +1154,7 @@ void DualArmControl::computeCommands() {
   robot_.setVEEObstacleAvoidance(vEEOA);
 
   // Extract linear velocity commands and desired axis angle command
-  robotQd[NB_ROBOTS];
-  robotQd[0] = robot_.getQdSpecific(0);
-  robotQd[1] = robot_.getQdSpecific(1);
-  vDesEE[NB_ROBOTS];
-  vDesEE[0] = robot_.getVelDesEE(0);
-  vDesEE[1] = robot_.getVelDesEE(1);
-  this->prepareCommands(vDesEE, robotQd, object_.getVGpO());
+  this->prepareCommands(robot_.getVelDesEE(), robot_.getQd(), object_.getVGpO());
 
   // ---------- Control of conveyor belt speed ----------
   float omegaPert = 2.f * M_PI / 1;
@@ -1813,9 +1765,9 @@ void DualArmControl::computeAdaptationFactors(Eigen::Vector2f lengthPathAvgSpeed
                                               float flyTimeObj) {
   if (isMotionTriggered_) { isIntercepting_ = true; }
 
-  float beta_vel_mod_max =
-      min(2.0f,
-          min((vMax_ / robot_.getVelDesEE(LEFT).head(3).norm()), (vMax_ / robot_.getVelDesEE(RIGHT).head(3).norm())));
+  float beta_vel_mod_max = min(2.0f,
+                               min((vMax_ / robot_.getVelDesEESpecific(LEFT).head(3).norm()),
+                                   (vMax_ / robot_.getVelDesEESpecific(RIGHT).head(3).norm())));
 
   if (isIntercepting_ && !releaseAndretract_) {
     float epsilon = 1e-6;
@@ -2091,8 +2043,8 @@ void DualArmControl::saveData() {
                          << xPlacing_.transpose().format(CSVFormat) << std::endl;// target state to go
 
   dataLog_.outRecordVel << (float) (cycleCount_ * dt_) << ", ";
-  dataLog_.outRecordVel << robot_.getVelDesEE(LEFT).transpose().format(CSVFormat) << " , "
-                        << robot_.getVelDesEE(RIGHT).transpose().format(CSVFormat) << " , ";
+  dataLog_.outRecordVel << robot_.getVelDesEESpecific(LEFT).transpose().format(CSVFormat) << " , "
+                        << robot_.getVelDesEESpecific(RIGHT).transpose().format(CSVFormat) << " , ";
   dataLog_.outRecordVel << robot_.getVelEESpecific(LEFT).transpose().format(CSVFormat) << " , "
                         << robot_.getVelEESpecific(RIGHT).transpose().format(CSVFormat) << " , ";
   dataLog_.outRecordVel << robot_.getVDes(LEFT).transpose().format(CSVFormat) << " , "
