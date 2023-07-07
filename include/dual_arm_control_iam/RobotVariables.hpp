@@ -170,7 +170,7 @@ public:
     twistEEToolCenterPoint_[k].block(0, 3, 3, 3) = skew_Mx_tcp;
   }
 
-  void update_EndEffectorVelocity(Eigen::Vector3f vE, Eigen::Vector3f wE, int k) {
+  void updateEndEffectorVelocity(Eigen::Vector3f vE, Eigen::Vector3f wE, int k) {
     v_[k] = vE;
     w_[k] = wE;
     vEE_[k].head(3) = v_[k];

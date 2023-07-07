@@ -13,10 +13,13 @@ int main(int argc, char** argv) {
   DualArmControlSim DualArmControlSim;
 
   std::string pathYamlFile = "./../config/parameters.yaml";
-  if (!DualArmControlSim.loadParamFromFile(pathYamlFile)) {
+  std::string pathLearnedModelfolder = "./../LearnedModel/model1";
+  if (!DualArmControlSim.loadParamFromFile(pathYamlFile, pathLearnedModelfolder)) {
     std::cerr << "Error loading config file (parameters.yaml)" << std::endl;
     return EXIT_FAILURE;
   }
+
+  DualArmControlSim.init();
 
   // =================================================================
   // =================================================================
@@ -65,24 +68,35 @@ int main(int argc, char** argv) {
   bool releaseFlag = false;// DualArmControlSim.getReleaseFlag();
   double dt = DualArmControlSim.getPeriod();
   float firstEigenPassiveDamping[NB_ROBOTS];
-  Eigen::Vector3f EEPose;
-  Eigen::Vector4f EEOrientation;
+  Eigen::Vector3f eePose, objectPose, targetPose, eeVelLin, eeVelAng;
+  Eigen::Vector4f eeOrientation, objectOrientation, targetOrientation;
+  Vector7f jointPosition, jointVelocity, jointTorques;
+  Eigen::Matrix<float, 6, 1> robotWrench;
   float toolOffsetFromEE[NB_ROBOTS];
 
   // while (!((posError <= dsThrowingCart.getTolerancePos()) && releaseFlag) && count <= 2500)
   while (!releaseFlag && count <= 2500) {
 
-    // // Keyboard commands
-    // updateStatesMachines();
-
     // Update first eigen value of the passive ds controller and its updated value
     // firstEigenPassiveDamping = TODO;
 
-    // // Update the poses of the robots and the object
+    // // Update the poses of the robots and the object TODO
     // updatePoses();
 
     // Compute generated desired motion and forces
-    DualArmControlSim.generateCommands(EEPose, EEOrientation);
+    DualArmControlSim.generateCommands(firstEigenPassiveDamping,
+                                       robotWrench,
+                                       eePose,
+                                       eeOrientation,
+                                       objectPose,
+                                       objectOrientation,
+                                       targetPose,
+                                       targetOrientation,
+                                       eeVelLin,
+                                       eeVelAng,
+                                       jointPosition,
+                                       jointVelocity,
+                                       jointTorques);
 
     // // Publish the commands to be exectued
     // publishCommands();

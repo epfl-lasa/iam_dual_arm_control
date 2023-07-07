@@ -95,8 +95,8 @@ dual_arm_task:
   modulated_reaching: false
   isNorm_impact_vel: false
   isQP_wrench_generation: true
-  objCtrlKey: true
   isTargetFixed: false
+  objCtrlKey: true
   userSelect: false
   # coordination
   coordination:

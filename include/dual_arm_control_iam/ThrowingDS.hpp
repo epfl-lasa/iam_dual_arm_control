@@ -44,16 +44,6 @@ struct tossDsParam {
   bool is2ndOrder;      // boolean for the type of DS  True: second order, false: first order
 };
 
-struct tossingTaskVariables {
-
-  Eigen::Vector3f releasePosition;
-  Eigen::Vector4f releaseOrientation;
-  Eigen::Vector3f releaseLinearVelocity;
-  Eigen::Vector3f releaseAngularVelocity;
-  Eigen::Vector3f restPosition;
-  Eigen::Vector4f restOrientation;
-};
-
 class ThrowingDS {
 private:
   // nominal DS
