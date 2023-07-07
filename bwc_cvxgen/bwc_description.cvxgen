@@ -1,0 +1,103 @@
+# Produced by CVXGEN, 2019-04-06 15:00:00 -0400.
+# CVXGEN is Copyright (C) 2006-2017 Jacob Mattingley, jem@cvxgen.com.
+# The code in this file is Copyright (C) 2006-2017 Jacob Mattingley.
+# CVXGEN, or solvers produced by CVXGEN, cannot be used for commercial
+# applications without prior written permission from Jacob Mattingley.
+
+# Filename: description.cvxgen.
+# Description: A description of the CVXGEN problem.
+
+# Produced by CVXGEN, 2019-02-03 17:20:53 -0500.
+# CVXGEN is Copyright (C) 2006-2017 Jacob Mattingley, jem@cvxgen.com.
+# The code in this file is Copyright (C) 2006-2017 Jacob Mattingley.
+# CVXGEN, or solvers produced by CVXGEN, cannot be used for commercial
+# applications without prior written permission from Jacob Mattingley.
+
+# Filename: description.cvxgen.
+# Description: A description of the CVXGEN problem.
+
+# computation of contact wrenches
+dimensions
+
+  # block indices in relative and absolute motion vector
+
+end
+
+parameters
+
+  #Cost function
+
+  #- Hessian Matrices   : quadratic penalty.
+  QFh(12) nonnegative   #  hands contact wrench
+  Qw(6) nonnegative    #  slack e
+
+  #- Gradiant vector   : linear cost term.
+  pFh(12)
+
+  #- Constraints
+
+  #-Equality Constraints
+  #-constraint matrix
+
+  Gh[i] (12),   i=1..6     # Grasp matrix two hands
+
+  Cplh(6)                  # complementary constraints left hand
+  Cprh(6)                  # Complementary constraints right hand
+
+  #-constraint vector
+
+  b1(6)                   # fo*  (Mo ddotXo + bo - fenv)
+
+  #-Inequality Constraints
+
+  #- contact constraints
+  CLH[i](6), i=1..11             # contact constraint matrix left hand
+  CRH[i](6), i=1..11             # contact constraint matrix left hand
+
+
+  # activation of contact
+  aLH nonnegative
+  aRH nonnegative
+
+  #
+  beta nonnegative
+  lambda nonnegative
+
+end
+
+variables
+
+  Fh(12)  #  hand wrenches
+  w(6)    #  slack variables
+
+end
+
+minimize
+
+  QFh'*square(Fh-pFh) + Qw'*square(w)
+
+subject to
+
+  #-Equality Constraints
+  # Dynamics constraints
+  #beta * sum[j=1..12](Gh[i][j]*Fh[j]) == beta * b1[i], i=1..6
+
+  #sum[j=1..12](Gh[i][j]*Fh[j]) + w[i] == beta * b1[i], i=1..6
+
+  #sum[j=1..3](Gh[i][j]*Fh[j] + Gh[i][6+j]*Fh[6+j]) + w[i] == beta * b1[i], i=1..3
+  #sum[j=1..6](Gh[i][j]*Fh[j] + Gh[i][6+j]*Fh[6+j]) + w[i] == beta * b1[i], i=4..6
+  # distributed desired object dynamics
+  Fh[1] + Fh[6+1] + w[1] == beta * b1[1]
+  Fh[2] + Fh[6+2] + w[2] == beta * b1[2]
+  Fh[3] + Fh[6+3] + w[3] == beta * b1[3]
+  sum[j=1..3](Gh[i][j]*Fh[j] + Gh[i][6+j]*Fh[6+j]) + Fh[i] + Fh[6+i]  + w[i] == beta * b1[i], i=4..6
+
+  # complementary constraint
+  sum[i=1..6](Cplh[i]*Fh[i]) == 0 # left hand
+  sum[i=1..6](Cprh[i]*Fh[i+6]) == 0  # right hand
+
+  # contcat forces constraints
+  sum[j=1..6](CLH[i][j] * Fh[j]) <= 0, i=1..11     # left hand
+  sum[j=1..6](CRH[i][j] * Fh[6+j]) <= 0, i=1..11   # right hand
+
+end
