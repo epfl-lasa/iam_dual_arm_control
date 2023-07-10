@@ -4,9 +4,9 @@
 
 // #include "dual_arm_control_iam/DataLogging.hpp"
 
-using namespace std
+using namespace std;
 
-    class PdfGMR {
+class PdfGMR {
 private:
   Eigen::VectorXf priorGMMToss_;
   Eigen::MatrixXf meanGMMToss_;
