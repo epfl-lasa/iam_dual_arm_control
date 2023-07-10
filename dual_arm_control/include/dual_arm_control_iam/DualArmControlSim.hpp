@@ -295,4 +295,7 @@ public:
 
   bool getReleaseFlag();
   double getPeriod();
+
+  // ---- Keyboard commands
+  // void updateStatesMachines();
 };

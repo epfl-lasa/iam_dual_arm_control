@@ -1042,3 +1042,210 @@ void DualArmControlSim::prepareCommands(Vector6f vDesEE[], Eigen::Vector4f qd[],
 
 bool DualArmControlSim::getReleaseFlag() { return releaseAndretract_; }
 double DualArmControlSim::getPeriod() { return periodT_; }
+
+// void DualArmControlSim::updateStatesMachines() {
+//   keyboard::nonBlock(1);
+
+//   if (keyboard::khBit() != 0) {
+//     char keyboardCommand = fgetc(stdin);
+//     fflush(stdin);
+
+//     switch (keyboardCommand) {
+//       case 'q': {
+//         goHome_ = !goHome_;
+//         if (goHome_) {
+//           goToAttractors_ = true;
+//           startlogging_ = false;
+//         } else if (!goHome_) {
+//           startlogging_ = true;
+//         }
+//       } break;
+//       case 'g': {
+//         goToAttractors_ = !goToAttractors_;
+//         if (goToAttractors_) {
+//           goHome_ = false;
+//           releaseAndretract_ = false;
+//         }
+//       } break;
+
+//       // Conveyor belt control
+//       case 'a': {
+//         if (ctrlModeConveyorBelt_) {
+//           modeConveyorBelt_ = 2;
+//           publishConveyorBeltCmds();
+//           startlogging_ = true;
+//         } else if (incrementReleasePos_) {
+//           deltaRelPos_(0) -= 0.025f;//[m]
+//         } else {
+//           deltaPos_(0) -= 0.01f;
+//         }
+//       } break;
+//       case 's': {
+//         if (ctrlModeConveyorBelt_) {
+//           modeConveyorBelt_ = 0;
+//           publishConveyorBeltCmds();
+//         } else if (incrementReleasePos_) {
+//           deltaRelPos_(0) += 0.025f;//[m]
+//         } else {
+//           deltaPos_(0) += 0.01f;
+//         }
+//       } break;
+//       case 'd': {
+//         if (ctrlModeConveyorBelt_) {
+//           modeConveyorBelt_ = 1;
+//           publishConveyorBeltCmds();
+//         } else if (incrementReleasePos_) {
+//           deltaRelPos_(1) -= 5.0f;//[deg]
+//         } else {
+//           deltaPos_(1) -= 0.01f;
+//         }
+//       } break;
+//       case 'f': {
+//         if (incrementReleasePos_) {
+//           deltaRelPos_(1) += 5.0f;//[deg]
+//         } else {
+//           deltaPos_(1) += 0.01f;
+//         }
+//       } break;
+//       case 'z': {
+//         if (ctrlModeConveyorBelt_) {
+//           trackingFactor_ -= 0.01f;
+//         } else if (incrementReleasePos_) {
+//           deltaRelPos_(2) -= 5.0f;//[deg]
+//         } else {
+//           deltaPos_(2) -= 0.01f;
+//         }
+//       } break;
+//       case 'w': {
+//         if (ctrlModeConveyorBelt_) {
+//           trackingFactor_ += 0.01f;
+//         } else if (incrementReleasePos_) {
+//           deltaRelPos_(2) += 5.0f;//[deg]
+//         } else {
+//           deltaPos_(2) += 0.01f;
+//         }
+//       } break;
+//       case 'h': {
+//         if (ctrlModeConveyorBelt_) {
+//           nominalSpeedConveyorBelt_ -= 50;
+//         } else {
+//           deltaAng_(0) -= 0.05f;
+//         }
+//       } break;
+//       case 'j': {
+//         if (ctrlModeConveyorBelt_) {
+//           nominalSpeedConveyorBelt_ += 50;
+//         } else {
+//           deltaAng_(0) += 0.05f;
+//         }
+//       } break;
+//       case 'k': {
+//         if (ctrlModeConveyorBelt_) {
+//           adaptationActive_ = !adaptationActive_;
+//         } else {
+//           deltaAng_(1) -= 0.05f;
+//         }
+//       } break;
+//       case 'm': {
+//         if (ctrlModeConveyorBelt_) {
+//           magniturePertConveyorBelt_ -= 50;
+//         } else {
+//           deltaAng_(2) -= 0.05f;
+//         }
+//       } break;
+//       case 'i': {
+//         if (ctrlModeConveyorBelt_) {
+//           magniturePertConveyorBelt_ += 50;
+//         } else {
+//           deltaAng_(2) += 0.05f;
+//         }
+//       } break;
+
+//       // Release or throwing
+//       case 'r': {
+//         releaseAndretract_ = !releaseAndretract_;
+//       } break;
+//       case 'l': {
+//         dualTaskSelector_ = PICK_AND_LIFT;
+//         hasCaughtOnce_ = false;
+//       } break;
+//       case 't': {
+//         isThrowing_ = !isThrowing_;
+//         if (isThrowing_) {
+//           dualTaskSelector_ = PICK_AND_TOSS;
+//           hasCaughtOnce_ = false;
+//         } else if (!isThrowing_) {
+//           dualTaskSelector_ = PICK_AND_LIFT;
+//         }
+//       } break;
+//       case 'p': {
+//         isPlacing_ = !isPlacing_;
+//         if (isPlacing_) {
+//           dualTaskSelector_ = PICK_AND_PLACE;
+//           hasCaughtOnce_ = false;
+//         } else if (!isPlacing_) {
+//           dualTaskSelector_ = PICK_AND_LIFT;
+//         }
+//       } break;
+//       case 'o': {
+//         isPlaceTossing_ = !isPlaceTossing_;
+//         if (isPlaceTossing_) {
+//           dualTaskSelector_ = PLACE_TOSSING;
+//           hasCaughtOnce_ = false;
+//         } else if (!isPlaceTossing_) {
+//           dualTaskSelector_ = PICK_AND_LIFT;
+//         }
+//       } break;
+
+//       // Impact and tossing velocity
+//       case 'v': {
+//         desVtoss_ -= 0.05f;
+//         if (desVtoss_ < 0.2f) { desVtoss_ = 0.2f; }
+//         dsThrowing_.setTossLinearVelocity(desVtoss_ * tossVar_.releaseLinearVelocity.normalized());
+//         dsThrowingEstim_.setTossLinearVelocity(desVtoss_ * tossVar_.releaseLinearVelocity.normalized());
+//       } break;
+//       case 'b': {
+//         desVtoss_ += 0.05f;
+//         if (desVtoss_ > 2.0f) { desVtoss_ = 2.0f; }
+//         dsThrowing_.setTossLinearVelocity(desVtoss_ * tossVar_.releaseLinearVelocity.normalized());
+//         dsThrowingEstim_.setTossLinearVelocity(desVtoss_ * tossVar_.releaseLinearVelocity.normalized());
+//       } break;
+//       case 'y': {
+//         desiredVelImp_ -= 0.05f;
+//         if (desiredVelImp_ < 0.05f) { desiredVelImp_ = 0.05f; }
+//       } break;
+//       case 'u': {
+//         desiredVelImp_ += 0.05f;
+//         if (desiredVelImp_ > 0.6f) { desiredVelImp_ = 0.6f; }
+//       } break;
+
+//       // Reset the data logging
+//       case 'c': {
+//         startlogging_ = false;
+//         dataLog_.reset(ros::package::getPath(std::string("dual_arm_control")) + "/Data");
+//       } break;
+
+//       // Disturb the target speed
+//       case 'e': {
+//         isDisturbTarget_ = !isDisturbTarget_;
+//       } break;
+
+//       // Placing hight
+//       case 'x': {
+//         if (dualTaskSelector_ == PICK_AND_TOSS) {
+//           tossVar_.releasePosition(1) -= 0.01;
+//         } else {
+//           xPlacing_(2) -= 0.01;
+//         }
+//       } break;
+//       case 'n': {
+//         if (dualTaskSelector_ == PICK_AND_TOSS) {
+//           tossVar_.releasePosition(1) += 0.01;
+//         } else {
+//           xPlacing_(2) += 0.01;
+//         }
+//       } break;
+//     }
+//   }
+//   keyboard::nonBlock(0);
+// }
