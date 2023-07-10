@@ -81,15 +81,16 @@ bool DualArmControlSim::initRobotParam(YAML::Node config) {
       Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(toolComPositionFromSensorVect[RIGHT].data(),
                                                     toolComPositionFromSensorVect[RIGHT].size());
 
-  xrbStandbyVect[LEFT] = config["dual_system"]["standby_pose"]["robot_left"]["position"].as<std::vector<float>>();
-  xrbStandbyVect[RIGHT] = config["dual_system"]["standby_pose"]["robot_right"]["position"].as<std::vector<float>>();
+  xrbStandbyVect[LEFT] = config["dual_arm_task"]["standby_pose"]["robot_left"]["position"].as<std::vector<float>>();
+  xrbStandbyVect[RIGHT] = config["dual_arm_task"]["standby_pose"]["robot_right"]["position"].as<std::vector<float>>();
   xrbStandby[LEFT] =
       Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(xrbStandbyVect[LEFT].data(), xrbStandbyVect[LEFT].size());
   xrbStandby[RIGHT] =
       Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(xrbStandbyVect[RIGHT].data(), xrbStandbyVect[RIGHT].size());
 
-  qrbStandbyVect[LEFT] = config["dual_system"]["standby_pose"]["robot_left"]["orientation"].as<std::vector<float>>();
-  qrbStandbyVect[RIGHT] = config["dual_system"]["standby_pose"]["robot_right"]["orientation"].as<std::vector<float>>();
+  qrbStandbyVect[LEFT] = config["dual_arm_task"]["standby_pose"]["robot_left"]["orientation"].as<std::vector<float>>();
+  qrbStandbyVect[RIGHT] =
+      config["dual_arm_task"]["standby_pose"]["robot_right"]["orientation"].as<std::vector<float>>();
   qrbStandby[LEFT] =
       Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(qrbStandbyVect[LEFT].data(), qrbStandbyVect[LEFT].size());
   qrbStandby[RIGHT] =
