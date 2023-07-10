@@ -32,8 +32,23 @@ set(H_FILES
     ${HEADERS_FOLDER}/DualArmCooperativeController.hpp
     ${HEADERS_FOLDER}/ThrowingDS.hpp
     ${HEADERS_FOLDER}/TossTaskParamEstimator.hpp
-    # ${SOLVER_BWC}/bwc_solver.h
-    )
+    ${HEADERS_FOLDER}/TossingTarget.hpp
+    ${HEADERS_FOLDER}/RobotVariables.hpp
+    ${HEADERS_FOLDER}/ObjectToGrasp.hpp
+
+    ${SOLVER_BWC}/bwc_solver.h
+)
+    
+   
+
+set(TOOLS_FILE
+  ${HEADERS_FOLDER}/tools/Utils.hpp
+  ${HEADERS_FOLDER}/tools/PdfGMR.hpp
+  ${HEADERS_FOLDER}/tools/Keyboard.h
+  ${HEADERS_FOLDER}/tools/KalmanFilter3DVelFromPosEstimator.hpp
+  ${HEADERS_FOLDER}/tools/KalmanFilter.hpp
+  ${HEADERS_FOLDER}/tools/FirstOrderFilter.hpp
+)
     
 set(SRCS
     ${SRC_FOLDER}/DualArmControlSim.cpp
@@ -50,7 +65,7 @@ set(BWC_SOURCES
     ${SOLVER_BWC}/bwc_testsolver.c
     ${SOLVER_BWC}/bwc_util.c
 
-    ${SOLVER_BWC}/bwc_solver.h
+    #${SOLVER_BWC}/bwc_solver.h
 )
 
 include_directories(
@@ -71,19 +86,14 @@ target_compile_definitions(${PROJECT_NAME} PUBLIC _USE_MATH_DEFINES)
 target_include_directories(${PROJECT_NAME} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>)
 
 if(TARGET Eigen3::Eigen)
-  target_link_libraries(${PROJECT_NAME} PUBLIC Eigen3::Eigen ${YAML_CPP_LIBRARIES} sg_differentiation
-                                                              # /opt/openrobots/lib/libpinocchio.so
-                                                              /usr/local/lib/libpinocchio.so
-                                                              )
+  target_link_libraries(${PROJECT_NAME} PUBLIC Eigen3::Eigen ${YAML_CPP_LIBRARIES} sg_differentiation)
 else()
-  target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${EIGEN3_INCLUDE_DIR}" sg_differentiation
-                                                              # /opt/openrobots/lib/libpinocchio.so
-                                                              /usr/local/lib/libpinocchio.so
-                                                              )
+  target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${EIGEN3_INCLUDE_DIR}" sg_differentiation)
 endif()
 
 
 install(FILES ${H_FILES} DESTINATION include/${PROJECT_NAME})
+install(FILES ${TOOLS_FILE} DESTINATION include/${PROJECT_NAME}/tools)
 install(TARGETS ${PROJECT_NAME}
   EXPORT ${PROJECT_NAME}
   ARCHIVE DESTINATION lib

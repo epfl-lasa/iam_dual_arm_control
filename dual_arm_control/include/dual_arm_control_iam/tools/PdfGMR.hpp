@@ -2,15 +2,17 @@
 
 #include "eigen3/Eigen/Core"
 
-#include "dual_arm_control_iam/DataLogging.hpp"
+// #include "dual_arm_control_iam/DataLogging.hpp"
 
-class PdfGMR {
+using namespace std
+
+    class PdfGMR {
 private:
   Eigen::VectorXf priorGMMToss_;
   Eigen::MatrixXf meanGMMToss_;
   Eigen::MatrixXf covMxGMMToss_;
 
-  DataLogging datalog_;
+  // DataLogging datalog_;
 
 public:
   PdfGMR(){};
