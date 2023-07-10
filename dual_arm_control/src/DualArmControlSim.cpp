@@ -374,7 +374,9 @@ bool DualArmControlSim::updateSim(Eigen::Matrix<float, 6, 1> robotWrench,
                                   Eigen::Vector3f eeVelAng,
                                   Vector7f jointPosition,
                                   Vector7f jointVelocity,
-                                  Vector7f jointTorques) {
+                                  Vector7f jointTorques,
+                                  Eigen::Vector3f robotBasePos,
+                                  Eigen::Vector4f robotBaseOrientation) {
 
   // TODO in the base pose needed? In which frame should the variables be send?
 
@@ -387,6 +389,8 @@ bool DualArmControlSim::updateSim(Eigen::Matrix<float, 6, 1> robotWrench,
     robot_.setJointsVelocities(jointVelocity, k);
     robot_.setJointsTorques(jointTorques, k);
     robot_.getEstimatedJointAccelerations(k);
+
+    robot_.getRobotBaseFrameInWorld(robotBasePos, robotBaseOrientation, k);
   }
 
   object_.setXo(objectPose);
@@ -431,19 +435,21 @@ void DualArmControlSim::updateContactState() {
       && (isContact_ == 1.0f);
 }
 
-void DualArmControlSim::generateCommands(float firstEigenPassiveDamping[],
-                                         Eigen::Matrix<float, 6, 1> robotWrench,
-                                         Eigen::Vector3f eePose,
-                                         Eigen::Vector4f eeOrientation,
-                                         Eigen::Vector3f objectPose,
-                                         Eigen::Vector4f objectOrientation,
-                                         Eigen::Vector3f targetPose,
-                                         Eigen::Vector4f targetOrientation,
-                                         Eigen::Vector3f eeVelLin,
-                                         Eigen::Vector3f eeVelAng,
-                                         Vector7f jointPosition,
-                                         Vector7f jointVelocity,
-                                         Vector7f jointTorques) {
+CommandStruct DualArmControlSim::generateCommands(float firstEigenPassiveDamping[],
+                                                  Eigen::Matrix<float, 6, 1> robotWrench,
+                                                  Eigen::Vector3f eePose,
+                                                  Eigen::Vector4f eeOrientation,
+                                                  Eigen::Vector3f objectPose,
+                                                  Eigen::Vector4f objectOrientation,
+                                                  Eigen::Vector3f targetPose,
+                                                  Eigen::Vector4f targetOrientation,
+                                                  Eigen::Vector3f eeVelLin,
+                                                  Eigen::Vector3f eeVelAng,
+                                                  Vector7f jointPosition,
+                                                  Vector7f jointVelocity,
+                                                  Vector7f jointTorques,
+                                                  Eigen::Vector3f robotBasePos,
+                                                  Eigen::Vector4f robotBaseOrientation) {
 
   d1_[LEFT] = firstEigenPassiveDamping[LEFT];
   d1_[RIGHT] = firstEigenPassiveDamping[RIGHT];
@@ -459,9 +465,19 @@ void DualArmControlSim::generateCommands(float firstEigenPassiveDamping[],
             eeVelAng,
             jointPosition,
             jointVelocity,
-            jointTorques);
+            jointTorques,
+            robotBasePos,
+            robotBaseOrientation);
 
   computeCommands(eePose, eeOrientation);
+
+  for (int k = 0; k < NB_ROBOTS; k++) {
+    commandGenerated_.axisAngleDes = robot_.getAxisAngleDes(k);
+    commandGenerated_.vDes = robot_.getVDes(k);
+    commandGenerated_.qd = robot_.getQdSpecific(k);
+  }
+
+  return commandGenerated_;
 }
 
 void DualArmControlSim::computeCommands(Eigen::Vector3f eePose, Eigen::Vector4f eeOrientation) {

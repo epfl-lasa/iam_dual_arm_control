@@ -41,6 +41,12 @@ typedef Eigen::Matrix<float, 6, 1> Vector6f;
 typedef Eigen::Matrix<float, 6, 6> Matrix6f;
 typedef Eigen::Matrix<float, 7, 1> Vector7f;
 
+struct CommandStruct {
+  Eigen::Vector3f axisAngleDes;
+  Eigen::Vector3f vDes;
+  Eigen::Vector4f qd;
+};
+
 struct SphericalPosition {
   float r;
   float theta;
@@ -203,6 +209,8 @@ private:
   ThrowingDS dsThrowingEstim_;
 
   tossingTaskVariables tossVar_;
+
+  CommandStruct commandGenerated_;
   // ====================================================================================================================
 
 public:
@@ -256,21 +264,25 @@ public:
                  Eigen::Vector3f eeVelAng,
                  Vector7f jointPosition,
                  Vector7f jointVelocity,
-                 Vector7f jointTorques);
+                 Vector7f jointTorques,
+                 Eigen::Vector3f robotBasePos,
+                 Eigen::Vector4f robotBaseOrientation);
 
-  void generateCommands(float firstEigenPassiveDamping[],
-                        Eigen::Matrix<float, 6, 1> robotWrench,
-                        Eigen::Vector3f eePose,
-                        Eigen::Vector4f eeOrientation,
-                        Eigen::Vector3f objectPose,
-                        Eigen::Vector4f objectOrientation,
-                        Eigen::Vector3f targetPose,
-                        Eigen::Vector4f targetOrientation,
-                        Eigen::Vector3f eeVelLin,
-                        Eigen::Vector3f eeVelAng,
-                        Vector7f jointPosition,
-                        Vector7f jointVelocity,
-                        Vector7f jointTorques);
+  CommandStruct generateCommands(float firstEigenPassiveDamping[],
+                                 Eigen::Matrix<float, 6, 1> robotWrench,
+                                 Eigen::Vector3f eePose,
+                                 Eigen::Vector4f eeOrientation,
+                                 Eigen::Vector3f objectPose,
+                                 Eigen::Vector4f objectOrientation,
+                                 Eigen::Vector3f targetPose,
+                                 Eigen::Vector4f targetOrientation,
+                                 Eigen::Vector3f eeVelLin,
+                                 Eigen::Vector3f eeVelAng,
+                                 Vector7f jointPosition,
+                                 Vector7f jointVelocity,
+                                 Vector7f jointTorques,
+                                 Eigen::Vector3f robotBasePos,
+                                 Eigen::Vector4f robotBaseOrientation);
   void updateContactState();
   void computeCommands(Eigen::Vector3f eePose, Eigen::Vector4f eeOrientation);
 
