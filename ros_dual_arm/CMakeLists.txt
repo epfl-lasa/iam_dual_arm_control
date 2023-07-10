@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8.3)
 
-project(dual_arm_control_ros)
+project(ros_dual_arm_control)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
@@ -17,13 +17,13 @@ find_package(catkin REQUIRED COMPONENTS
   tf
   tf_conversions
   roslib
-  sg_differentiation
+  # sg_differentiation
 )
 
 # find_package(YARP)
 find_package(Eigen3 REQUIRED)
 
-find_package(dual_arm_control_iam)
+ find_package(dual_arm_control_iam)
 
 catkin_package(
   INCLUDE_DIRS include
@@ -34,11 +34,11 @@ catkin_package(
     tf 
     tf_conversions 
     roslib 
-    sg_differentiation
+    # sg_differentiation
 )
 
 set(SRC_FOLDER      "${CMAKE_CURRENT_SOURCE_DIR}/src")
-# set(HEADERS_FOLDER  "${CMAKE_CURRENT_SOURCE_DIR}/include/")
+set(HEADERS_FOLDER  "${CMAKE_CURRENT_SOURCE_DIR}/include/")
 # set(SOLVER_BWC      "${CMAKE_CURRENT_SOURCE_DIR}/bwc_cvxgen")
 
 include_directories(
@@ -63,7 +63,8 @@ include_directories(
 # target_link_libraries(dual_arm_control ${catkin_LIBRARIES})
 
 add_executable(dual_arm_control_node ${SRC_FOLDER}/dual_arm_control_sim.cpp)              
-target_link_libraries(dual_arm_control_node dual_arm_control_iam ${catkin_LIBRARIES})
+target_link_libraries(dual_arm_control_node  ${catkin_LIBRARIES}) 
+# dual_arm_control_iam
 
 #############################################################################################
 # add_library(dual_arm_box_control ${SOURCES_DS} ${BWC_SOURCES} )

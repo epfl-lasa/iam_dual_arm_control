@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Name and base and options
-IMAGE_NAME=epfl-lasa/dual_arm_control_iam                 # Chose any name for your image (but make sure to report it in start_docker)
+IMAGE_NAME=epfl-lasa/ros_dual_arm_control_iam                 # Chose any name for your image (but make sure to report it in start_docker)
 ROS_DISTRO=melodic                                        # Possible: noetic, melodic
 
 # Help

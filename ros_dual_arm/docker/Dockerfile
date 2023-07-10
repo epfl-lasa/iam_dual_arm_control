@@ -32,9 +32,6 @@ RUN sudo apt-get update && sudo apt-get install -y \
 # Need to be root to clone private repo
 USER root
 
-# sg_differentiation
-WORKDIR /home/${USER}/ros_ws/src
-RUN git clone https://github.com/epfl-lasa/sg_differentiation.git
 
 # iiwa_sim_models_poses
 WORKDIR /home/${USER}/ros_ws/src
@@ -56,13 +53,21 @@ RUN --mount=type=ssh git clone git@github.com:epfl-lasa/dual_iiwa_toolkit.git
 # WORKDIR /home/${USER}/ros_ws/src
 # RUN --mount=type=ssh git clone -b devel git@github.com:epfl-lasa/dual_gen_torque_controller.git
 
+
+# sg_differentiation
+WORKDIR /source
+RUN git clone -b cmake https://github.com/epfl-lasa/sg_differentiation.git
+# Fix error "Could not find GTest"
+RUN sudo apt-get install libgtest-dev && sudo apt-get install cmake && cd /usr/src/gtest && sudo cmake CMakeLists.txt && sudo make && sudo cp *.a /usr/lib
+RUN cd sg_differentiation && mkdir build && cd build && cmake .. && make && sudo make install
+
 #dual arm control
 WORKDIR /source
 RUN --mount=type=ssh git clone git@github.com:Elise-J/dual_arm_controller_iam.git
 RUN cd dual_arm_controller_iam/dual_arm_control && mkdir build 
-# WORKDIR /source/dual_arm_controller_iam/dual_arm_control/build 
-# RUN cmake ..
-# RUN sudo make install
+WORKDIR /source/dual_arm_controller_iam/dual_arm_control/build 
+RUN cmake ..
+RUN sudo make install
 
 USER ${USER}
 
@@ -74,6 +79,6 @@ ENV PYTHONPATH "${PYTHONPATH}:/opt/openrobots/lib/python3.8/site-packages/"
 RUN /bin/bash -c "source /opt/ros/$ROS_DISTRO/setup.bash; catkin_make"
 
 # ./docker/build-server.sh 
-# aica-docker interactive dual_arm_control_iam:melodic -u ros --net host --no-hostname --privileged --gpus all -v /home/elise/Documents/IAM/michael/iam_dual_arm_control:/home/ros/ros_ws/src/iam_dual_arm_control
+# aica-docker interactive epfl-lasa/ros_dual_arm_control_iam:melodic -u ros --net host --no-hostname --privileged --gpus all -v /home/elise/Documents/IAM/michael/dual_arm_control_iam/ros_dual_arm:/home/ros/ros_ws/src/ros_dual_arm
 
 
