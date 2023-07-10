@@ -5,7 +5,7 @@
 #include <sstream>
 #include <string>
 
-// #include "RosDualArm.hpp"
+#include "RosDualArmCommunication.hpp"
 #include "dual_arm_control_iam/DualArmControlSim.hpp"
 
 int main(int argc, char** argv) {
@@ -17,82 +17,66 @@ int main(int argc, char** argv) {
   ros::init(argc, argv, "dual_arm_control_node");
   ros::NodeHandle nh;
   double frequency = 200.0f;
+  double dt = 1 / frequency;
+  ros::Rate loopRate = frequency;// Ros loop rate [Hz]
 
-  // RosDualArmCommunication dualArmRos(nh, frequency);
+  CommandStruct commandGenerated;
 
-  // // =================================================================
-  // // Instantiation of dual arm control  object
-  // // =================================================================
-  // DualArmControlSim DualArmControlSim;
+  RosDualArmCommunication rosDualArm(nh, frequency);
+  rosDualArm.init();
 
-  // std::string pathYamlFile = "./../config/parameters.yaml";
-  // std::string pathLearnedModelfolder = "./../LearnedModel/model1";
-  // if (!DualArmControlSim.loadParamFromFile(pathYamlFile, pathLearnedModelfolder)) {
-  //   std::cerr << "Error loading config file (parameters.yaml)" << std::endl;
-  //   return EXIT_FAILURE;
-  // }
+  // =================================================================
+  // Instantiation of dual arm control  object
+  // =================================================================
+  DualArmControlSim dualArmControlSim;
 
-  // DualArmControlSim.init();
+  std::string pathYamlFile = ros::package::getPath(std::string("ros_dual_arm_control")) + "/config/parameters.yaml";
+  std::string pathLearnedModelfolder =
+      ros::package::getPath(std::string("ros_dual_arm_control")) + "/LearnedModel/model1";
+  if (!dualArmControlSim.loadParamFromFile(pathYamlFile, pathLearnedModelfolder)) {
+    std::cerr << "Error loading config file (parameters.yaml)" << std::endl;
+    return EXIT_FAILURE;
+  }
 
-  // // =================================================================
-  // // =================================================================
+  dualArmControlSim.init();
 
-  // // =================================================================================
-  // // Simulation loop
-  // // =================================================================================
+  // =================================================================================
+  // Simulation loop
+  // =================================================================================
 
-  // int count = 0;
-  // bool releaseFlag = false;
-  // double dt = DualArmControlSim.getPeriod();
-  // float firstEigenPassiveDamping[NB_ROBOTS];
-  // Eigen::Vector3f eePose, objectPose, targetPose, eeVelLin, eeVelAng;
-  // Eigen::Vector4f eeOrientation, objectOrientation, targetOrientation;
-  // Vector7f jointPosition, jointVelocity, jointTorques;
-  // Eigen::Matrix<float, 6, 1> robotWrench;
-  // float toolOffsetFromEE[NB_ROBOTS];
+  int count = 0;
+  bool releaseFlag = false;
 
   // // while (!((posError <= dsThrowingCart.getTolerancePos()) && releaseFlag) && count <= 2500)
-  // while (nh_.ok()) {
+  while (nh.ok()) {
 
-  //   // Update first eigen value of the passive ds controller and its updated value
-  //   // firstEigenPassiveDamping = TODO;
+    // Compute generated desired motion and forces
+    commandGenerated = dualArmControlSim.generateCommands(rosDualArm.firstEigenPassiveDamping_,
+                                                          rosDualArm.robotWrench_,
+                                                          rosDualArm.eePose_,
+                                                          rosDualArm.eeOrientation_,
+                                                          rosDualArm.objectPose_,
+                                                          rosDualArm.objectOrientation_,
+                                                          rosDualArm.targetPose_,
+                                                          rosDualArm.targetOrientation_,
+                                                          rosDualArm.eeVelLin_,
+                                                          rosDualArm.eeVelAng_,
+                                                          rosDualArm.jointPosition_,
+                                                          rosDualArm.jointVelocity_,
+                                                          rosDualArm.jointTorques_,
+                                                          rosDualArm.robotBasePos_,
+                                                          rosDualArm.robotBaseOrientation_);
 
-  //   // // Update the poses of the robots and the object TODO
-  //   // updatePoses();
+    // Publish the commands to be exectued
+    rosDualArm.publishCommands(commandGenerated.axisAngleDes, commandGenerated.vDes, commandGenerated.qd);
+    //   // // Publish data through topics for analysis
+    //   // publishData();
+    //   // // Log data
+    //   // if (startlogging_) { saveData(); }
 
-  //   // Compute generated desired motion and forces
-  //   DualArmControlSim.generateCommands(firstEigenPassiveDamping,
-  //                                      robotWrench,
-  //                                      eePose,
-  //                                      eeOrientation,
-  //                                      objectPose,
-  //                                      objectOrientation,
-  //                                      targetPose,
-  //                                      targetOrientation,
-  //                                      eeVelLin,
-  //                                      eeVelAng,
-  //                                      jointPosition,
-  //                                      jointVelocity,
-  //                                      jointTorques);
-
-  //   // // Publish the commands to be exectued
-  //   // publishCommands();
-  //   // // Publish data through topics for analysis
-  //   // publishData();
-  //   // // Log data
-  //   // if (startlogging_) { saveData(); }
-
-  //   // ros::spinOnce();
-  //   // loopRate_.sleep();
-  //   // cycleCount_++;
-
-  //   // // Estimation of the running period
-  //   // auto stop = std::chrono::high_resolution_clock::now();
-  //   // auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
-
-  //   releaseFlag = DualArmControlSim.getReleaseFlag();
-  // count++;
-  // }
+    ros::spinOnce();
+    loopRate.sleep();
+  }
 
   return 0;
 }

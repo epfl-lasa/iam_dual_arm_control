@@ -23,7 +23,7 @@ find_package(catkin REQUIRED COMPONENTS
 # find_package(YARP)
 find_package(Eigen3 REQUIRED)
 
- find_package(dual_arm_control_iam)
+find_package(dual_arm_control_iam)
 
 catkin_package(
   INCLUDE_DIRS include
@@ -63,7 +63,7 @@ include_directories(
 # target_link_libraries(dual_arm_control ${catkin_LIBRARIES})
 
 add_executable(dual_arm_control_node ${SRC_FOLDER}/dual_arm_control_sim.cpp)              
-target_link_libraries(dual_arm_control_node  ${catkin_LIBRARIES}) 
+target_link_libraries(dual_arm_control_node  ${catkin_LIBRARIES} dual_arm_control_iam) 
 # dual_arm_control_iam
 
 #############################################################################################

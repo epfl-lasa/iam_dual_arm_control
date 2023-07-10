@@ -1,0 +1,13 @@
+<?xml version="1.0" ?>
+<launch>
+  <!-- Launch file for DS controller -->
+  <arg name="param_file_name"          default="parameters"/> 
+  <group ns="/dual_arm">
+    <!-- Converting args into params -->
+    <rosparam file="$(find ros_dual_arm_control)/config/$(arg param_file_name).yaml" command="load"/>
+    <rosparam file="$(find ros_dual_arm_control)/config/ros_topics.yaml" command="load"/>
+    <node name="dual_arm_control_node" pkg="ros_dual_arm_control" type="dual_arm_control_node" output="screen"/>
+  </group>
+
+
+</launch>

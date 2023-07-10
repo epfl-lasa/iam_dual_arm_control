@@ -2,7 +2,7 @@
 <package format="2">
   <name>ros_dual_arm_control</name>
   <version>0.0.0</version>
-  <description>The ros communication dual_arm_control package</description>
+  <description>The ros communication ros_dual_arm_control package</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag --> 
   <!-- Example:  -->
