@@ -13,7 +13,6 @@ int main(int argc, char** argv) {
   // =================================================================
   // Instantiation of ROS
   // =================================================================
-
   ros::init(argc, argv, "dual_arm_control_node");
   ros::NodeHandle nh;
   double frequency = 200.0f;
@@ -26,7 +25,7 @@ int main(int argc, char** argv) {
   rosDualArm.init();
 
   // =================================================================
-  // Instantiation of dual arm control  object
+  // Instantiation of dual arm control object
   // =================================================================
   DualArmControlSim dualArmControlSim;
 
@@ -47,7 +46,6 @@ int main(int argc, char** argv) {
   int count = 0;
   bool releaseFlag = false;
 
-  // // while (!((posError <= dsThrowingCart.getTolerancePos()) && releaseFlag) && count <= 2500)
   while (nh.ok()) {
 
     // Compute generated desired motion and forces
@@ -69,7 +67,7 @@ int main(int argc, char** argv) {
 
     // Publish the commands to be exectued
     rosDualArm.publishCommands(commandGenerated.axisAngleDes, commandGenerated.vDes, commandGenerated.qd);
-    //   // // Publish data through topics for analysis
+    //   // // Publish data through topics for analysis TODO
     //   // publishData();
     //   // // Log data
     //   // if (startlogging_) { saveData(); }

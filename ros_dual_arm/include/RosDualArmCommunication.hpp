@@ -47,7 +47,6 @@
 typedef Eigen::Matrix<float, 7, 1> Vector7f;
 
 class RosDualArmCommunication {
-
 private:
   // ---- ROS
   ros::NodeHandle nh_;// Ros node handle
@@ -74,12 +73,13 @@ private:
   ros::Subscriber subJointStateRight_;
 
   // ---- Publishers:
-  ros::Publisher pubTSCommands_[NB_ROBOTS];        // Publisher of the End effectors velocity twist
+  ros::Publisher pubTSCommands_[NB_ROBOTS];    // Publisher of the End effectors velocity twist
+  ros::Publisher pubDesiredVelQuat_[NB_ROBOTS];// Publish desired EE linear velocity and quaternion
+
   ros::Publisher pubDesiredTwist_[NB_ROBOTS];      // Publish desired twist to DS-impdedance controller
   ros::Publisher pubDesiredOrientation_[NB_ROBOTS];// Publish desired orientation to DS-impedance controller
   ros::Publisher pubFilteredWrench_[NB_ROBOTS];    // Publish filtered measured wrench
   ros::Publisher pubNormalForce_[NB_ROBOTS];       // Publish measured normal force to the surface
-  ros::Publisher pubDesiredVelQuat_[NB_ROBOTS];    // Publish desired EE linear velocity and quaternion
   ros::Publisher pubDistAttractorEE_[NB_ROBOTS];
   ros::Publisher pubAttractor_[NB_ROBOTS];
   ros::Publisher pubNormLinVel_[NB_ROBOTS];        // Publish norms of EE linear velocities
@@ -267,101 +267,105 @@ public:
     }
     pubTSCommands_[LEFT] = nh_.advertise<std_msgs::Float64MultiArray>(topicEECommands[LEFT], 1);
     pubTSCommands_[RIGHT] = nh_.advertise<std_msgs::Float64MultiArray>(topicEECommands[RIGHT], 1);
-
-    // Desired orientation
-    std::string topicDesiredOrientation[NB_ROBOTS];
-    while (!nh_.getParam(nh_.getNamespace() + "/orientation/ee_desired/robot_left", topicDesiredOrientation[LEFT])) {
-      ROS_INFO("Waitinng for param: orientation/ee_desired/robot_left ");
-    }
-    while (!nh_.getParam(nh_.getNamespace() + "/orientation/ee_desired/robot_right", topicDesiredOrientation[RIGHT])) {
-      ROS_INFO("Waitinng for param: orientation/ee_desired/robot_right ");
-    }
-    pubDesiredOrientation_[LEFT] = nh_.advertise<geometry_msgs::Quaternion>(topicDesiredOrientation[LEFT], 1);
-    pubDesiredOrientation_[RIGHT] = nh_.advertise<geometry_msgs::Quaternion>(topicDesiredOrientation[RIGHT], 1);
-
-    // Wrench topics
-    std::string topicFilteredWrench[NB_ROBOTS], topicAppliedWrench[NB_ROBOTS];
-    while (!nh_.getParam(nh_.getNamespace() + "/wrench/filtered/robot_left", topicFilteredWrench[LEFT])) {
-      ROS_INFO("Waitinng for param: wrench/filtered/robot_left ");
-    }
-    while (!nh_.getParam(nh_.getNamespace() + "/wrench/filtered/robot_right", topicFilteredWrench[RIGHT])) {
-      ROS_INFO("Waitinng for param: wrench/filtered/robot_right ");
-    }
-    while (!nh_.getParam(nh_.getNamespace() + "/wrench/applied/robot_left", topicAppliedWrench[LEFT])) {
-      ROS_INFO("Waitinng for param: wrench/applied/robot_left ");
-    }
-    while (!nh_.getParam(nh_.getNamespace() + "/wrench/applied/robot_right", topicAppliedWrench[RIGHT])) {
-      ROS_INFO("Waitinng for param: wrench/applied/robot_right ");
-    }
-    pubFilteredWrench_[LEFT] = nh_.advertise<geometry_msgs::WrenchStamped>(topicFilteredWrench[LEFT], 1);
-    pubFilteredWrench_[RIGHT] = nh_.advertise<geometry_msgs::WrenchStamped>(topicFilteredWrench[RIGHT], 1);
-    pubAppliedWrench_[LEFT] = nh_.advertise<geometry_msgs::Wrench>(topicAppliedWrench[LEFT], 1);
-    pubAppliedWrench_[RIGHT] = nh_.advertise<geometry_msgs::Wrench>(topicAppliedWrench[RIGHT], 1);
-
-    // Forces topics
-    std::string topicNormalForce[NB_ROBOTS], topicAppliedFNormMoment[NB_ROBOTS];
-    while (!nh_.getParam(nh_.getNamespace() + "/force/normal/robot_left", topicNormalForce[LEFT])) {
-      ROS_INFO("Waitinng for param: force/normal/robot_left ");
-    }
-    while (!nh_.getParam(nh_.getNamespace() + "/force/normal/robot_right", topicNormalForce[RIGHT])) {
-      ROS_INFO("Waitinng for param: force/normal/robot_right ");
-    }
-    while (!nh_.getParam(nh_.getNamespace() + "/force/applied_ext/robot_left", topicAppliedFNormMoment[LEFT])) {
-      ROS_INFO("Waitinng for param: force/applied_ext/robot_left ");
-    }
-    while (!nh_.getParam(nh_.getNamespace() + "/force/applied_ext/robot_right", topicAppliedFNormMoment[RIGHT])) {
-      ROS_INFO("Waitinng for param: force/applied_ext/robot_right ");
-    }
-    pubNormalForce_[LEFT] = nh_.advertise<std_msgs::Float64>(topicNormalForce[LEFT], 1);
-    pubNormalForce_[RIGHT] = nh_.advertise<std_msgs::Float64>(topicNormalForce[RIGHT], 1);
-    pubAppliedFNormMoment_[LEFT] = nh_.advertise<geometry_msgs::Wrench>(topicAppliedFNormMoment[LEFT], 1);
-    pubAppliedFNormMoment_[RIGHT] = nh_.advertise<geometry_msgs::Wrench>(topicAppliedFNormMoment[RIGHT], 1);
-
-    // Desired velocities
-    std::string topicDesiredVelQuat[NB_ROBOTS], topicDesiredTwist[NB_ROBOTS], topicNormLinVel[NB_ROBOTS];
+    std::string topicDesiredVelQuat[NB_ROBOTS];
     while (!nh_.getParam(nh_.getNamespace() + "/veloctiy/quat_desired/robot_left", topicDesiredVelQuat[LEFT])) {
       ROS_INFO("Waitinng for param: veloctiy/quat_desired/robot_left ");
     }
     while (!nh_.getParam(nh_.getNamespace() + "/veloctiy/quat_desired/robot_right", topicDesiredVelQuat[RIGHT])) {
       ROS_INFO("Waitinng for param: veloctiy/quat_desired/robot_right ");
     }
-    while (!nh_.getParam(nh_.getNamespace() + "/veloctiy/ee_desired/robot_left", topicDesiredTwist[LEFT])) {
-      ROS_INFO("Waitinng for param: veloctiy/ee_desired/robot_left ");
-    }
-    while (!nh_.getParam(nh_.getNamespace() + "/veloctiy/ee_desired/robot_right", topicDesiredTwist[RIGHT])) {
-      ROS_INFO("Waitinng for param: veloctiy/ee_desired/robot_right ");
-    }
-    while (!nh_.getParam(nh_.getNamespace() + "/veloctiy/linear_vel_norm/robot_left", topicNormLinVel[LEFT])) {
-      ROS_INFO("Waitinng for param: veloctiy/ee_desired/robot_left ");
-    }
-    while (!nh_.getParam(nh_.getNamespace() + "/veloctiy/linear_vel_norm/robot_right", topicNormLinVel[RIGHT])) {
-      ROS_INFO("Waitinng for param: veloctiy/ee_desired/robot_right ");
-    }
+
     pubDesiredVelQuat_[LEFT] = nh_.advertise<geometry_msgs::Pose>(topicDesiredVelQuat[LEFT], 1);
     pubDesiredVelQuat_[RIGHT] = nh_.advertise<geometry_msgs::Pose>(topicDesiredVelQuat[RIGHT], 1);
-    pubDesiredTwist_[LEFT] = nh_.advertise<geometry_msgs::Twist>(topicDesiredTwist[LEFT], 1);
-    pubDesiredTwist_[RIGHT] = nh_.advertise<geometry_msgs::Twist>(topicDesiredTwist[RIGHT], 1);
-    pubNormLinVel_[LEFT] = nh_.advertise<std_msgs::Float64>(topicNormLinVel[LEFT], 1);
-    pubNormLinVel_[RIGHT] = nh_.advertise<std_msgs::Float64>(topicNormLinVel[RIGHT], 1);
 
-    // Attractor
-    std::string topicAttractor[NB_ROBOTS], topicDistAttractorEE[NB_ROBOTS];
-    while (!nh_.getParam(nh_.getNamespace() + "/attractor/pos/robot_left", topicAttractor[LEFT])) {
-      ROS_INFO("Waitinng for param: attractor/pos/robot_left ");
-    }
-    while (!nh_.getParam(nh_.getNamespace() + "/attractor/pos/robot_right", topicAttractor[RIGHT])) {
-      ROS_INFO("Waitinng for param: attractor/pos/robot_right ");
-    }
-    while (!nh_.getParam(nh_.getNamespace() + "/attractor/error/robot_left", topicDistAttractorEE[LEFT])) {
-      ROS_INFO("Waitinng for param: attractor/error/robot_left ");
-    }
-    while (!nh_.getParam(nh_.getNamespace() + "/attractor/error/robot_right", topicDistAttractorEE[RIGHT])) {
-      ROS_INFO("Waitinng for param: attractor/error/robot_right ");
-    }
-    pubAttractor_[LEFT] = nh_.advertise<geometry_msgs::Pose>(topicAttractor[LEFT], 1);
-    pubAttractor_[RIGHT] = nh_.advertise<geometry_msgs::Pose>(topicAttractor[RIGHT], 1);
-    pubDistAttractorEE_[LEFT] = nh_.advertise<std_msgs::Float64>(topicDistAttractorEE[LEFT], 1);
-    pubDistAttractorEE_[RIGHT] = nh_.advertise<std_msgs::Float64>(topicDistAttractorEE[RIGHT], 1);
+    // TODO topics to log data
+    // // Desired orientation
+    // std::string topicDesiredOrientation[NB_ROBOTS];
+    // while (!nh_.getParam(nh_.getNamespace() + "/orientation/ee_desired/robot_left", topicDesiredOrientation[LEFT])) {
+    //   ROS_INFO("Waitinng for param: orientation/ee_desired/robot_left ");
+    // }
+    // while (!nh_.getParam(nh_.getNamespace() + "/orientation/ee_desired/robot_right", topicDesiredOrientation[RIGHT])) {
+    //   ROS_INFO("Waitinng for param: orientation/ee_desired/robot_right ");
+    // }
+    // pubDesiredOrientation_[LEFT] = nh_.advertise<geometry_msgs::Quaternion>(topicDesiredOrientation[LEFT], 1);
+    // pubDesiredOrientation_[RIGHT] = nh_.advertise<geometry_msgs::Quaternion>(topicDesiredOrientation[RIGHT], 1);
+
+    // // Wrench topics
+    // std::string topicFilteredWrench[NB_ROBOTS], topicAppliedWrench[NB_ROBOTS];
+    // while (!nh_.getParam(nh_.getNamespace() + "/wrench/filtered/robot_left", topicFilteredWrench[LEFT])) {
+    //   ROS_INFO("Waitinng for param: wrench/filtered/robot_left ");
+    // }
+    // while (!nh_.getParam(nh_.getNamespace() + "/wrench/filtered/robot_right", topicFilteredWrench[RIGHT])) {
+    //   ROS_INFO("Waitinng for param: wrench/filtered/robot_right ");
+    // }
+    // while (!nh_.getParam(nh_.getNamespace() + "/wrench/applied/robot_left", topicAppliedWrench[LEFT])) {
+    //   ROS_INFO("Waitinng for param: wrench/applied/robot_left ");
+    // }
+    // while (!nh_.getParam(nh_.getNamespace() + "/wrench/applied/robot_right", topicAppliedWrench[RIGHT])) {
+    //   ROS_INFO("Waitinng for param: wrench/applied/robot_right ");
+    // }
+    // pubFilteredWrench_[LEFT] = nh_.advertise<geometry_msgs::WrenchStamped>(topicFilteredWrench[LEFT], 1);
+    // pubFilteredWrench_[RIGHT] = nh_.advertise<geometry_msgs::WrenchStamped>(topicFilteredWrench[RIGHT], 1);
+    // pubAppliedWrench_[LEFT] = nh_.advertise<geometry_msgs::Wrench>(topicAppliedWrench[LEFT], 1);
+    // pubAppliedWrench_[RIGHT] = nh_.advertise<geometry_msgs::Wrench>(topicAppliedWrench[RIGHT], 1);
+
+    // // Forces topics
+    // std::string topicNormalForce[NB_ROBOTS], topicAppliedFNormMoment[NB_ROBOTS];
+    // while (!nh_.getParam(nh_.getNamespace() + "/force/normal/robot_left", topicNormalForce[LEFT])) {
+    //   ROS_INFO("Waitinng for param: force/normal/robot_left ");
+    // }
+    // while (!nh_.getParam(nh_.getNamespace() + "/force/normal/robot_right", topicNormalForce[RIGHT])) {
+    //   ROS_INFO("Waitinng for param: force/normal/robot_right ");
+    // }
+    // while (!nh_.getParam(nh_.getNamespace() + "/force/applied_ext/robot_left", topicAppliedFNormMoment[LEFT])) {
+    //   ROS_INFO("Waitinng for param: force/applied_ext/robot_left ");
+    // }
+    // while (!nh_.getParam(nh_.getNamespace() + "/force/applied_ext/robot_right", topicAppliedFNormMoment[RIGHT])) {
+    //   ROS_INFO("Waitinng for param: force/applied_ext/robot_right ");
+    // }
+    // pubNormalForce_[LEFT] = nh_.advertise<std_msgs::Float64>(topicNormalForce[LEFT], 1);
+    // pubNormalForce_[RIGHT] = nh_.advertise<std_msgs::Float64>(topicNormalForce[RIGHT], 1);
+    // pubAppliedFNormMoment_[LEFT] = nh_.advertise<geometry_msgs::Wrench>(topicAppliedFNormMoment[LEFT], 1);
+    // pubAppliedFNormMoment_[RIGHT] = nh_.advertise<geometry_msgs::Wrench>(topicAppliedFNormMoment[RIGHT], 1);
+
+    // // Desired velocities
+    // std::string topicDesiredTwist[NB_ROBOTS], topicNormLinVel[NB_ROBOTS];
+    // while (!nh_.getParam(nh_.getNamespace() + "/veloctiy/ee_desired/robot_left", topicDesiredTwist[LEFT])) {
+    //   ROS_INFO("Waitinng for param: veloctiy/ee_desired/robot_left ");
+    // }
+    // while (!nh_.getParam(nh_.getNamespace() + "/veloctiy/ee_desired/robot_right", topicDesiredTwist[RIGHT])) {
+    //   ROS_INFO("Waitinng for param: veloctiy/ee_desired/robot_right ");
+    // }
+    // while (!nh_.getParam(nh_.getNamespace() + "/veloctiy/linear_vel_norm/robot_left", topicNormLinVel[LEFT])) {
+    //   ROS_INFO("Waitinng for param: veloctiy/ee_desired/robot_left ");
+    // }
+    // while (!nh_.getParam(nh_.getNamespace() + "/veloctiy/linear_vel_norm/robot_right", topicNormLinVel[RIGHT])) {
+    //   ROS_INFO("Waitinng for param: veloctiy/ee_desired/robot_right ");
+    // }
+
+    // pubDesiredTwist_[LEFT] = nh_.advertise<geometry_msgs::Twist>(topicDesiredTwist[LEFT], 1);
+    // pubDesiredTwist_[RIGHT] = nh_.advertise<geometry_msgs::Twist>(topicDesiredTwist[RIGHT], 1);
+    // pubNormLinVel_[LEFT] = nh_.advertise<std_msgs::Float64>(topicNormLinVel[LEFT], 1);
+    // pubNormLinVel_[RIGHT] = nh_.advertise<std_msgs::Float64>(topicNormLinVel[RIGHT], 1);
+
+    // // Attractor
+    // std::string topicAttractor[NB_ROBOTS], topicDistAttractorEE[NB_ROBOTS];
+    // while (!nh_.getParam(nh_.getNamespace() + "/attractor/pos/robot_left", topicAttractor[LEFT])) {
+    //   ROS_INFO("Waitinng for param: attractor/pos/robot_left ");
+    // }
+    // while (!nh_.getParam(nh_.getNamespace() + "/attractor/pos/robot_right", topicAttractor[RIGHT])) {
+    //   ROS_INFO("Waitinng for param: attractor/pos/robot_right ");
+    // }
+    // while (!nh_.getParam(nh_.getNamespace() + "/attractor/error/robot_left", topicDistAttractorEE[LEFT])) {
+    //   ROS_INFO("Waitinng for param: attractor/error/robot_left ");
+    // }
+    // while (!nh_.getParam(nh_.getNamespace() + "/attractor/error/robot_right", topicDistAttractorEE[RIGHT])) {
+    //   ROS_INFO("Waitinng for param: attractor/error/robot_right ");
+    // }
+    // pubAttractor_[LEFT] = nh_.advertise<geometry_msgs::Pose>(topicAttractor[LEFT], 1);
+    // pubAttractor_[RIGHT] = nh_.advertise<geometry_msgs::Pose>(topicAttractor[RIGHT], 1);
+    // pubDistAttractorEE_[LEFT] = nh_.advertise<std_msgs::Float64>(topicDistAttractorEE[LEFT], 1);
+    // pubDistAttractorEE_[RIGHT] = nh_.advertise<std_msgs::Float64>(topicDistAttractorEE[RIGHT], 1);
 
     // // Conveyor Belt
     // std::string topicConveyorBeltMode, topicConveyorBeltSpeed;
@@ -382,8 +386,6 @@ public:
     std_msgs::Float64MultiArray pubVel[NB_ROBOTS];
 
     for (int k = 0; k < NB_ROBOTS; k++) {
-      // Eigen::Vector3f axisAngleDes = robot_.getAxisAngleDes(k);
-      // Eigen::Vector3f vDes = robot_.getVDes(k);
       pubVel[k].data.clear();
       pubVel[k].data.push_back(axisAngleDes(0));// axis angle pose_x
       pubVel[k].data.push_back(axisAngleDes(1));// axis angle pose_y
@@ -406,6 +408,7 @@ public:
     pubDesiredVelQuat_[LEFT].publish(vel_quat[LEFT]);
     pubDesiredVelQuat_[RIGHT].publish(vel_quat[RIGHT]);
   }
+
   // ---- Callback functions
 
   void objectPoseCallback(const geometry_msgs::Pose::ConstPtr& msg) {
@@ -420,8 +423,8 @@ public:
     objectOrientation_ << msg->orientation.w, msg->orientation.x, msg->orientation.y, msg->orientation.z;
     Eigen::Vector4f qo;
     qo << 1.0f, 0.0f, 0.0f, 0.0f;
-    Eigen::Matrix3f w_R_o = Utils<float>::quaternionToRotationMatrix(qo);
-    objectPose_ = xom + w_R_o * tXoXom;
+    Eigen::Matrix3f wRo = Utils<float>::quaternionToRotationMatrix(qo);
+    objectPose_ = xom + wRo * tXoXom;
   }
 
   void targetPoseCallback(const geometry_msgs::Pose::ConstPtr& msg) {

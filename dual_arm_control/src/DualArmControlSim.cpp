@@ -51,6 +51,17 @@ bool DualArmControlSim::initObjectParam(YAML::Node config) {
   return true;
 }
 
+bool DualArmControlSim::initTargetParam() {
+  // Savitzky-Golay Filter params // TODO IN PARAMS?
+  int sgfPos[3];
+  sgfPos[0] = 3; // dim
+  sgfPos[1] = 3; // order
+  sgfPos[2] = 10;// window length
+  target_.init(sgfPos, periodT_);
+
+  return true;
+}
+
 bool DualArmControlSim::initRobotParam(YAML::Node config) {
 
   // Param vector
@@ -97,12 +108,12 @@ bool DualArmControlSim::initRobotParam(YAML::Node config) {
       Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(qrbStandbyVect[RIGHT].data(), qrbStandbyVect[RIGHT].size());
 
   // Savitzky-Golay Filter params // TODO IN PARAMS?
-  int sgf_dq[3];
-  sgf_dq[0] = 7;// dim
-  sgf_dq[1] = 3;// order
-  sgf_dq[2] = 6;// window length
+  int sgfDq[3];
+  sgfDq[0] = 7;// dim
+  sgfDq[1] = 3;// order
+  sgfDq[2] = 6;// window length
 
-  robot_.init(sgf_dq, periodT_, gravity_);
+  robot_.init(sgfDq, periodT_, gravity_);
 
   robot_.setInitParameters(paramToolMass, toolOffsetFromEE, toolComPositionFromSensor, xrbStandby, qrbStandby);
 
@@ -185,14 +196,14 @@ bool DualArmControlSim::initDesTasksPosAndLimits(YAML::Node config) {
 }
 
 bool DualArmControlSim::initTossParamEstimator(const std::string pathLearnedModelfolder) {
-  std::string file_gmm[3];
+  std::string fileGMM[3];
   std::string dataType = "/throwingParam";
 
-  file_gmm[0] = pathLearnedModelfolder + dataType + "_prio.txt";
-  file_gmm[1] = pathLearnedModelfolder + dataType + "_mu.txt";
-  file_gmm[2] = pathLearnedModelfolder + dataType + "_sigma.txt";
+  fileGMM[0] = pathLearnedModelfolder + dataType + "_prio.txt";
+  fileGMM[1] = pathLearnedModelfolder + dataType + "_mu.txt";
+  fileGMM[2] = pathLearnedModelfolder + dataType + "_sigma.txt";
 
-  tossParamEstimator_.init(file_gmm,
+  tossParamEstimator_.init(fileGMM,
                            tossVar_.releasePosition,
                            tossVar_.releaseOrientation,
                            tossVar_.releaseLinearVelocity,
@@ -237,7 +248,6 @@ bool DualArmControlSim::initDSThrowing() {
 
 bool DualArmControlSim::loadParamFromFile(const std::string pathToYamlFile, const std::string pathLearnedModelfolder) {
   YAML::Node config = YAML::LoadFile(pathToYamlFile);
-  // TODO COMPLETE AND PUT IN YAML FILE
 
   qpWrenchGeneration_ = config["dual_arm_task"]["isQP_wrench_generation"].as<bool>();
   isTargetFixed_ = config["dual_arm_task"]["isTargetFixed"].as<bool>();
@@ -263,7 +273,7 @@ bool DualArmControlSim::loadParamFromFile(const std::string pathToYamlFile, cons
   initDesTasksPosAndLimits(config);
   initRobotParam(config);
   initObjectParam(config);
-  target_.init(3, 3, 10, periodT_);
+  initTargetParam();
 
   initFreeMotionCtrl(config);
   CooperativeCtrl.init();
@@ -278,9 +288,6 @@ bool DualArmControlSim::loadParamFromFile(const std::string pathToYamlFile, cons
   initDSThrowing();
   dsThrowingEstim_ = dsThrowing_;
   freeMotionCtrlEstim_ = freeMotionCtrl_;
-
-  bool isSim = config["dual_system"]["simulation"].as<bool>();
-  std::cout << "Load param from file TODO " << isSim << std::endl;
 
   return true;
 }
@@ -358,7 +365,7 @@ bool DualArmControlSim::init() {
   timeToInterceptTgt_ = 0.0f;
   timeToInterceptBot_ = 0.0f;
 
-  // TODO LOGGING?
+  // TODO LOGGING OR NOT HERE?
   // startlogging_ = false;
 
   return true;
@@ -379,8 +386,6 @@ bool DualArmControlSim::updateSim(Eigen::Matrix<float, 6, 1> robotWrench,
                                   Eigen::Vector3f robotBasePos,
                                   Eigen::Vector4f robotBaseOrientation) {
 
-  // TODO in the base pose needed? In which frame should the variables be send?
-
   for (int k = 0; k < NB_ROBOTS; k++) {
     robot_.updateEndEffectorWrench(robotWrench, object_.getNormalVectSurfObj(), filteredForceGain_, wrenchBiasOK_, k);
     robot_.updateEndEffectorPosesInWorld(eePose, eeOrientation, k);
@@ -396,12 +401,12 @@ bool DualArmControlSim::updateSim(Eigen::Matrix<float, 6, 1> robotWrench,
 
   object_.setXo(objectPose);
   object_.setQo(objectOrientation);
-  object_.getHmgTransform();//TODO change name?
+  object_.getHmgTransform();//TODO change name, not really a get?
 
   target_.setXt(targetPose);
   target_.setQt(targetOrientation);
   // filtered object position
-  target_.getFilteredState();//TODO change name?
+  target_.getFilteredState();//TODO change name, not really a get?
 
   return true;
 }
@@ -492,9 +497,8 @@ void DualArmControlSim::computeCommands(Eigen::Vector3f eePose, Eigen::Vector4f 
   bool isPlacing = isPlacing_ || (dualTaskSelector_ == PICK_AND_PLACE);
   bool isThrowing = isThrowing_ || (dualTaskSelector_ == TOSSING) || (dualTaskSelector_ == PICK_AND_TOSS);
   bool isPlaceTossing = isPlaceTossing_ || (dualTaskSelector_ == PLACE_TOSSING);
-  // bool isClose2Release = (dsThrowing_.getActivationTangent() > 0.99f); TODO
 
-  bool placingDone = (releaseFlag_) || ((object_.getWHo().block<3, 1>(0, 3) - xPlacing_).norm() <= 0.08);//0.05
+  bool placingDone = (releaseFlag_) || ((object_.getWHo().block<3, 1>(0, 3) - xPlacing_).norm() <= 0.08);
   bool placeTossingDone = (releaseFlag_)
       || (((object_.getWHo().block<3, 1>(0, 3) - tossVar_.releasePosition).norm() <= 0.07)
           || ((object_.getWHo().block<2, 1>(0, 3) - xPlacing_.head(2)).norm() <= 0.05));
@@ -588,7 +592,7 @@ void DualArmControlSim::computeCommands(Eigen::Vector3f eePose, Eigen::Vector4f 
     }
 
     // Reset some controller variables
-    this->reset();//TODO
+    this->reset();
 
   } else {//  release_and_retract || release
     if (releaseAndretract_) {
@@ -788,13 +792,6 @@ void DualArmControlSim::computeCommands(Eigen::Vector3f eePose, Eigen::Vector4f 
 Eigen::Vector3f DualArmControlSim::computeInterceptWithTarget(const Eigen::Vector3f& xTarget,
                                                               const Eigen::Vector3f& vTarget,
                                                               float phiInit) {
-  // TODO CHECK IF CAN DELETE
-  // float phiTarget = 0.0f;
-  // if (vTarget.head(2).norm() > 1e-2) { phiTarget = std::atan2(vTarget(1), vTarget(0)); }
-
-  // float phiTargetTangent = std::tan(phiTarget);
-  // if (phiTargetTangent > 1e4) { phiTargetTangent = 1e4; }
-  // if (-phiTargetTangent < -1e4) { phiTargetTangent = -1e4; }
 
   Eigen::Vector3f xIntercept = xTarget;
 

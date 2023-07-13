@@ -266,6 +266,7 @@ public:
   ~DualArmControlSim();
 
   bool initObjectParam(YAML::Node config);
+  bool initTargetParam();
   bool initRobotParam(YAML::Node config);
   bool initFreeMotionCtrl(YAML::Node config);
   bool initTossVar(YAML::Node config);
