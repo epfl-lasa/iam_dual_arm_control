@@ -56,7 +56,7 @@ private:
   std::vector<float> objectDimVect_;
 
   // Velocity commands to be sent to the robots
-  std_msgs::Float64MultiArray pubVel_[NB_ROBOTS];
+  // std_msgs::Float64MultiArray pubVel_[NB_ROBOTS];
 
   // ---- Subscriber
   ros::Subscriber subObjectPose_;
@@ -381,30 +381,31 @@ public:
     return true;
   }
 
-  void publishCommands(Eigen::Vector3f axisAngleDes, Eigen::Vector3f vDes, Eigen::Vector4f qd) {
+  void publishCommands(Eigen::Vector3f axisAngleDes[], Eigen::Vector3f vDes[], Eigen::Vector4f qd[]) {
     geometry_msgs::Pose vel_quat[NB_ROBOTS];
     std_msgs::Float64MultiArray pubVel[NB_ROBOTS];
 
     for (int k = 0; k < NB_ROBOTS; k++) {
       pubVel[k].data.clear();
-      pubVel[k].data.push_back(axisAngleDes(0));// axis angle pose_x
-      pubVel[k].data.push_back(axisAngleDes(1));// axis angle pose_y
-      pubVel[k].data.push_back(axisAngleDes(2));// axis angle pose_z
-      pubVel[k].data.push_back(vDes(0));        // linear velocity v_x
-      pubVel[k].data.push_back(vDes(1));        // linear velocity v_y
-      pubVel[k].data.push_back(vDes(2));        // linear velocity v_z
+      pubVel[k].data.push_back(axisAngleDes[k](0));// axis angle pose_x
+      pubVel[k].data.push_back(axisAngleDes[k](1));// axis angle pose_y
+      pubVel[k].data.push_back(axisAngleDes[k](2));// axis angle pose_z
+      pubVel[k].data.push_back(vDes[k](0));        // linear velocity v_x
+      pubVel[k].data.push_back(vDes[k](1));        // linear velocity v_y
+      pubVel[k].data.push_back(vDes[k](2));        // linear velocity v_z
 
-      vel_quat[k].position.x = vDes(0); // desired velocity x
-      vel_quat[k].position.y = vDes(1); // desired velocity y
-      vel_quat[k].position.z = vDes(2); // desired velocity z
-      vel_quat[k].orientation.w = qd(0);// desired pose
-      vel_quat[k].orientation.x = qd(1);
-      vel_quat[k].orientation.y = qd(2);
-      vel_quat[k].orientation.z = qd(3);
+      vel_quat[k].position.x = vDes[k](0); // desired velocity x
+      vel_quat[k].position.y = vDes[k](1); // desired velocity y
+      vel_quat[k].position.z = vDes[k](2); // desired velocity z
+      vel_quat[k].orientation.w = qd[k](0);// desired pose
+      vel_quat[k].orientation.x = qd[k](1);
+      vel_quat[k].orientation.y = qd[k](2);
+      vel_quat[k].orientation.z = qd[k](3);
+
     }
 
-    pubTSCommands_[LEFT].publish(pubVel_[LEFT]);
-    pubTSCommands_[RIGHT].publish(pubVel_[RIGHT]);
+    pubTSCommands_[LEFT].publish(pubVel[LEFT]);
+    pubTSCommands_[RIGHT].publish(pubVel[RIGHT]);
     pubDesiredVelQuat_[LEFT].publish(vel_quat[LEFT]);
     pubDesiredVelQuat_[RIGHT].publish(vel_quat[RIGHT]);
   }

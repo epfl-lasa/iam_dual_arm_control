@@ -67,9 +67,9 @@ typedef Eigen::Matrix<float, 6, 6> Matrix6f;
 typedef Eigen::Matrix<float, 7, 1> Vector7f;
 
 struct CommandStruct {
-  Eigen::Vector3f axisAngleDes;
-  Eigen::Vector3f vDes;
-  Eigen::Vector4f qd;
+  Eigen::Vector3f axisAngleDes[NB_ROBOTS];
+  Eigen::Vector3f vDes[NB_ROBOTS];
+  Eigen::Vector4f qd[NB_ROBOTS];
 };
 
 struct SphericalPosition {
@@ -102,7 +102,7 @@ struct tossingTaskVariables {
 
 class DualArmControlSim {
 
-private:
+public:
   int cycleCount_;
   double periodT_;
 
@@ -311,7 +311,9 @@ public:
                                  Eigen::Vector4f robotBaseOrientation);
   void updateContactState();
   void computeCommands(Eigen::Vector3f eePose, Eigen::Vector4f eeOrientation);
+  void updatePoses();
 
+  void updateReleasePosition();
   Eigen::Vector3f
   computeInterceptWithTarget(const Eigen::Vector3f& x_target, const Eigen::Vector3f& v_target, float phi_i);
   void findDesiredLandingPosition(bool isPlacing, bool isPlaceTossing, bool isThrowing);

@@ -37,7 +37,11 @@ int main(int argc, char** argv) {
     return EXIT_FAILURE;
   }
 
+
+
   dualArmControlSim.init();
+
+
 
   // =================================================================================
   // Simulation loop
@@ -67,6 +71,7 @@ int main(int argc, char** argv) {
 
     // Publish the commands to be exectued
     rosDualArm.publishCommands(commandGenerated.axisAngleDes, commandGenerated.vDes, commandGenerated.qd);
+    
     //   // // Publish data through topics for analysis TODO
     //   // publishData();
     //   // // Log data

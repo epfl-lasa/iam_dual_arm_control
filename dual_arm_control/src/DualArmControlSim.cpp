@@ -411,6 +411,51 @@ bool DualArmControlSim::updateSim(Eigen::Matrix<float, 6, 1> robotWrench,
   return true;
 }
 
+void DualArmControlSim::updatePoses() {
+  if (initPoseCount_ < 100) {
+    // Get stanby transformation of the EEs wrt. the world frame
+    robot_.getStandbyHmgTransformInWorld();
+    freeMotionCtrl_.setWHEEStandby(robot_.getWHEEStandbySpecific(LEFT), LEFT);
+    freeMotionCtrl_.setWHEEStandby(robot_.getWHEEStandbySpecific(RIGHT), RIGHT);
+
+    // Set attractor of lifting task
+    object_.setXDo(Eigen::Vector3f(object_.getXoSpecific(0), object_.getXoSpecific(1), xLifting_(2)));
+    object_.setQDo(object_.getQo());
+    object_.getDesiredHmgTransform();
+
+    target_.setXIntercept(Eigen::Vector3f(object_.getXoSpecific(0), 0.0, object_.getXoSpecific(2)));
+    // For catching
+    freeMotionCtrl_.setVirtualObjectFrame(Utils<float>::pose2HomoMx(target_.getXIntercept(), object_.getQo()));
+
+    initPoseCount_++;
+  }
+
+  // // Update the object position or its desired position (attractor) through keyboard
+  // if (objCtrlKey_) {
+  //   this->keyboardVirtualObjectControl();
+  // } else {
+  //   this->keyboardReferenceObjectControl();
+  // }
+
+  // if (incrementReleasePos_) { this->updateReleasePosition(); }
+
+  // Homogeneous transformations associated with the reaching task
+  robot_.getEndEffectorHmgTransform();
+  object_.getGraspPointHTransform();
+  object_.getGraspPointDesiredHTransform();
+  object_.updateGraspNormals();
+
+  for (int k = 0; k < NB_ROBOTS; k++) {
+    err_[k] = (robot_.getWHEESpecific(k).block(0, 3, 3, 1) - object_.getWHGpSpecific(k).block(0, 3, 3, 1)).norm();
+    oHEE_[k] = object_.getWHo().inverse() * robot_.getWHEESpecific(k);
+
+    if (CooperativeCtrl.getContactConfidence() == 1.0) {
+      oHEE_[k](1, 3) *= 0.95f;
+      object_.setWHDgp(object_.getWHDo() * oHEE_[k], k);
+    }
+  }
+}
+
 void DualArmControlSim::updateContactState() {
   robot_.getEstimatedAverageNormalForce();
 
@@ -475,16 +520,30 @@ CommandStruct DualArmControlSim::generateCommands(float firstEigenPassiveDamping
             robotBasePos,
             robotBaseOrientation);
 
+  updatePoses();
   computeCommands(eePose, eeOrientation);
 
   for (int k = 0; k < NB_ROBOTS; k++) {
-    commandGenerated_.axisAngleDes = robot_.getAxisAngleDes(k);
-    commandGenerated_.vDes = robot_.getVDes(k);
-    commandGenerated_.qd = robot_.getQdSpecific(k);
+    commandGenerated_.axisAngleDes[k] = robot_.getAxisAngleDes(k);
+    commandGenerated_.vDes[k] = robot_.getVDes(k);
+    commandGenerated_.qd[k] = robot_.getQdSpecific(k);
   }
 
   return commandGenerated_;
 }
+
+// void DualArmControlSim::updateReleasePosition() {
+//   // releasePos_.r += deltaRelPos_(0);
+//   // releasePos_.theta += M_PI / 180.0f * deltaRelPos_(1);
+//   // releasePos_.phi += M_PI / 180.0f * deltaRelPos_(2);
+//   // deltaRelPos_.setZero();
+
+//   Eigen::Vector3f posXo;
+//   releasePos_.toCartesian(posXo);
+//   tossVar_.releasePosition = posXo + xLifting_;
+
+//   if (tossVar_.releasePosition(0) > 0.70) { tossVar_.releasePosition(0) = 0.70; }
+// }
 
 void DualArmControlSim::computeCommands(Eigen::Vector3f eePose, Eigen::Vector4f eeOrientation) {
   // Update contact state
@@ -577,7 +636,7 @@ void DualArmControlSim::computeCommands(Eigen::Vector3f eePose, Eigen::Vector4f 
                                        object_.getWHo(),
                                        robot_.getVelDesEE(),
                                        robot_.getQd(),
-                                       true);
+                                       true);                                       
 
     objVelDes_ =
         dsThrowing_.apply(object_.getXo(), object_.getQo(), object_.getVo(), Eigen::Vector3f(0.0f, 0.0f, 0.0f));
@@ -689,7 +748,6 @@ void DualArmControlSim::computeCommands(Eigen::Vector3f eePose, Eigen::Vector4f 
         vDesEE[LEFT].head(3) = vDesEE[LEFT].head(3) + dirImp_[LEFT] * cp_ap * desiredVelImp_;
         vDesEE[RIGHT].head(3) = vDesEE[RIGHT].head(3) + dirImp_[RIGHT] * cp_ap * desiredVelImp_;
       } else {
-
         freeMotionCtrl_.dualArmMotion(robot_.getWHEE(),
                                       robot_.getVelEE(),
                                       object_.getWHGp(),
