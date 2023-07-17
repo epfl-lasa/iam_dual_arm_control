@@ -69,7 +69,15 @@ typedef Eigen::Matrix<float, 7, 1> Vector7f;
 struct CommandStruct {
   Eigen::Vector3f axisAngleDes[NB_ROBOTS];
   Eigen::Vector3f vDes[NB_ROBOTS];
+  Eigen::Vector3f omegaDes[NB_ROBOTS];
   Eigen::Vector4f qd[NB_ROBOTS];
+  Vector6f filteredWrench[NB_ROBOTS];
+  Eigen::Matrix4f whgpSpecific[NB_ROBOTS];
+  Vector6f velEESpecific[NB_ROBOTS];
+  Vector6f appliedWrench[NB_ROBOTS];
+  Eigen::Vector3f normalVectSurfObj[NB_ROBOTS];
+  float err[NB_ROBOTS];
+  float nuWr0;
 };
 
 struct SphericalPosition {
@@ -102,7 +110,7 @@ struct tossingTaskVariables {
 
 class DualArmControlSim {
 
-public:
+private:
   int cycleCount_;
   double periodT_;
 
@@ -224,6 +232,10 @@ public:
   float timeToInterceptTgt_;
   float timeToInterceptBot_;
 
+  // ---- Keyboard interaction
+  Eigen::Vector3f deltaRelPos_;
+  Eigen::Vector3f deltaPos_;// variation of object position
+
   // ---- Unconstrained and contrained motion and force generation
   DualArmFreeMotionController freeMotionCtrl_; // Motion generation
   DualArmCooperativeController CooperativeCtrl;// Force generation
@@ -237,6 +249,8 @@ public:
 
   CommandStruct commandGenerated_;
   // ====================================================================================================================
+
+  std::mutex mutex;
 
 public:
   // Robot ID: left or right
@@ -279,38 +293,38 @@ public:
   void reset();
 
   bool loadParamFromFile(const std::string path_to_yaml_file, const std::string pathLearnedModelfolder);
-  bool updateSim(Eigen::Matrix<float, 6, 1> robotWrench,
-                 Eigen::Vector3f eePose,
-                 Eigen::Vector4f eeOrientation,
+  bool updateSim(Eigen::Matrix<float, 6, 1> robotWrench[],
+                 Eigen::Vector3f eePose[],
+                 Eigen::Vector4f eeOrientation[],
                  Eigen::Vector3f objectPose,
                  Eigen::Vector4f objectOrientation,
                  Eigen::Vector3f targetPose,
                  Eigen::Vector4f targetOrientation,
-                 Eigen::Vector3f eeVelLin,
-                 Eigen::Vector3f eeVelAng,
-                 Vector7f jointPosition,
-                 Vector7f jointVelocity,
-                 Vector7f jointTorques,
-                 Eigen::Vector3f robotBasePos,
-                 Eigen::Vector4f robotBaseOrientation);
+                 Eigen::Vector3f eeVelLin[],
+                 Eigen::Vector3f eeVelAng[],
+                 Vector7f jointPosition[],
+                 Vector7f jointVelocity[],
+                 Vector7f jointTorques[],
+                 Eigen::Vector3f robotBasePos[],
+                 Eigen::Vector4f robotBaseOrientation[]);
 
   CommandStruct generateCommands(float firstEigenPassiveDamping[],
-                                 Eigen::Matrix<float, 6, 1> robotWrench,
-                                 Eigen::Vector3f eePose,
-                                 Eigen::Vector4f eeOrientation,
+                                 Eigen::Matrix<float, 6, 1> robotWrench[],
+                                 Eigen::Vector3f eePose[],
+                                 Eigen::Vector4f eeOrientation[],
                                  Eigen::Vector3f objectPose,
                                  Eigen::Vector4f objectOrientation,
                                  Eigen::Vector3f targetPose,
                                  Eigen::Vector4f targetOrientation,
-                                 Eigen::Vector3f eeVelLin,
-                                 Eigen::Vector3f eeVelAng,
-                                 Vector7f jointPosition,
-                                 Vector7f jointVelocity,
-                                 Vector7f jointTorques,
-                                 Eigen::Vector3f robotBasePos,
-                                 Eigen::Vector4f robotBaseOrientation);
+                                 Eigen::Vector3f eeVelLin[],
+                                 Eigen::Vector3f eeVelAng[],
+                                 Vector7f jointPosition[],
+                                 Vector7f jointVelocity[],
+                                 Vector7f jointTorques[],
+                                 Eigen::Vector3f robotBasePos[],
+                                 Eigen::Vector4f robotBaseOrientation[]);
   void updateContactState();
-  void computeCommands(Eigen::Vector3f eePose, Eigen::Vector4f eeOrientation);
+  void computeCommands(Eigen::Vector3f eePose[], Eigen::Vector4f eeOrientation[]);
   void updatePoses();
 
   void updateReleasePosition();
@@ -337,5 +351,7 @@ public:
   double getPeriod();
 
   // ---- Keyboard commands
-  // void updateStatesMachines();
+  void updateStatesMachines();
+  void keyboardVirtualObjectControl();
+  void keyboardReferenceObjectControl();
 };

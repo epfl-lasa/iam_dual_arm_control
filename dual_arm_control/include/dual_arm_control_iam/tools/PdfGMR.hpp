@@ -30,7 +30,6 @@
 // #include "dual_arm_control_iam/DataLogging.hpp"
 
 using namespace std;
-
 class PdfGMR {
 private:
   Eigen::VectorXf priorGMMToss_;
@@ -44,63 +43,7 @@ public:
   ~PdfGMR(){};
 
   bool init(std::string fileGMM[]) {
-    this->loadGMMParam(fileGMM, priorGMMToss_, meanGMMToss_, covMxGMMToss_);
-    return true;
-  }
-
-  // Function to log data from file
-  bool loadDataFromFile(std::string fileName, Eigen::VectorXf& dataAllVal) {
-
-    ifstream inFile;
-    inFile.open(fileName);
-    if (!inFile) {
-      cout << "Unable to open file \n";
-      exit(1);// terminate with error
-    }
-
-    std::vector<float> dataVal;
-    float x;
-    while (inFile >> x) { dataVal.push_back(x); }
-
-    int sizeDataVal = dataVal.size();
-    dataAllVal.resize(sizeDataVal);
-    for (int i = 0; i < sizeDataVal; i++) dataAllVal(i) = dataVal[i];
-
-    return true;
-  }
-  bool loadGMMParam(std::string fileName[], Eigen::VectorXf& priors, Eigen::MatrixXf& means, Eigen::MatrixXf& covars) {
-
-    std::string priorsFileName = fileName[0];
-    std::string meansFileName = fileName[1];
-    std::string covarFileName = fileName[2];
-    Eigen::VectorXf priorsAllVal;
-    Eigen::VectorXf meansAllVal;
-    Eigen::VectorXf covarsAllVal;
-
-    this->loadDataFromFile(priorsFileName, priorsAllVal);
-    this->loadDataFromFile(meansFileName, meansAllVal);
-    this->loadDataFromFile(covarFileName, covarsAllVal);
-
-    // Priors
-    priors = priorsAllVal;
-
-    int nbStates = priorsAllVal.rows();
-    int dataDim = int(meansAllVal.rows() / nbStates);
-
-    // Means
-    Eigen::Map<Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> meansMx(meansAllVal.data(),
-                                                                                              dataDim,
-                                                                                              nbStates);
-    means = meansMx;
-
-    int rowCov = dataDim * nbStates;
-
-    // Covariance
-    Eigen::Map<Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> covarMx(covarsAllVal.data(),
-                                                                                              rowCov,
-                                                                                              dataDim);
-    covars = covarMx;
-
+    // datalog_.loadGMMParam(fileGMM, priorGMMToss_, meanGMMToss_, covMxGMMToss_);
     return true;
   }
 

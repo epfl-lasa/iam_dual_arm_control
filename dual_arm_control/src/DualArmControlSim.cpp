@@ -2,7 +2,12 @@
 
 #include "dual_arm_control_iam/DualArmControlSim.hpp"
 
-DualArmControlSim::DualArmControlSim() { this->reset(); }
+#include <mutex>
+
+DualArmControlSim::DualArmControlSim() {
+  deltaRelPos_.setZero();
+  deltaPos_.setZero();
+}
 
 DualArmControlSim::~DualArmControlSim() {}
 
@@ -127,6 +132,14 @@ bool DualArmControlSim::initFreeMotionCtrl(YAML::Node config) {
   desVreach_ = config["dual_arm_task"]["reach_to_grasp"]["desVreach"].as<float>();
   heightViaPoint_ = config["dual_arm_task"]["placing"]["height_via_point"].as<float>();
 
+  std::vector<float> paramAbsGains =
+      config["dual_arm_task"]["coordination"]["ds_absolute_gains"].as<std::vector<float>>();
+  std::vector<float> paramRelGains =
+      config["dual_arm_task"]["coordination"]["ds_relative_gains"].as<std::vector<float>>();
+
+  gainAbs_.diagonal() = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(paramAbsGains.data(), paramAbsGains.size());
+  gainRel_.diagonal() = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(paramRelGains.data(), paramRelGains.size());
+
   freeMotionCtrl_.init(robot_.getWHEEStandby(), this->gainAbs_, this->gainRel_);
   freeMotionCtrl_.setDt(periodT_);
   freeMotionCtrl_.setObjectDim(object_.getObjectDim());
@@ -169,10 +182,6 @@ bool DualArmControlSim::initTossVar(YAML::Node config) {
 }
 
 bool DualArmControlSim::initDesTasksPosAndLimits(YAML::Node config) {
-  std::vector<float> paramAbsGains =
-      config["dual_arm_task"]["coordination"]["ds_absolute_gains"].as<std::vector<float>>();
-  std::vector<float> paramRelGains =
-      config["dual_arm_task"]["coordination"]["ds_relative_gains"].as<std::vector<float>>();
   std::vector<float> paramXDoLifting = config["dual_arm_task"]["lifting"]["position"].as<std::vector<float>>();
   std::vector<float> paramQDoLifting = config["dual_arm_task"]["lifting"]["orientation"].as<std::vector<float>>();
   std::vector<float> paramXDoPlacing = config["dual_arm_task"]["placing"]["position"].as<std::vector<float>>();
@@ -180,8 +189,6 @@ bool DualArmControlSim::initDesTasksPosAndLimits(YAML::Node config) {
   std::vector<float> paramDualAngularLimit =
       config["dual_arm_task"]["tossing"]["dual_angular_limit"].as<std::vector<float>>();
 
-  gainAbs_.diagonal() = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(paramAbsGains.data(), paramAbsGains.size());
-  gainRel_.diagonal() = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(paramRelGains.data(), paramRelGains.size());
   xLifting_ = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(paramXDoLifting.data(), paramXDoLifting.size());
   qLifting_ = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(paramQDoLifting.data(), paramQDoLifting.size());
   xPlacing_ = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(paramXDoPlacing.data(), paramXDoPlacing.size());
@@ -292,7 +299,37 @@ bool DualArmControlSim::loadParamFromFile(const std::string pathToYamlFile, cons
   return true;
 }
 
-void DualArmControlSim::reset() { refVreach_ = 0.0f; }
+void DualArmControlSim::reset() {
+  deltaRelPos_.setZero();
+  deltaPos_.setZero();
+
+  releaseAndretract_ = false;
+  isThrowing_ = false;
+  isPlacing_ = false;
+  isPlaceTossing_ = false;
+  isPickupSet_ = false;
+  isIntercepting_ = false;
+  nuWr0_ = nuWr1_ = 0.0f;
+  refVreach_ = 0.0f;
+
+  freeMotionCtrl_.setRefVelReach(0.0f, LEFT);
+  freeMotionCtrl_.setRefVelReach(0.0f, RIGHT);
+  dsThrowing_.setRefVtoss(desiredVelImp_);
+  dsThrowing_.resetReleaseFlag();
+  objVelDes_.setZero();
+
+  Vector6f* newVGpO = object_.getVGpO();
+  for (int i = 0; i < NB_ROBOTS; i++) {
+    Eigen::Vector3f newFXC = robot_.getFXC(i);
+    object_.setVGpO(newVGpO[i].setZero(), i);
+    robot_.setFXC(newFXC.setZero(), i);
+  }
+
+  if (adaptationActive_) {
+    tossVar_.releasePosition(1) = 0.0f;
+    xPlacing_(1) = 0.0f;// TBC !!!! TODO
+  }
+}
 
 bool DualArmControlSim::init() {
 
@@ -365,38 +402,47 @@ bool DualArmControlSim::init() {
   timeToInterceptTgt_ = 0.0f;
   timeToInterceptBot_ = 0.0f;
 
+  //Keyboard interaction
+  deltaRelPos_.setZero();
+  deltaPos_.setZero();
+  isDisturbTarget_ = false;
+
   // TODO LOGGING OR NOT HERE?
   // startlogging_ = false;
 
   return true;
 }
 
-bool DualArmControlSim::updateSim(Eigen::Matrix<float, 6, 1> robotWrench,
-                                  Eigen::Vector3f eePose,
-                                  Eigen::Vector4f eeOrientation,
+bool DualArmControlSim::updateSim(Eigen::Matrix<float, 6, 1> robotWrench[],
+                                  Eigen::Vector3f eePose[],
+                                  Eigen::Vector4f eeOrientation[],
                                   Eigen::Vector3f objectPose,
                                   Eigen::Vector4f objectOrientation,
                                   Eigen::Vector3f targetPose,
                                   Eigen::Vector4f targetOrientation,
-                                  Eigen::Vector3f eeVelLin,
-                                  Eigen::Vector3f eeVelAng,
-                                  Vector7f jointPosition,
-                                  Vector7f jointVelocity,
-                                  Vector7f jointTorques,
-                                  Eigen::Vector3f robotBasePos,
-                                  Eigen::Vector4f robotBaseOrientation) {
+                                  Eigen::Vector3f eeVelLin[],
+                                  Eigen::Vector3f eeVelAng[],
+                                  Vector7f jointPosition[],
+                                  Vector7f jointVelocity[],
+                                  Vector7f jointTorques[],
+                                  Eigen::Vector3f robotBasePos[],
+                                  Eigen::Vector4f robotBaseOrientation[]) {
 
   for (int k = 0; k < NB_ROBOTS; k++) {
-    robot_.updateEndEffectorWrench(robotWrench, object_.getNormalVectSurfObj(), filteredForceGain_, wrenchBiasOK_, k);
-    robot_.updateEndEffectorPosesInWorld(eePose, eeOrientation, k);
-    robot_.updateEndEffectorVelocity(eeVelLin, eeVelAng, k);
+    robot_.updateEndEffectorWrench(robotWrench[k],
+                                   object_.getNormalVectSurfObj(),
+                                   filteredForceGain_,
+                                   wrenchBiasOK_,
+                                   k);
+    robot_.updateEndEffectorPosesInWorld(eePose[k], eeOrientation[k], k);
+    robot_.updateEndEffectorVelocity(eeVelLin[k], eeVelAng[k], k);
 
-    robot_.setJointsPositions(jointPosition, k);
-    robot_.setJointsVelocities(jointVelocity, k);
-    robot_.setJointsTorques(jointTorques, k);
+    robot_.setJointsPositions(jointPosition[k], k);
+    robot_.setJointsVelocities(jointVelocity[k], k);
+    robot_.setJointsTorques(jointTorques[k], k);
     robot_.getEstimatedJointAccelerations(k);
 
-    robot_.getRobotBaseFrameInWorld(robotBasePos, robotBaseOrientation, k);
+    robot_.getRobotBaseFrameInWorld(robotBasePos[k], robotBaseOrientation[k], k);
   }
 
   object_.setXo(objectPose);
@@ -430,14 +476,14 @@ void DualArmControlSim::updatePoses() {
     initPoseCount_++;
   }
 
-  // // Update the object position or its desired position (attractor) through keyboard
-  // if (objCtrlKey_) {
-  //   this->keyboardVirtualObjectControl();
-  // } else {
-  //   this->keyboardReferenceObjectControl();
-  // }
+  // Update the object position or its desired position (attractor) through keyboard
+  if (objCtrlKey_) {
+    this->keyboardVirtualObjectControl();
+  } else {
+    this->keyboardReferenceObjectControl();
+  }
 
-  // if (incrementReleasePos_) { this->updateReleasePosition(); }
+  if (incrementReleasePos_) { this->updateReleasePosition(); }
 
   // Homogeneous transformations associated with the reaching task
   robot_.getEndEffectorHmgTransform();
@@ -487,23 +533,25 @@ void DualArmControlSim::updateContactState() {
 }
 
 CommandStruct DualArmControlSim::generateCommands(float firstEigenPassiveDamping[],
-                                                  Eigen::Matrix<float, 6, 1> robotWrench,
-                                                  Eigen::Vector3f eePose,
-                                                  Eigen::Vector4f eeOrientation,
+                                                  Eigen::Matrix<float, 6, 1> robotWrench[],
+                                                  Eigen::Vector3f eePose[],
+                                                  Eigen::Vector4f eeOrientation[],
                                                   Eigen::Vector3f objectPose,
                                                   Eigen::Vector4f objectOrientation,
                                                   Eigen::Vector3f targetPose,
                                                   Eigen::Vector4f targetOrientation,
-                                                  Eigen::Vector3f eeVelLin,
-                                                  Eigen::Vector3f eeVelAng,
-                                                  Vector7f jointPosition,
-                                                  Vector7f jointVelocity,
-                                                  Vector7f jointTorques,
-                                                  Eigen::Vector3f robotBasePos,
-                                                  Eigen::Vector4f robotBaseOrientation) {
+                                                  Eigen::Vector3f eeVelLin[],
+                                                  Eigen::Vector3f eeVelAng[],
+                                                  Vector7f jointPosition[],
+                                                  Vector7f jointVelocity[],
+                                                  Vector7f jointTorques[],
+                                                  Eigen::Vector3f robotBasePos[],
+                                                  Eigen::Vector4f robotBaseOrientation[]) {
 
   d1_[LEFT] = firstEigenPassiveDamping[LEFT];
   d1_[RIGHT] = firstEigenPassiveDamping[RIGHT];
+
+  updateStatesMachines();
 
   updateSim(robotWrench,
             eePose,
@@ -526,26 +574,34 @@ CommandStruct DualArmControlSim::generateCommands(float firstEigenPassiveDamping
   for (int k = 0; k < NB_ROBOTS; k++) {
     commandGenerated_.axisAngleDes[k] = robot_.getAxisAngleDes(k);
     commandGenerated_.vDes[k] = robot_.getVDes(k);
+    commandGenerated_.omegaDes[k] = robot_.getOmegaDes(k);
     commandGenerated_.qd[k] = robot_.getQdSpecific(k);
+    commandGenerated_.filteredWrench[k] = robot_.getFilteredWrench(k);
+    commandGenerated_.whgpSpecific[k] = object_.getWHGpSpecific(k);
+    commandGenerated_.velEESpecific[k] = robot_.getVelEESpecific(k);
+    commandGenerated_.appliedWrench[k] = CooperativeCtrl.getForceApplied(k);
+    commandGenerated_.normalVectSurfObj[k] = object_.getNormalVectSurfObjSpecific(k);
+    commandGenerated_.err[k] = err_[k];
   }
+  commandGenerated_.nuWr0 = nuWr0_;
 
   return commandGenerated_;
 }
 
-// void DualArmControlSim::updateReleasePosition() {
-//   // releasePos_.r += deltaRelPos_(0);
-//   // releasePos_.theta += M_PI / 180.0f * deltaRelPos_(1);
-//   // releasePos_.phi += M_PI / 180.0f * deltaRelPos_(2);
-//   // deltaRelPos_.setZero();
+void DualArmControlSim::updateReleasePosition() {
+  releasePos_.r += deltaRelPos_(0);
+  releasePos_.theta += M_PI / 180.0f * deltaRelPos_(1);
+  releasePos_.phi += M_PI / 180.0f * deltaRelPos_(2);
+  deltaRelPos_.setZero();
 
-//   Eigen::Vector3f posXo;
-//   releasePos_.toCartesian(posXo);
-//   tossVar_.releasePosition = posXo + xLifting_;
+  Eigen::Vector3f posXo;
+  releasePos_.toCartesian(posXo);
+  tossVar_.releasePosition = posXo + xLifting_;
 
-//   if (tossVar_.releasePosition(0) > 0.70) { tossVar_.releasePosition(0) = 0.70; }
-// }
+  if (tossVar_.releasePosition(0) > 0.70) { tossVar_.releasePosition(0) = 0.70; }
+}
 
-void DualArmControlSim::computeCommands(Eigen::Vector3f eePose, Eigen::Vector4f eeOrientation) {
+void DualArmControlSim::computeCommands(Eigen::Vector3f eePose[], Eigen::Vector4f eeOrientation[]) {
   // Update contact state
   updateContactState();
 
@@ -636,7 +692,7 @@ void DualArmControlSim::computeCommands(Eigen::Vector3f eePose, Eigen::Vector4f 
                                        object_.getWHo(),
                                        robot_.getVelDesEE(),
                                        robot_.getQd(),
-                                       true);                                       
+                                       true);
 
     objVelDes_ =
         dsThrowing_.apply(object_.getXo(), object_.getQo(), object_.getVo(), Eigen::Vector3f(0.0f, 0.0f, 0.0f));
@@ -654,6 +710,7 @@ void DualArmControlSim::computeCommands(Eigen::Vector3f eePose, Eigen::Vector4f 
     this->reset();
 
   } else {//  release_and_retract || release
+
     if (releaseAndretract_) {
 
       freeMotionCtrl_.computeReleaseAndRetractMotion(robot_.getWHEE(),
@@ -845,6 +902,13 @@ void DualArmControlSim::computeCommands(Eigen::Vector3f eePose, Eigen::Vector4f 
   // ---------- Control of conveyor belt speed ----------
   float omegaPert = 2.f * M_PI / 1;
   float deltaOmegaPert = 0.1f * (2.f * (float) std::rand() / RAND_MAX - 1.0f) * omegaPert;
+
+  // TODO
+  // if (ctrlModeConveyorBelt_) {
+  //   desSpeedConveyorBelt_ = (int) (nominalSpeedConveyorBelt_
+  //                                  + (int) isDisturbTarget_ * magniturePertConveyorBelt_
+  //                                      * sin((omegaPert + deltaOmegaPert) * dt_ * cycleCount_));
+  // }
 }
 
 Eigen::Vector3f DualArmControlSim::computeInterceptWithTarget(const Eigen::Vector3f& xTarget,
@@ -1115,209 +1179,233 @@ void DualArmControlSim::prepareCommands(Vector6f vDesEE[], Eigen::Vector4f qd[],
 bool DualArmControlSim::getReleaseFlag() { return releaseAndretract_; }
 double DualArmControlSim::getPeriod() { return periodT_; }
 
-// void DualArmControlSim::updateStatesMachines() {
-//   keyboard::nonBlock(1);
+// control of object position through keyboad
+void DualArmControlSim::keyboardVirtualObjectControl() {
+  Eigen::Matrix4f wHo;
+  wHo = object_.getWHo();
+  wHo(0, 3) += deltaPos_(0);
+  object_.setWHo(wHo);
 
-//   if (keyboard::khBit() != 0) {
-//     char keyboardCommand = fgetc(stdin);
-//     fflush(stdin);
+  wHo = object_.getWHo();
+  wHo(1, 3) += deltaPos_(1);
+  object_.setWHo(wHo);
 
-//     switch (keyboardCommand) {
-//       case 'q': {
-//         goHome_ = !goHome_;
-//         if (goHome_) {
-//           goToAttractors_ = true;
-//           startlogging_ = false;
-//         } else if (!goHome_) {
-//           startlogging_ = true;
-//         }
-//       } break;
-//       case 'g': {
-//         goToAttractors_ = !goToAttractors_;
-//         if (goToAttractors_) {
-//           goHome_ = false;
-//           releaseAndretract_ = false;
-//         }
-//       } break;
+  wHo = object_.getWHo();
+  wHo(2, 3) += deltaPos_(2);
+  object_.setWHo(wHo);
+}
 
-//       // Conveyor belt control
-//       case 'a': {
-//         if (ctrlModeConveyorBelt_) {
-//           modeConveyorBelt_ = 2;
-//           publishConveyorBeltCmds();
-//           startlogging_ = true;
-//         } else if (incrementReleasePos_) {
-//           deltaRelPos_(0) -= 0.025f;//[m]
-//         } else {
-//           deltaPos_(0) -= 0.01f;
-//         }
-//       } break;
-//       case 's': {
-//         if (ctrlModeConveyorBelt_) {
-//           modeConveyorBelt_ = 0;
-//           publishConveyorBeltCmds();
-//         } else if (incrementReleasePos_) {
-//           deltaRelPos_(0) += 0.025f;//[m]
-//         } else {
-//           deltaPos_(0) += 0.01f;
-//         }
-//       } break;
-//       case 'd': {
-//         if (ctrlModeConveyorBelt_) {
-//           modeConveyorBelt_ = 1;
-//           publishConveyorBeltCmds();
-//         } else if (incrementReleasePos_) {
-//           deltaRelPos_(1) -= 5.0f;//[deg]
-//         } else {
-//           deltaPos_(1) -= 0.01f;
-//         }
-//       } break;
-//       case 'f': {
-//         if (incrementReleasePos_) {
-//           deltaRelPos_(1) += 5.0f;//[deg]
-//         } else {
-//           deltaPos_(1) += 0.01f;
-//         }
-//       } break;
-//       case 'z': {
-//         if (ctrlModeConveyorBelt_) {
-//           trackingFactor_ -= 0.01f;
-//         } else if (incrementReleasePos_) {
-//           deltaRelPos_(2) -= 5.0f;//[deg]
-//         } else {
-//           deltaPos_(2) -= 0.01f;
-//         }
-//       } break;
-//       case 'w': {
-//         if (ctrlModeConveyorBelt_) {
-//           trackingFactor_ += 0.01f;
-//         } else if (incrementReleasePos_) {
-//           deltaRelPos_(2) += 5.0f;//[deg]
-//         } else {
-//           deltaPos_(2) += 0.01f;
-//         }
-//       } break;
-//       case 'h': {
-//         if (ctrlModeConveyorBelt_) {
-//           nominalSpeedConveyorBelt_ -= 50;
-//         } else {
-//           deltaAng_(0) -= 0.05f;
-//         }
-//       } break;
-//       case 'j': {
-//         if (ctrlModeConveyorBelt_) {
-//           nominalSpeedConveyorBelt_ += 50;
-//         } else {
-//           deltaAng_(0) += 0.05f;
-//         }
-//       } break;
-//       case 'k': {
-//         if (ctrlModeConveyorBelt_) {
-//           adaptationActive_ = !adaptationActive_;
-//         } else {
-//           deltaAng_(1) -= 0.05f;
-//         }
-//       } break;
-//       case 'm': {
-//         if (ctrlModeConveyorBelt_) {
-//           magniturePertConveyorBelt_ -= 50;
-//         } else {
-//           deltaAng_(2) -= 0.05f;
-//         }
-//       } break;
-//       case 'i': {
-//         if (ctrlModeConveyorBelt_) {
-//           magniturePertConveyorBelt_ += 50;
-//         } else {
-//           deltaAng_(2) += 0.05f;
-//         }
-//       } break;
+// control of attractor position through keyboad
+void DualArmControlSim::keyboardReferenceObjectControl() {
+  xLifting_(0) += deltaPos_(0);
+  xLifting_(1) += deltaPos_(1);
+  xLifting_(2) += deltaPos_(2);
+  deltaPos_.setZero();
+}
 
-//       // Release or throwing
-//       case 'r': {
-//         releaseAndretract_ = !releaseAndretract_;
-//       } break;
-//       case 'l': {
-//         dualTaskSelector_ = PICK_AND_LIFT;
-//         hasCaughtOnce_ = false;
-//       } break;
-//       case 't': {
-//         isThrowing_ = !isThrowing_;
-//         if (isThrowing_) {
-//           dualTaskSelector_ = PICK_AND_TOSS;
-//           hasCaughtOnce_ = false;
-//         } else if (!isThrowing_) {
-//           dualTaskSelector_ = PICK_AND_LIFT;
-//         }
-//       } break;
-//       case 'p': {
-//         isPlacing_ = !isPlacing_;
-//         if (isPlacing_) {
-//           dualTaskSelector_ = PICK_AND_PLACE;
-//           hasCaughtOnce_ = false;
-//         } else if (!isPlacing_) {
-//           dualTaskSelector_ = PICK_AND_LIFT;
-//         }
-//       } break;
-//       case 'o': {
-//         isPlaceTossing_ = !isPlaceTossing_;
-//         if (isPlaceTossing_) {
-//           dualTaskSelector_ = PLACE_TOSSING;
-//           hasCaughtOnce_ = false;
-//         } else if (!isPlaceTossing_) {
-//           dualTaskSelector_ = PICK_AND_LIFT;
-//         }
-//       } break;
+void DualArmControlSim::updateStatesMachines() {
+  keyboard::nonBlock(1);
 
-//       // Impact and tossing velocity
-//       case 'v': {
-//         desVtoss_ -= 0.05f;
-//         if (desVtoss_ < 0.2f) { desVtoss_ = 0.2f; }
-//         dsThrowing_.setTossLinearVelocity(desVtoss_ * tossVar_.releaseLinearVelocity.normalized());
-//         dsThrowingEstim_.setTossLinearVelocity(desVtoss_ * tossVar_.releaseLinearVelocity.normalized());
-//       } break;
-//       case 'b': {
-//         desVtoss_ += 0.05f;
-//         if (desVtoss_ > 2.0f) { desVtoss_ = 2.0f; }
-//         dsThrowing_.setTossLinearVelocity(desVtoss_ * tossVar_.releaseLinearVelocity.normalized());
-//         dsThrowingEstim_.setTossLinearVelocity(desVtoss_ * tossVar_.releaseLinearVelocity.normalized());
-//       } break;
-//       case 'y': {
-//         desiredVelImp_ -= 0.05f;
-//         if (desiredVelImp_ < 0.05f) { desiredVelImp_ = 0.05f; }
-//       } break;
-//       case 'u': {
-//         desiredVelImp_ += 0.05f;
-//         if (desiredVelImp_ > 0.6f) { desiredVelImp_ = 0.6f; }
-//       } break;
+  if (keyboard::khBit() != 0) {
+    char keyboardCommand = fgetc(stdin);
+    fflush(stdin);
 
-//       // Reset the data logging
-//       case 'c': {
-//         startlogging_ = false;
-//         dataLog_.reset(ros::package::getPath(std::string("dual_arm_control")) + "/Data");
-//       } break;
+    switch (keyboardCommand) {
+      case 'q': {
+        goHome_ = !goHome_;
+        if (goHome_) {
+          goToAttractors_ = true;
+          startlogging_ = false;
+        } else if (!goHome_) {
+          startlogging_ = true;
+        }
+      } break;
+      case 'g': {
+        goToAttractors_ = !goToAttractors_;
+        if (goToAttractors_) {
+          goHome_ = false;
+          releaseAndretract_ = false;
+        }
+      } break;
 
-//       // Disturb the target speed
-//       case 'e': {
-//         isDisturbTarget_ = !isDisturbTarget_;
-//       } break;
+      // // Conveyor belt control
+      // case 'a': {
+      //   if (ctrlModeConveyorBelt_) {
+      //     modeConveyorBelt_ = 2;
+      //     publishConveyorBeltCmds();
+      //     startlogging_ = true;
+      //   } else if (incrementReleasePos_) {
+      //     deltaRelPos_(0) -= 0.025f;//[m]
+      //   } else {
+      //     deltaPos_(0) -= 0.01f;
+      //   }
+      // } break;
+      // case 's': {
+      //   if (ctrlModeConveyorBelt_) {
+      //     modeConveyorBelt_ = 0;
+      //     publishConveyorBeltCmds();
+      //   } else if (incrementReleasePos_) {
+      //     deltaRelPos_(0) += 0.025f;//[m]
+      //   } else {
+      //     deltaPos_(0) += 0.01f;
+      //   }
+      // } break;
+      // case 'd': {
+      //   if (ctrlModeConveyorBelt_) {
+      //     modeConveyorBelt_ = 1;
+      //     publishConveyorBeltCmds();
+      //   } else if (incrementReleasePos_) {
+      //     deltaRelPos_(1) -= 5.0f;//[deg]
+      //   } else {
+      //     deltaPos_(1) -= 0.01f;
+      //   }
+      // } break;
+      // case 'f': {
+      //   if (incrementReleasePos_) {
+      //     deltaRelPos_(1) += 5.0f;//[deg]
+      //   } else {
+      //     deltaPos_(1) += 0.01f;
+      //   }
+      // } break;
+      // case 'z': {
+      //   if (ctrlModeConveyorBelt_) {
+      //     trackingFactor_ -= 0.01f;
+      //   } else if (incrementReleasePos_) {
+      //     deltaRelPos_(2) -= 5.0f;//[deg]
+      //   } else {
+      //     deltaPos_(2) -= 0.01f;
+      //   }
+      // } break;
+      // case 'w': {
+      //   if (ctrlModeConveyorBelt_) {
+      //     trackingFactor_ += 0.01f;
+      //   } else if (incrementReleasePos_) {
+      //     deltaRelPos_(2) += 5.0f;//[deg]
+      //   } else {
+      //     deltaPos_(2) += 0.01f;
+      //   }
+      // } break;
+      // case 'h': {
+      //   if (ctrlModeConveyorBelt_) {
+      //     nominalSpeedConveyorBelt_ -= 50;
+      //   } else {
+      //     deltaAng_(0) -= 0.05f;
+      //   }
+      // } break;
+      // case 'j': {
+      //   if (ctrlModeConveyorBelt_) {
+      //     nominalSpeedConveyorBelt_ += 50;
+      //   } else {
+      //     deltaAng_(0) += 0.05f;
+      //   }
+      // } break;
+      // case 'k': {
+      //   if (ctrlModeConveyorBelt_) {
+      //     adaptationActive_ = !adaptationActive_;
+      //   } else {
+      //     deltaAng_(1) -= 0.05f;
+      //   }
+      // } break;
+      // case 'm': {
+      //   if (ctrlModeConveyorBelt_) {
+      //     magniturePertConveyorBelt_ -= 50;
+      //   } else {
+      //     deltaAng_(2) -= 0.05f;
+      //   }
+      // } break;
+      // case 'i': {
+      //   if (ctrlModeConveyorBelt_) {
+      //     magniturePertConveyorBelt_ += 50;
+      //   } else {
+      //     deltaAng_(2) += 0.05f;
+      //   }
+      // } break;
 
-//       // Placing hight
-//       case 'x': {
-//         if (dualTaskSelector_ == PICK_AND_TOSS) {
-//           tossVar_.releasePosition(1) -= 0.01;
-//         } else {
-//           xPlacing_(2) -= 0.01;
-//         }
-//       } break;
-//       case 'n': {
-//         if (dualTaskSelector_ == PICK_AND_TOSS) {
-//           tossVar_.releasePosition(1) += 0.01;
-//         } else {
-//           xPlacing_(2) += 0.01;
-//         }
-//       } break;
-//     }
-//   }
-//   keyboard::nonBlock(0);
-// }
+      // Release or throwing
+      case 'r': {
+        releaseAndretract_ = !releaseAndretract_;
+      } break;
+      case 'l': {
+        dualTaskSelector_ = PICK_AND_LIFT;
+        // hasCaughtOnce_ = false;
+      } break;
+      case 't': {
+        isThrowing_ = !isThrowing_;
+        if (isThrowing_) {
+          dualTaskSelector_ = PICK_AND_TOSS;
+          // hasCaughtOnce_ = false;
+        } else if (!isThrowing_) {
+          dualTaskSelector_ = PICK_AND_LIFT;
+        }
+      } break;
+      case 'p': {
+        isPlacing_ = !isPlacing_;
+        if (isPlacing_) {
+          dualTaskSelector_ = PICK_AND_PLACE;
+          // hasCaughtOnce_ = false;
+        } else if (!isPlacing_) {
+          dualTaskSelector_ = PICK_AND_LIFT;
+        }
+      } break;
+      case 'o': {
+        isPlaceTossing_ = !isPlaceTossing_;
+        if (isPlaceTossing_) {
+          dualTaskSelector_ = PLACE_TOSSING;
+          // hasCaughtOnce_ = false;
+        } else if (!isPlaceTossing_) {
+          dualTaskSelector_ = PICK_AND_LIFT;
+        }
+      } break;
+
+      // Impact and tossing velocity
+      case 'v': {
+        desVtoss_ -= 0.05f;
+        if (desVtoss_ < 0.2f) { desVtoss_ = 0.2f; }
+        dsThrowing_.setTossLinearVelocity(desVtoss_ * tossVar_.releaseLinearVelocity.normalized());
+        dsThrowingEstim_.setTossLinearVelocity(desVtoss_ * tossVar_.releaseLinearVelocity.normalized());
+      } break;
+      case 'b': {
+        desVtoss_ += 0.05f;
+        if (desVtoss_ > 2.0f) { desVtoss_ = 2.0f; }
+        dsThrowing_.setTossLinearVelocity(desVtoss_ * tossVar_.releaseLinearVelocity.normalized());
+        dsThrowingEstim_.setTossLinearVelocity(desVtoss_ * tossVar_.releaseLinearVelocity.normalized());
+      } break;
+      case 'y': {
+        desiredVelImp_ -= 0.05f;
+        if (desiredVelImp_ < 0.05f) { desiredVelImp_ = 0.05f; }
+      } break;
+      case 'u': {
+        desiredVelImp_ += 0.05f;
+        if (desiredVelImp_ > 0.6f) { desiredVelImp_ = 0.6f; }
+      } break;
+
+      // Reset the data logging
+      case 'c': {
+        startlogging_ = false;
+        // dataLog_.reset(ros::package::getPath(std::string("dual_arm_control")) + "/Data");
+      } break;
+
+      // Disturb the target speed
+      case 'e': {
+        isDisturbTarget_ = !isDisturbTarget_;
+      } break;
+
+      // Placing hight
+      case 'x': {
+        if (dualTaskSelector_ == PICK_AND_TOSS) {
+          tossVar_.releasePosition(1) -= 0.01;
+        } else {
+          xPlacing_(2) -= 0.01;
+        }
+      } break;
+      case 'n': {
+        if (dualTaskSelector_ == PICK_AND_TOSS) {
+          tossVar_.releasePosition(1) += 0.01;
+        } else {
+          xPlacing_(2) += 0.01;
+        }
+      } break;
+    }
+  }
+  keyboard::nonBlock(0);
+}

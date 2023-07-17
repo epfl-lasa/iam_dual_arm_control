@@ -37,11 +37,7 @@ int main(int argc, char** argv) {
     return EXIT_FAILURE;
   }
 
-
-
   dualArmControlSim.init();
-
-
 
   // =================================================================================
   // Simulation loop
@@ -51,6 +47,9 @@ int main(int argc, char** argv) {
   bool releaseFlag = false;
 
   while (nh.ok()) {
+
+    // Get the first eigen value of the passive ds controller and its updated value
+    rosDualArm.updatePassiveDSDamping();
 
     // Compute generated desired motion and forces
     commandGenerated = dualArmControlSim.generateCommands(rosDualArm.firstEigenPassiveDamping_,
@@ -71,7 +70,17 @@ int main(int argc, char** argv) {
 
     // Publish the commands to be exectued
     rosDualArm.publishCommands(commandGenerated.axisAngleDes, commandGenerated.vDes, commandGenerated.qd);
-    
+    rosDualArm.publishData(commandGenerated.vDes,
+                           commandGenerated.omegaDes,
+                           commandGenerated.qd,
+                           commandGenerated.filteredWrench,
+                           commandGenerated.whgpSpecific,
+                           commandGenerated.velEESpecific,
+                           commandGenerated.appliedWrench,
+                           commandGenerated.normalVectSurfObj,
+                           commandGenerated.err,
+                           commandGenerated.nuWr0);
+
     //   // // Publish data through topics for analysis TODO
     //   // publishData();
     //   // // Log data
