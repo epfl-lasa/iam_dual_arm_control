@@ -44,16 +44,19 @@ int main(int argc, char** argv) {
   // Simulation loop
   // =================================================================================
 
-  int count = 0;
+  int cycleCount = 0;
   bool releaseFlag = false;
 
+  keyboardinteraction::InteractionVar interactionVar;
   StateMachine stateMachine;
 
   while (nh.ok()) {
 
-    stateMachine = keyboardinteraction::getKeyboard(dualArmControlSim.getStateMachine());
-
-    dualArmControlSim.updateStateMachine(stateMachine);
+    interactionVar.stateMachine = dualArmControlSim.getStateMachine();
+    interactionVar.conveyorBeltState = rosDualArm.getConveyorBeltStatus();
+    interactionVar = keyboardinteraction::getKeyboard(interactionVar);
+    dualArmControlSim.updateStateMachine(interactionVar.stateMachine);
+    rosDualArm.updateConveyorBeltStatus(interactionVar.conveyorBeltState);
 
     // Get the first eigen value of the passive ds controller and its updated value
     rosDualArm.updatePassiveDSDamping();
@@ -73,7 +76,8 @@ int main(int argc, char** argv) {
                                                           rosDualArm.jointVelocity_,
                                                           rosDualArm.jointTorques_,
                                                           rosDualArm.robotBasePos_,
-                                                          rosDualArm.robotBaseOrientation_);
+                                                          rosDualArm.robotBaseOrientation_,
+                                                          cycleCount);
 
     // Publish the commands to be exectued
     rosDualArm.publishCommands(commandGenerated.axisAngleDes, commandGenerated.vDes, commandGenerated.qd);
@@ -88,6 +92,8 @@ int main(int argc, char** argv) {
                            commandGenerated.err,
                            commandGenerated.nuWr0);
 
+    rosDualArm.sendConveyorBeltSpeed(cycleCount);
+
     //   // // Publish data through topics for analysis TODO
     //   // publishData();
     //   // // Log data
@@ -95,6 +101,7 @@ int main(int argc, char** argv) {
 
     ros::spinOnce();
     loopRate.sleep();
+    cycleCount++;
   }
 
   return 0;

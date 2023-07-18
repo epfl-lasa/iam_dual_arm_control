@@ -29,21 +29,23 @@
 #include <stdio.h>
 #include <termios.h>
 
-
-
-
 namespace keyboardinteraction {
 
+struct InteractionVar {
+  StateMachine stateMachine;
+  ConveyorBeltState conveyorBeltState;
+};
+
 enum TaskType {
-    REACH = 0,
-    PICK_AND_LIFT = 1,
-    TOSSING = 2,
-    PICK_AND_TOSS = 3,
-    PICK_AND_PLACE = 4,
-    PLACE_TOSSING = 5,
-    THROWING = 6,
-    HANDINGOVER = 7,
-    PAUSE_MOTION = 8
+  REACH = 0,
+  PICK_AND_LIFT = 1,
+  TOSSING = 2,
+  PICK_AND_TOSS = 3,
+  PICK_AND_PLACE = 4,
+  PLACE_TOSSING = 5,
+  THROWING = 6,
+  HANDINGOVER = 7,
+  PAUSE_MOTION = 8
 };
 
 void nonBlock(int state) {
@@ -102,8 +104,7 @@ char getChar() {
   return c;
 }
 
-
-StateMachine getKeyboard(StateMachine stateMachine) {
+InteractionVar getKeyboard(InteractionVar interactionVar) {
 
   nonBlock(1);
 
@@ -113,197 +114,183 @@ StateMachine getKeyboard(StateMachine stateMachine) {
 
     switch (keyboardCommand) {
       case 'q': {
-        stateMachine.goHome = !stateMachine.goHome;
-        if (stateMachine.goHome) {
-          stateMachine.goToAttractors = true;
-          //   stateMachine.startlogging = false;
-        } else if (!stateMachine.goHome) {
-          //   stateMachine.startlogging = true;
+        interactionVar.stateMachine.goHome = !interactionVar.stateMachine.goHome;
+        if (interactionVar.stateMachine.goHome) {
+          interactionVar.stateMachine.goToAttractors = true;
+          //   interactionVar.stateMachine.startlogging = false;
+        } else if (!interactionVar.stateMachine.goHome) {
+          //   interactionVar.stateMachine.startlogging = true;
         }
       } break;
       case 'g': {
-        stateMachine.goToAttractors = !stateMachine.goToAttractors;
-        if (stateMachine.goToAttractors) {
-          stateMachine.goHome = false;
-          stateMachine.releaseAndretract = false;
+        interactionVar.stateMachine.goToAttractors = !interactionVar.stateMachine.goToAttractors;
+        if (interactionVar.stateMachine.goToAttractors) {
+          interactionVar.stateMachine.goHome = false;
+          interactionVar.stateMachine.releaseAndretract = false;
         }
       } break;
 
       // Release or throwing
       case 'r': {
-        stateMachine.releaseAndretract = !stateMachine.releaseAndretract;
+        interactionVar.stateMachine.releaseAndretract = !interactionVar.stateMachine.releaseAndretract;
       } break;
       case 'l': {
-        stateMachine.dualTaskSelector = PICK_AND_LIFT;
+        interactionVar.stateMachine.dualTaskSelector = PICK_AND_LIFT;
       } break;
       case 't': {
-        stateMachine.isThrowing = !stateMachine.isThrowing;
-        if (stateMachine.isThrowing) {
-          stateMachine.dualTaskSelector = PICK_AND_TOSS;
-        } else if (!stateMachine.isThrowing) {
-          stateMachine.dualTaskSelector = PICK_AND_LIFT;
+        interactionVar.stateMachine.isThrowing = !interactionVar.stateMachine.isThrowing;
+        if (interactionVar.stateMachine.isThrowing) {
+          interactionVar.stateMachine.dualTaskSelector = PICK_AND_TOSS;
+        } else if (!interactionVar.stateMachine.isThrowing) {
+          interactionVar.stateMachine.dualTaskSelector = PICK_AND_LIFT;
         }
       } break;
       case 'p': {
-        stateMachine.isPlacing = !stateMachine.isPlacing;
-        if (stateMachine.isPlacing) {
-          stateMachine.dualTaskSelector = PICK_AND_PLACE;
-        } else if (!stateMachine.isPlacing) {
-          stateMachine.dualTaskSelector = PICK_AND_LIFT;
+        interactionVar.stateMachine.isPlacing = !interactionVar.stateMachine.isPlacing;
+        if (interactionVar.stateMachine.isPlacing) {
+          interactionVar.stateMachine.dualTaskSelector = PICK_AND_PLACE;
+        } else if (!interactionVar.stateMachine.isPlacing) {
+          interactionVar.stateMachine.dualTaskSelector = PICK_AND_LIFT;
         }
       } break;
       case 'o': {
-        stateMachine.isPlaceTossing = !stateMachine.isPlaceTossing;
-        if (stateMachine.isPlaceTossing) {
-          stateMachine.dualTaskSelector = PLACE_TOSSING;
-        } else if (!stateMachine.isPlaceTossing) {
-          stateMachine.dualTaskSelector = PICK_AND_LIFT;
+        interactionVar.stateMachine.isPlaceTossing = !interactionVar.stateMachine.isPlaceTossing;
+        if (interactionVar.stateMachine.isPlaceTossing) {
+          interactionVar.stateMachine.dualTaskSelector = PLACE_TOSSING;
+        } else if (!interactionVar.stateMachine.isPlaceTossing) {
+          interactionVar.stateMachine.dualTaskSelector = PICK_AND_LIFT;
         }
       } break;
 
       // Impact and tossing velocity
       case 'v': {
-        stateMachine.desVtoss -= 0.05f;
-        if (stateMachine.desVtoss < 0.2f) { stateMachine.desVtoss = 0.2f; }
+        interactionVar.stateMachine.desVtoss -= 0.05f;
+        if (interactionVar.stateMachine.desVtoss < 0.2f) { interactionVar.stateMachine.desVtoss = 0.2f; }
       } break;
       case 'b': {
-        stateMachine.desVtoss += 0.05f;
-        if (stateMachine.desVtoss > 2.0f) { stateMachine.desVtoss = 2.0f; }
+        interactionVar.stateMachine.desVtoss += 0.05f;
+        if (interactionVar.stateMachine.desVtoss > 2.0f) { interactionVar.stateMachine.desVtoss = 2.0f; }
       } break;
       case 'y': {
-        stateMachine.desiredVelImp -= 0.05f;
-        if (stateMachine.desiredVelImp < 0.05f) { stateMachine.desiredVelImp = 0.05f; }
+        interactionVar.stateMachine.desiredVelImp -= 0.05f;
+        if (interactionVar.stateMachine.desiredVelImp < 0.05f) { interactionVar.stateMachine.desiredVelImp = 0.05f; }
       } break;
       case 'u': {
-        stateMachine.desiredVelImp += 0.05f;
-        if (stateMachine.desiredVelImp > 0.6f) { stateMachine.desiredVelImp = 0.6f; }
+        interactionVar.stateMachine.desiredVelImp += 0.05f;
+        if (interactionVar.stateMachine.desiredVelImp > 0.6f) { interactionVar.stateMachine.desiredVelImp = 0.6f; }
       } break;
 
       // Reset the data logging
       case 'c': {
-        stateMachine.startlogging = false;// TODO WHEN LOGGING
+        interactionVar.stateMachine.startlogging = false;// TODO WHEN LOGGING
         // dataLog_.reset(ros::package::getPath(std::string("dual_arm_control")) + "/Data");
       } break;
 
       // Disturb the target speed
       case 'e': {
-        stateMachine.isDisturbTarget = !stateMachine.isDisturbTarget;
+        interactionVar.conveyorBeltState.isDisturbTarget = !interactionVar.conveyorBeltState.isDisturbTarget;
       } break;
 
       // Placing hight
       case 'x': {
-        if (stateMachine.dualTaskSelector == PICK_AND_TOSS) {
-            stateMachine.releasePosY -= 0.01;
+        if (interactionVar.stateMachine.dualTaskSelector == PICK_AND_TOSS) {
+          interactionVar.stateMachine.releasePosY -= 0.01;
         } else {
-          stateMachine.placingPosHeight -= 0.01;
+          interactionVar.stateMachine.placingPosHeight -= 0.01;
         }
       } break;
       case 'n': {
-        if (stateMachine.dualTaskSelector == PICK_AND_TOSS) {
-            stateMachine.releasePosY += 0.01;
+        if (interactionVar.stateMachine.dualTaskSelector == PICK_AND_TOSS) {
+          interactionVar.stateMachine.releasePosY += 0.01;
         } else {
-          stateMachine.placingPosHeight += 0.01;
+          interactionVar.stateMachine.placingPosHeight += 0.01;
         }
       } break;
 
-        // // Conveyor belt control
-        // case 'a': {
-        //   if (stateMachine.ctrlModeConveyorBelt) {
-        //     stateMachine.modeConveyorBelt = 2;
-        //     publishConveyorBeltCmds();
-        //     stateMachine.startlogging = true;
-        //   } else if (incrementReleasePos_) {
-        //     deltaRelPos_(0) -= 0.025f;//[m]
-        //   } else {
-        //     deltaPos_(0) -= 0.01f;
-        //   }
-        // } break;
-        // case 's': {
-        //   if (stateMachine.ctrlModeConveyorBelt) {
-        //     stateMachine.modeConveyorBelt = 0;
-        //     publishConveyorBeltCmds();
-        //   } else if (incrementReleasePos_) {
-        //     deltaRelPos_(0) += 0.025f;//[m]
-        //   } else {
-        //     deltaPos_(0) += 0.01f;
-        //   }
-        // } break;
-        // case 'd': {
-        //   if (stateMachine.ctrlModeConveyorBelt) {
-        //     stateMachine.modeConveyorBelt = 1;
-        //     publishConveyorBeltCmds();
-        //   } else if (incrementReleasePos_) {
-        //     deltaRelPos_(1) -= 5.0f;//[deg]
-        //   } else {
-        //     deltaPos_(1) -= 0.01f;
-        //   }
-        // } break;
-        // case 'f': {
-        //   if (incrementReleasePos_) {
-        //     deltaRelPos_(1) += 5.0f;//[deg]
-        //   } else {
-        //     deltaPos_(1) += 0.01f;
-        //   }
-        // } break;
-        // case 'z': {
-        //   if (stateMachine.ctrlModeConveyorBelt) {
-        //     trackingFactor_ -= 0.01f;
-        //   } else if (incrementReleasePos_) {
-        //     deltaRelPos_(2) -= 5.0f;//[deg]
-        //   } else {
-        //     deltaPos_(2) -= 0.01f;
-        //   }
-        // } break;
-        // case 'w': {
-        //   if (stateMachine.ctrlModeConveyorBelt) {
-        //     trackingFactor_ += 0.01f;
-        //   } else if (incrementReleasePos_) {
-        //     deltaRelPos_(2) += 5.0f;//[deg]
-        //   } else {
-        //     deltaPos_(2) += 0.01f;
-        //   }
-        // } break;
-        // case 'h': {
-        //   if (stateMachine.ctrlModeConveyorBelt) {
-        //     nominalSpeedConveyorBelt_ -= 50;
-        //   } else {
-        //     deltaAng_(0) -= 0.05f;
-        //   }
-        // } break;
-        // case 'j': {
-        //   if (stateMachine.ctrlModeConveyorBelt) {
-        //     nominalSpeedConveyorBelt_ += 50;
-        //   } else {
-        //     deltaAng_(0) += 0.05f;
-        //   }
-        // } break;
-        // case 'k': {
-        //   if (stateMachine.ctrlModeConveyorBelt) {
-        //     adaptationActive_ = !adaptationActive_;
-        //   } else {
-        //     deltaAng_(1) -= 0.05f;
-        //   }
-        // } break;
-        // case 'm': {
-        //   if (stateMachine.ctrlModeConveyorBelt) {
-        //     magniturePertConveyorBelt_ -= 50;
-        //   } else {
-        //     deltaAng_(2) -= 0.05f;
-        //   }
-        // } break;
-        // case 'i': {
-        //   if (stateMachine.ctrlModeConveyorBelt) {
-        //     magniturePertConveyorBelt_ += 50;
-        //   } else {
-        //     deltaAng_(2) += 0.05f;
-        //   }
-        // } break;
+      // Conveyor belt control
+      case 'a': {
+        if (interactionVar.conveyorBeltState.ctrlModeConveyorBelt) {
+          interactionVar.conveyorBeltState.modeConveyorBelt = 2;
+          //   interactionVar.stateMachine.startlogging = true; TODO
+        } else if (interactionVar.stateMachine.incrementReleasePos) {
+          interactionVar.stateMachine.deltaRelPos(0) -= 0.025f;//[m]
+        } else {
+          interactionVar.stateMachine.deltaPos(0) -= 0.01f;
+        }
+      } break;
+      case 's': {
+        if (interactionVar.conveyorBeltState.ctrlModeConveyorBelt) {
+          interactionVar.conveyorBeltState.modeConveyorBelt = 0;
+        } else if (interactionVar.stateMachine.incrementReleasePos) {
+          interactionVar.stateMachine.deltaRelPos(0) += 0.025f;//[m]
+        } else {
+          interactionVar.stateMachine.deltaPos(0) += 0.01f;
+        }
+      } break;
+      case 'd': {
+        if (interactionVar.conveyorBeltState.ctrlModeConveyorBelt) {
+          interactionVar.conveyorBeltState.modeConveyorBelt = 1;
+        } else if (interactionVar.stateMachine.incrementReleasePos) {
+          interactionVar.stateMachine.deltaRelPos(1) -= 5.0f;//[deg]
+        } else {
+          interactionVar.stateMachine.deltaPos(1) -= 0.01f;
+        }
+      } break;
+      case 'f': {
+        if (interactionVar.stateMachine.incrementReleasePos) {
+          interactionVar.stateMachine.deltaRelPos(1) += 5.0f;//[deg]
+        } else {
+          interactionVar.stateMachine.deltaPos(1) += 0.01f;
+        }
+      } break;
+      case 'z': {
+        if (interactionVar.conveyorBeltState.ctrlModeConveyorBelt) {
+          interactionVar.stateMachine.trackingFactor -= 0.01f;
+        } else if (interactionVar.stateMachine.incrementReleasePos) {
+          interactionVar.stateMachine.deltaRelPos(2) -= 5.0f;//[deg]
+        } else {
+          interactionVar.stateMachine.deltaPos(2) -= 0.01f;
+        }
+      } break;
+      case 'w': {
+        if (interactionVar.conveyorBeltState.ctrlModeConveyorBelt) {
+          interactionVar.stateMachine.trackingFactor += 0.01f;
+        } else if (interactionVar.stateMachine.incrementReleasePos) {
+          interactionVar.stateMachine.deltaRelPos(2) += 5.0f;//[deg]
+        } else {
+          interactionVar.stateMachine.deltaPos(2) += 0.01f;
+        }
+      } break;
+      case 'h': {
+        if (interactionVar.conveyorBeltState.ctrlModeConveyorBelt) {
+          interactionVar.conveyorBeltState.nominalSpeedConveyorBelt -= 50;
+        }
+      } break;
+      case 'j': {
+        if (interactionVar.conveyorBeltState.ctrlModeConveyorBelt) {
+          interactionVar.conveyorBeltState.nominalSpeedConveyorBelt += 50;
+        }
+      } break;
+      case 'k': {
+        if (interactionVar.conveyorBeltState.ctrlModeConveyorBelt) {
+          interactionVar.stateMachine.adaptationActive = !interactionVar.stateMachine.adaptationActive;
+        }
+      } break;
+      case 'm': {
+        if (interactionVar.conveyorBeltState.ctrlModeConveyorBelt) {
+          interactionVar.conveyorBeltState.magniturePertConveyorBelt -= 50;
+        }
+      } break;
+      case 'i': {
+        if (interactionVar.conveyorBeltState.ctrlModeConveyorBelt) {
+          interactionVar.conveyorBeltState.magniturePertConveyorBelt += 50;
+        }
+      } break;
     }
   }
   nonBlock(0);
 
-  return stateMachine;
+  return interactionVar;
 }
-
 
 }// namespace keyboardinteraction

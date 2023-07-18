@@ -85,13 +85,19 @@ struct StateMachine {
   bool isThrowing;
   bool isPlacing;
   bool isPlaceTossing;
-  bool isDisturbTarget;
   bool releaseAndretract;
   int dualTaskSelector;
   float desVtoss;
   float desiredVelImp;
   float placingPosHeight;
   float releasePosY;
+
+  //disturbance
+  bool incrementReleasePos;
+  Eigen::Vector3f deltaRelPos;
+  Eigen::Vector3f deltaPos;
+  float trackingFactor;
+  bool adaptationActive;
 
   bool startlogging;
 };
@@ -127,7 +133,6 @@ struct tossingTaskVariables {
 class DualArmControlSim {
 
 private:
-  int cycleCount_;
   double periodT_;
 
   // ---- Robot
@@ -139,9 +144,6 @@ private:
   // ----  User interaction
   bool objCtrlKey_;
   bool userSelect_ = true;
-
-  // ---- Target Disturbance
-  bool isDisturbTarget_ = false;
 
   // ====================================================================================================================
 
@@ -224,10 +226,8 @@ private:
   float trackingFactor_;
 
   bool incrementReleasePos_ = false;
-  bool ctrlModeConveyorBelt_ = false;
   SphericalPosition releasePos_;
 
-  int desSpeedConveyorBelt_;
   Eigen::Vector2f dualPathLenAvgSpeed_;
   bool isIntercepting_ = false;
   float betaVelMod_;
@@ -338,9 +338,10 @@ public:
                                  Vector7f jointVelocity[],
                                  Vector7f jointTorques[],
                                  Eigen::Vector3f robotBasePos[],
-                                 Eigen::Vector4f robotBaseOrientation[]);
+                                 Eigen::Vector4f robotBaseOrientation[],
+                                 int cycleCount);
   void updateContactState();
-  void computeCommands(Eigen::Vector3f eePose[], Eigen::Vector4f eeOrientation[]);
+  void computeCommands(Eigen::Vector3f eePose[], Eigen::Vector4f eeOrientation[], int cycleCount);
   void updatePoses();
 
   void updateReleasePosition();

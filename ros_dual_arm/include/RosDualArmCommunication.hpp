@@ -48,11 +48,20 @@
 typedef Eigen::Matrix<float, 7, 1> Vector7f;
 typedef Eigen::Matrix<float, 6, 1> Vector6f;
 
+struct ConveyorBeltState {
+  bool ctrlModeConveyorBelt;
+  bool isDisturbTarget;
+  int modeConveyorBelt;
+  int nominalSpeedConveyorBelt;
+  int magniturePertConveyorBelt;
+};
+
 class RosDualArmCommunication {
 private:
   // ---- ROS
   ros::NodeHandle nh_;// Ros node handle
   ros::Rate loopRate_;// Ros loop rate [Hz]
+  double frequency_;
 
   bool isSimulation_ = true;
   std::vector<float> objectDimVect_;
@@ -93,10 +102,19 @@ private:
   // params update
   std::string dsDampingTopicParams_[NB_ROBOTS];
 
+  // ---- Conveyor belt control
+  bool ctrlModeConveyorBelt_;
+  bool isDisturbTarget_;
+  int modeConveyorBelt_;
+  int nominalSpeedConveyorBelt_;
+  int magniturePertConveyorBelt_;
+  int desSpeedConveyorBelt_;
+
 public:
   // For controllers
   float firstEigenPassiveDamping_[NB_ROBOTS];
-  Eigen::Vector3f eePose_[NB_ROBOTS], objectPose_, targetPose_, eeVelLin_[NB_ROBOTS], eeVelAng_[NB_ROBOTS], robotBasePos_[NB_ROBOTS];
+  Eigen::Vector3f eePose_[NB_ROBOTS], objectPose_, targetPose_, eeVelLin_[NB_ROBOTS], eeVelAng_[NB_ROBOTS],
+      robotBasePos_[NB_ROBOTS];
   Eigen::Vector4f eeOrientation_[NB_ROBOTS], objectOrientation_, targetOrientation_, robotBaseOrientation_[NB_ROBOTS];
   Vector7f jointPosition_[NB_ROBOTS], jointVelocity_[NB_ROBOTS], jointTorques_[NB_ROBOTS];
   Eigen::Matrix<float, 6, 1> robotWrench_[NB_ROBOTS];
@@ -105,7 +123,7 @@ public:
   // Robot ID: left or right
   enum Robot { LEFT = 0, RIGHT = 1 };
 
-  RosDualArmCommunication(ros::NodeHandle& n, double frequency) : nh_(n), loopRate_(frequency){};
+  RosDualArmCommunication(ros::NodeHandle& n, double frequency) : nh_(n), loopRate_(frequency), frequency_(frequency){};
 
   ~RosDualArmCommunication(){};
 
@@ -126,11 +144,9 @@ public:
     initDampingTopicCtrl();
     initRosSubscribers();
     initRosPublisher();
+    initConveyorBelt();
 
-    for (int k = 0; k < NB_ROBOTS; k++) {
-      firstEigenPassiveDamping_[k] = 1.0f;
-    }
-
+    for (int k = 0; k < NB_ROBOTS; k++) { firstEigenPassiveDamping_[k] = 1.0f; }
 
     if (nh_.ok()) {
       // Wait for poses being published
@@ -387,17 +403,6 @@ public:
     pubDistAttractorEE_[LEFT] = nh_.advertise<std_msgs::Float64>(topicDistAttractorEE[LEFT], 1);
     pubDistAttractorEE_[RIGHT] = nh_.advertise<std_msgs::Float64>(topicDistAttractorEE[RIGHT], 1);
 
-    // Conveyor Belt
-    std::string topicConveyorBeltMode, topicConveyorBeltSpeed;
-    while (!nh_.getParam(nh_.getNamespace() + "/conveyor_belt/desired_mode", topicConveyorBeltMode)) {
-      ROS_INFO("Waitinng for param: conveyor_belt/desired_mode ");
-    }
-    while (!nh_.getParam(nh_.getNamespace() + "/conveyor_belt/desired_speed", topicConveyorBeltSpeed)) {
-      ROS_INFO("Waitinng for param: conveyor_belt/desired_speed ");
-    }
-    pubConveyorBeltMode_ = nh_.advertise<std_msgs::Int32>(topicConveyorBeltMode, 1);
-    pubConveyorBeltSpeed_ = nh_.advertise<std_msgs::Int32>(topicConveyorBeltSpeed, 1);
-
     return true;
   }
 
@@ -521,11 +526,6 @@ public:
       msgFnormMoment.torque.z = -appliedWrench[k](5);
       pubAppliedFNormMoment_[k].publish(msgFnormMoment);
     }
-
-    // // Send speed command to the conveyor belt TODO
-    // std_msgs::Int32 speedMsgConveyorBelt;
-    // speedMsgConveyorBelt.data = desSpeedConveyorBelt_;
-    // if (ctrlModeConveyorBelt_ && (fmod(cycleCount_, 30) == 0)) { pubConveyorBeltSpeed_.publish(speedMsgConveyorBelt); }
   }
 
   bool initDampingTopicCtrl() {
@@ -564,6 +564,36 @@ public:
       dsDampingTopicParams_[LEFT] = paramDampingTopicCustomCtrlLeft;
       dsDampingTopicParams_[RIGHT] = paramDampingTopicCustomCtrlRight;
     }
+
+    return true;
+  }
+
+  bool initConveyorBelt() {
+    // Publisher
+    std::string topicConveyorBeltMode, topicConveyorBeltSpeed;
+    while (!nh_.getParam("conveyor_belt/desired_mode", topicConveyorBeltMode)) {
+      ROS_INFO("Waitinng for param: conveyor_belt/desired_mode ");
+    }
+    while (!nh_.getParam("conveyor_belt/desired_speed", topicConveyorBeltSpeed)) {
+      ROS_INFO("Waitinng for param: conveyor_belt/desired_speed ");
+    }
+    pubConveyorBeltMode_ = nh_.advertise<std_msgs::Int32>(topicConveyorBeltMode, 1);
+    pubConveyorBeltSpeed_ = nh_.advertise<std_msgs::Int32>(topicConveyorBeltSpeed, 1);
+
+    // Params
+    while (!nh_.getParam("conveyor_belt/control_mode", ctrlModeConveyorBelt_)) {
+      ROS_INFO("Waitinng for param: conveyor_belt/control_mode ");
+    }
+    while (!nh_.getParam("conveyor_belt/nominal_speed", nominalSpeedConveyorBelt_)) {
+      ROS_INFO("Waitinng for param: conveyor_belt/nominal_speed");
+    }
+    while (!nh_.getParam("conveyor_belt/magnitude_perturbation", magniturePertConveyorBelt_)) {
+      ROS_INFO("Waitinng for param: conveyor_belt/magnitude_perturbation");
+    }
+    desSpeedConveyorBelt_ = nominalSpeedConveyorBelt_;
+
+    modeConveyorBelt_ = 0;
+    isDisturbTarget_ = false;
 
     return true;
   }
@@ -638,5 +668,52 @@ public:
 
     firstEigenPassiveDamping_[RIGHT] = paramValues[0];
     if (firstEigenPassiveDamping_[RIGHT] < FLT_EPSILON) { firstEigenPassiveDamping_[RIGHT] = 150.0f; }
+  }
+
+  // ---- Conveyor belt control
+  ConveyorBeltState getConveyorBeltStatus() {
+    ConveyorBeltState conveyorBeltState;
+    conveyorBeltState.ctrlModeConveyorBelt = ctrlModeConveyorBelt_;
+    conveyorBeltState.modeConveyorBelt = modeConveyorBelt_;
+
+    conveyorBeltState.nominalSpeedConveyorBelt = nominalSpeedConveyorBelt_;
+    conveyorBeltState.magniturePertConveyorBelt = magniturePertConveyorBelt_;
+    conveyorBeltState.isDisturbTarget = isDisturbTarget_;
+
+    return conveyorBeltState;
+  }
+
+  void updateConveyorBeltStatus(ConveyorBeltState conveyorBeltState) {
+    nominalSpeedConveyorBelt_ = conveyorBeltState.nominalSpeedConveyorBelt;
+    magniturePertConveyorBelt_ = conveyorBeltState.magniturePertConveyorBelt;
+    isDisturbTarget_ = conveyorBeltState.isDisturbTarget;
+
+    if (ctrlModeConveyorBelt_ && modeConveyorBelt_ != conveyorBeltState.modeConveyorBelt) {
+      modeConveyorBelt_ = conveyorBeltState.modeConveyorBelt;
+      sendConveyorBeltMode();
+    }
+  }
+
+  void sendConveyorBeltMode() {
+    std_msgs::Int32 modeMessage;
+    modeMessage.data = modeConveyorBelt_;
+    pubConveyorBeltMode_.publish(modeMessage);
+  }
+
+  void sendConveyorBeltSpeed(int cycleCount) {
+    // Compute conveyor belt speed command
+    float omegaPert = 2.f * M_PI / 1;
+    float deltaOmegaPert = 0.1f * (2.f * (float) std::rand() / RAND_MAX - 1.0f) * omegaPert;
+
+    if (ctrlModeConveyorBelt_) {
+      desSpeedConveyorBelt_ = (int) (nominalSpeedConveyorBelt_
+                                     + (int) isDisturbTarget_ * magniturePertConveyorBelt_
+                                         * sin((omegaPert + deltaOmegaPert) * (1 / frequency_) * cycleCount));
+
+      // Send speed command to the conveyor belt
+      std_msgs::Int32 speedMsgConveyorBelt;
+      speedMsgConveyorBelt.data = desSpeedConveyorBelt_;
+      if (ctrlModeConveyorBelt_ && (fmod(cycleCount, 30) == 0)) { pubConveyorBeltSpeed_.publish(speedMsgConveyorBelt); }
+    }
   }
 };

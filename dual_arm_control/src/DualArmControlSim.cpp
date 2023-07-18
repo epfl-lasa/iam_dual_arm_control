@@ -334,8 +334,6 @@ void DualArmControlSim::reset() {
 bool DualArmControlSim::init() {
 
   // TODO PUT IN YAML FILE?
-
-  cycleCount_ = 0;
   gravity_ << 0.0f, 0.0f, -9.80665f;
 
   for (int k = 0; k < NB_ROBOTS; k++) {
@@ -405,7 +403,6 @@ bool DualArmControlSim::init() {
   //Keyboard interaction
   deltaRelPos_.setZero();
   deltaPos_.setZero();
-  isDisturbTarget_ = false;
 
   // TODO LOGGING OR NOT HERE?
   // startlogging_ = false;
@@ -546,7 +543,8 @@ CommandStruct DualArmControlSim::generateCommands(float firstEigenPassiveDamping
                                                   Vector7f jointVelocity[],
                                                   Vector7f jointTorques[],
                                                   Eigen::Vector3f robotBasePos[],
-                                                  Eigen::Vector4f robotBaseOrientation[]) {
+                                                  Eigen::Vector4f robotBaseOrientation[],
+                                                  int cycleCount) {
 
   d1_[LEFT] = firstEigenPassiveDamping[LEFT];
   d1_[RIGHT] = firstEigenPassiveDamping[RIGHT];
@@ -569,7 +567,7 @@ CommandStruct DualArmControlSim::generateCommands(float firstEigenPassiveDamping
             robotBaseOrientation);
 
   updatePoses();
-  computeCommands(eePose, eeOrientation);
+  computeCommands(eePose, eeOrientation, cycleCount);
 
   for (int k = 0; k < NB_ROBOTS; k++) {
     commandGenerated_.axisAngleDes[k] = robot_.getAxisAngleDes(k);
@@ -601,7 +599,7 @@ void DualArmControlSim::updateReleasePosition() {
   if (tossVar_.releasePosition(0) > 0.70) { tossVar_.releasePosition(0) = 0.70; }
 }
 
-void DualArmControlSim::computeCommands(Eigen::Vector3f eePose[], Eigen::Vector4f eeOrientation[]) {
+void DualArmControlSim::computeCommands(Eigen::Vector3f eePose[], Eigen::Vector4f eeOrientation[], int cycleCount) {
   // Update contact state
   updateContactState();
 
@@ -638,7 +636,7 @@ void DualArmControlSim::computeCommands(Eigen::Vector3f eePose[], Eigen::Vector4
   intercepLimits[3] = interceptMax(1);// y_max
 
   // ---------- Application ----------
-  if ((!releaseAndretract_) && (fmod(cycleCount_, 20) == 0)) {
+  if ((!releaseAndretract_) && (fmod(cycleCount, 20) == 0)) {
     dualPathLenAvgSpeed_ = freeMotionCtrlEstim_.predictRobotTranslation(robot_.getWHEE(),
                                                                         object_.getWHGp(),
                                                                         robot_.getWHEEStandby(),
@@ -898,17 +896,6 @@ void DualArmControlSim::computeCommands(Eigen::Vector3f eePose[], Eigen::Vector4
 
   // Extract linear velocity commands and desired axis angle command
   this->prepareCommands(robot_.getVelDesEE(), robot_.getQd(), object_.getVGpO());
-
-  // ---------- Control of conveyor belt speed ----------
-  float omegaPert = 2.f * M_PI / 1;
-  float deltaOmegaPert = 0.1f * (2.f * (float) std::rand() / RAND_MAX - 1.0f) * omegaPert;
-
-  // TODO
-  // if (ctrlModeConveyorBelt_) {
-  //   desSpeedConveyorBelt_ = (int) (nominalSpeedConveyorBelt_
-  //                                  + (int) isDisturbTarget_ * magniturePertConveyorBelt_
-  //                                      * sin((omegaPert + deltaOmegaPert) * dt_ * cycleCount_));
-  // }
 }
 
 Eigen::Vector3f DualArmControlSim::computeInterceptWithTarget(const Eigen::Vector3f& xTarget,
@@ -1210,7 +1197,6 @@ StateMachine DualArmControlSim::getStateMachine() {
   stateMachine.isThrowing = isThrowing_;
   stateMachine.isPlacing = isPlacing_;
   stateMachine.isPlaceTossing = isPlaceTossing_;
-  stateMachine.isDisturbTarget = isDisturbTarget_;
   stateMachine.dualTaskSelector = dualTaskSelector_;
   stateMachine.releaseAndretract = releaseAndretract_;
   stateMachine.desVtoss = desVtoss_;
@@ -1218,6 +1204,12 @@ StateMachine DualArmControlSim::getStateMachine() {
   stateMachine.placingPosHeight = xPlacing_(2);
   stateMachine.releasePosY = tossVar_.releasePosition(1);
   stateMachine.startlogging = startlogging_;
+
+  stateMachine.incrementReleasePos = incrementReleasePos_;
+  stateMachine.deltaRelPos = deltaRelPos_;
+  stateMachine.deltaPos = deltaPos_;
+  stateMachine.trackingFactor = trackingFactor_;
+  stateMachine.adaptationActive = adaptationActive_;
 
   return stateMachine;
 }
@@ -1229,12 +1221,16 @@ void DualArmControlSim::updateStateMachine(StateMachine stateMachine) {
   isThrowing_ = stateMachine.isThrowing;
   isPlacing_ = stateMachine.isPlacing;
   isPlaceTossing_ = stateMachine.isPlaceTossing;
-  isDisturbTarget_ = stateMachine.isDisturbTarget;
   dualTaskSelector_ = stateMachine.dualTaskSelector;
   releaseAndretract_ = stateMachine.releaseAndretract;
   desiredVelImp_ = stateMachine.desiredVelImp;
   tossVar_.releasePosition(1) = stateMachine.releasePosY;
   xPlacing_(2) = stateMachine.placingPosHeight;
+
+  deltaRelPos_ = stateMachine.deltaRelPos;
+  deltaPos_ = stateMachine.deltaPos;
+  trackingFactor_ = stateMachine.trackingFactor;
+  adaptationActive_ = stateMachine.adaptationActive;
 
   if (desVtoss_ != stateMachine.desVtoss) {
     desVtoss_ = stateMachine.desVtoss;
