@@ -53,7 +53,6 @@
 #include "dual_arm_control_iam/ThrowingDS.hpp"
 #include "dual_arm_control_iam/TossTaskParamEstimator.hpp"
 #include "dual_arm_control_iam/TossingTarget.hpp"
-#include "dual_arm_control_iam/tools/Keyboard.h"
 #include "dual_arm_control_iam/tools/Utils.hpp"
 
 #define NB_ROBOTS 2                // Number of robots
@@ -78,6 +77,23 @@ struct CommandStruct {
   Eigen::Vector3f normalVectSurfObj[NB_ROBOTS];
   float err[NB_ROBOTS];
   float nuWr0;
+};
+
+struct StateMachine {
+  bool goHome;
+  bool goToAttractors;
+  bool isThrowing;
+  bool isPlacing;
+  bool isPlaceTossing;
+  bool isDisturbTarget;
+  bool releaseAndretract;
+  int dualTaskSelector;
+  float desVtoss;
+  float desiredVelImp;
+  float placingPosHeight;
+  float releasePosY;
+
+  bool startlogging;
 };
 
 struct SphericalPosition {
@@ -351,7 +367,8 @@ public:
   double getPeriod();
 
   // ---- Keyboard commands
-  void updateStatesMachines();
   void keyboardVirtualObjectControl();
   void keyboardReferenceObjectControl();
+  StateMachine getStateMachine();
+  void updateStateMachine(StateMachine stateMachine);
 };

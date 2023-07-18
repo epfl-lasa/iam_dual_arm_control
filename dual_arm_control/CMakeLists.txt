@@ -44,7 +44,6 @@ set(H_FILES
 set(TOOLS_FILE
   ${HEADERS_FOLDER}/tools/Utils.hpp
   ${HEADERS_FOLDER}/tools/PdfGMR.hpp
-  ${HEADERS_FOLDER}/tools/Keyboard.h
   ${HEADERS_FOLDER}/tools/KalmanFilter3DVelFromPosEstimator.hpp
   ${HEADERS_FOLDER}/tools/KalmanFilter.hpp
   ${HEADERS_FOLDER}/tools/FirstOrderFilter.hpp

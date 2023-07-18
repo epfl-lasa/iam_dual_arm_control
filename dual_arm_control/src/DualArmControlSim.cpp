@@ -551,7 +551,7 @@ CommandStruct DualArmControlSim::generateCommands(float firstEigenPassiveDamping
   d1_[LEFT] = firstEigenPassiveDamping[LEFT];
   d1_[RIGHT] = firstEigenPassiveDamping[RIGHT];
 
-  updateStatesMachines();
+  // updateStatesMachines();
 
   updateSim(robotWrench,
             eePose,
@@ -1203,209 +1203,44 @@ void DualArmControlSim::keyboardReferenceObjectControl() {
   deltaPos_.setZero();
 }
 
-void DualArmControlSim::updateStatesMachines() {
-  keyboard::nonBlock(1);
+StateMachine DualArmControlSim::getStateMachine() {
+  StateMachine stateMachine;
+  stateMachine.goHome = goHome_;
+  stateMachine.goToAttractors = goToAttractors_;
+  stateMachine.isThrowing = isThrowing_;
+  stateMachine.isPlacing = isPlacing_;
+  stateMachine.isPlaceTossing = isPlaceTossing_;
+  stateMachine.isDisturbTarget = isDisturbTarget_;
+  stateMachine.dualTaskSelector = dualTaskSelector_;
+  stateMachine.releaseAndretract = releaseAndretract_;
+  stateMachine.desVtoss = desVtoss_;
+  stateMachine.desiredVelImp = desiredVelImp_;
+  stateMachine.placingPosHeight = xPlacing_(2);
+  stateMachine.releasePosY = tossVar_.releasePosition(1);
+  stateMachine.startlogging = startlogging_;
 
-  if (keyboard::khBit() != 0) {
-    char keyboardCommand = fgetc(stdin);
-    fflush(stdin);
+  return stateMachine;
+}
 
-    switch (keyboardCommand) {
-      case 'q': {
-        goHome_ = !goHome_;
-        if (goHome_) {
-          goToAttractors_ = true;
-          startlogging_ = false;
-        } else if (!goHome_) {
-          startlogging_ = true;
-        }
-      } break;
-      case 'g': {
-        goToAttractors_ = !goToAttractors_;
-        if (goToAttractors_) {
-          goHome_ = false;
-          releaseAndretract_ = false;
-        }
-      } break;
+void DualArmControlSim::updateStateMachine(StateMachine stateMachine) {
 
-      // // Conveyor belt control
-      // case 'a': {
-      //   if (ctrlModeConveyorBelt_) {
-      //     modeConveyorBelt_ = 2;
-      //     publishConveyorBeltCmds();
-      //     startlogging_ = true;
-      //   } else if (incrementReleasePos_) {
-      //     deltaRelPos_(0) -= 0.025f;//[m]
-      //   } else {
-      //     deltaPos_(0) -= 0.01f;
-      //   }
-      // } break;
-      // case 's': {
-      //   if (ctrlModeConveyorBelt_) {
-      //     modeConveyorBelt_ = 0;
-      //     publishConveyorBeltCmds();
-      //   } else if (incrementReleasePos_) {
-      //     deltaRelPos_(0) += 0.025f;//[m]
-      //   } else {
-      //     deltaPos_(0) += 0.01f;
-      //   }
-      // } break;
-      // case 'd': {
-      //   if (ctrlModeConveyorBelt_) {
-      //     modeConveyorBelt_ = 1;
-      //     publishConveyorBeltCmds();
-      //   } else if (incrementReleasePos_) {
-      //     deltaRelPos_(1) -= 5.0f;//[deg]
-      //   } else {
-      //     deltaPos_(1) -= 0.01f;
-      //   }
-      // } break;
-      // case 'f': {
-      //   if (incrementReleasePos_) {
-      //     deltaRelPos_(1) += 5.0f;//[deg]
-      //   } else {
-      //     deltaPos_(1) += 0.01f;
-      //   }
-      // } break;
-      // case 'z': {
-      //   if (ctrlModeConveyorBelt_) {
-      //     trackingFactor_ -= 0.01f;
-      //   } else if (incrementReleasePos_) {
-      //     deltaRelPos_(2) -= 5.0f;//[deg]
-      //   } else {
-      //     deltaPos_(2) -= 0.01f;
-      //   }
-      // } break;
-      // case 'w': {
-      //   if (ctrlModeConveyorBelt_) {
-      //     trackingFactor_ += 0.01f;
-      //   } else if (incrementReleasePos_) {
-      //     deltaRelPos_(2) += 5.0f;//[deg]
-      //   } else {
-      //     deltaPos_(2) += 0.01f;
-      //   }
-      // } break;
-      // case 'h': {
-      //   if (ctrlModeConveyorBelt_) {
-      //     nominalSpeedConveyorBelt_ -= 50;
-      //   } else {
-      //     deltaAng_(0) -= 0.05f;
-      //   }
-      // } break;
-      // case 'j': {
-      //   if (ctrlModeConveyorBelt_) {
-      //     nominalSpeedConveyorBelt_ += 50;
-      //   } else {
-      //     deltaAng_(0) += 0.05f;
-      //   }
-      // } break;
-      // case 'k': {
-      //   if (ctrlModeConveyorBelt_) {
-      //     adaptationActive_ = !adaptationActive_;
-      //   } else {
-      //     deltaAng_(1) -= 0.05f;
-      //   }
-      // } break;
-      // case 'm': {
-      //   if (ctrlModeConveyorBelt_) {
-      //     magniturePertConveyorBelt_ -= 50;
-      //   } else {
-      //     deltaAng_(2) -= 0.05f;
-      //   }
-      // } break;
-      // case 'i': {
-      //   if (ctrlModeConveyorBelt_) {
-      //     magniturePertConveyorBelt_ += 50;
-      //   } else {
-      //     deltaAng_(2) += 0.05f;
-      //   }
-      // } break;
+  goHome_ = stateMachine.goHome;
+  goToAttractors_ = stateMachine.goToAttractors;
+  isThrowing_ = stateMachine.isThrowing;
+  isPlacing_ = stateMachine.isPlacing;
+  isPlaceTossing_ = stateMachine.isPlaceTossing;
+  isDisturbTarget_ = stateMachine.isDisturbTarget;
+  dualTaskSelector_ = stateMachine.dualTaskSelector;
+  releaseAndretract_ = stateMachine.releaseAndretract;
+  desiredVelImp_ = stateMachine.desiredVelImp;
+  tossVar_.releasePosition(1) = stateMachine.releasePosY;
+  xPlacing_(2) = stateMachine.placingPosHeight;
 
-      // Release or throwing
-      case 'r': {
-        releaseAndretract_ = !releaseAndretract_;
-      } break;
-      case 'l': {
-        dualTaskSelector_ = PICK_AND_LIFT;
-        // hasCaughtOnce_ = false;
-      } break;
-      case 't': {
-        isThrowing_ = !isThrowing_;
-        if (isThrowing_) {
-          dualTaskSelector_ = PICK_AND_TOSS;
-          // hasCaughtOnce_ = false;
-        } else if (!isThrowing_) {
-          dualTaskSelector_ = PICK_AND_LIFT;
-        }
-      } break;
-      case 'p': {
-        isPlacing_ = !isPlacing_;
-        if (isPlacing_) {
-          dualTaskSelector_ = PICK_AND_PLACE;
-          // hasCaughtOnce_ = false;
-        } else if (!isPlacing_) {
-          dualTaskSelector_ = PICK_AND_LIFT;
-        }
-      } break;
-      case 'o': {
-        isPlaceTossing_ = !isPlaceTossing_;
-        if (isPlaceTossing_) {
-          dualTaskSelector_ = PLACE_TOSSING;
-          // hasCaughtOnce_ = false;
-        } else if (!isPlaceTossing_) {
-          dualTaskSelector_ = PICK_AND_LIFT;
-        }
-      } break;
-
-      // Impact and tossing velocity
-      case 'v': {
-        desVtoss_ -= 0.05f;
-        if (desVtoss_ < 0.2f) { desVtoss_ = 0.2f; }
-        dsThrowing_.setTossLinearVelocity(desVtoss_ * tossVar_.releaseLinearVelocity.normalized());
-        dsThrowingEstim_.setTossLinearVelocity(desVtoss_ * tossVar_.releaseLinearVelocity.normalized());
-      } break;
-      case 'b': {
-        desVtoss_ += 0.05f;
-        if (desVtoss_ > 2.0f) { desVtoss_ = 2.0f; }
-        dsThrowing_.setTossLinearVelocity(desVtoss_ * tossVar_.releaseLinearVelocity.normalized());
-        dsThrowingEstim_.setTossLinearVelocity(desVtoss_ * tossVar_.releaseLinearVelocity.normalized());
-      } break;
-      case 'y': {
-        desiredVelImp_ -= 0.05f;
-        if (desiredVelImp_ < 0.05f) { desiredVelImp_ = 0.05f; }
-      } break;
-      case 'u': {
-        desiredVelImp_ += 0.05f;
-        if (desiredVelImp_ > 0.6f) { desiredVelImp_ = 0.6f; }
-      } break;
-
-      // Reset the data logging
-      case 'c': {
-        startlogging_ = false;
-        // dataLog_.reset(ros::package::getPath(std::string("dual_arm_control")) + "/Data");
-      } break;
-
-      // Disturb the target speed
-      case 'e': {
-        isDisturbTarget_ = !isDisturbTarget_;
-      } break;
-
-      // Placing hight
-      case 'x': {
-        if (dualTaskSelector_ == PICK_AND_TOSS) {
-          tossVar_.releasePosition(1) -= 0.01;
-        } else {
-          xPlacing_(2) -= 0.01;
-        }
-      } break;
-      case 'n': {
-        if (dualTaskSelector_ == PICK_AND_TOSS) {
-          tossVar_.releasePosition(1) += 0.01;
-        } else {
-          xPlacing_(2) += 0.01;
-        }
-      } break;
-    }
+  if (desVtoss_ != stateMachine.desVtoss) {
+    desVtoss_ = stateMachine.desVtoss;
+    dsThrowing_.setTossLinearVelocity(desVtoss_ * tossVar_.releaseLinearVelocity.normalized());
+    dsThrowingEstim_.setTossLinearVelocity(desVtoss_ * tossVar_.releaseLinearVelocity.normalized());
   }
-  keyboard::nonBlock(0);
+
+  startlogging_ = stateMachine.startlogging;
 }

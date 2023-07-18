@@ -7,6 +7,7 @@
 
 #include "RosDualArmCommunication.hpp"
 #include "dual_arm_control_iam/DualArmControlSim.hpp"
+#include "keyboard_interaction.hpp"
 
 int main(int argc, char** argv) {
 
@@ -46,7 +47,13 @@ int main(int argc, char** argv) {
   int count = 0;
   bool releaseFlag = false;
 
+  StateMachine stateMachine;
+
   while (nh.ok()) {
+
+    stateMachine = keyboardinteraction::getKeyboard(dualArmControlSim.getStateMachine());
+
+    dualArmControlSim.updateStateMachine(stateMachine);
 
     // Get the first eigen value of the passive ds controller and its updated value
     rosDualArm.updatePassiveDSDamping();
