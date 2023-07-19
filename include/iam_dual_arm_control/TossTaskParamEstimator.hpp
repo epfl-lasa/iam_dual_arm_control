@@ -82,7 +82,7 @@ public:
                           Eigen::Vector2f& xLand2D);//
   Eigen::Vector2f
   estimateTargetSimplePathLengthAverageSpeed(Eigen::Vector3f x, Eigen::Vector3f xD, Eigen::Vector3f aVtarget);
-  Eigen::Vector2f estimate_robot_Lpath_avgVel(Eigen::Vector3f X, Eigen::Vector3f Xd);
+  Eigen::Vector2f estimateRobotLpathAvgVel(Eigen::Vector3f X, Eigen::Vector3f Xd);
   Eigen::Vector3f estimateTargetStateToGo(Eigen::Vector3f dxTarget,
                                           Eigen::Vector3f xIntercept,
                                           Eigen::Vector2f lpVaPredBot,

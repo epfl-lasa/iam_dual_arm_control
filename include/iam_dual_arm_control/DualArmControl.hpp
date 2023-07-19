@@ -40,10 +40,10 @@
 #include "iam_dual_arm_control/DualArmFreeMotionController.hpp"
 #include "iam_dual_arm_control/ObjectToGrasp.hpp"
 #include "iam_dual_arm_control/RobotVariables.hpp"
-#include "iam_dual_arm_control/ThrowingDS.h"
-#include "iam_dual_arm_control/TossTaskParamEstimator.h"
+#include "iam_dual_arm_control/ThrowingDS.hpp"
+#include "iam_dual_arm_control/TossTaskParamEstimator.hpp"
 #include "iam_dual_arm_control/TossingTarget.hpp"
-#include "iam_dual_arm_control/tools/Keyboard.h"
+#include "iam_dual_arm_control/tools/Keyboard.hpp"
 #include "iam_dual_arm_control/tools/Utils.hpp"
 
 #define NB_ROBOTS 2// Number of robots
@@ -87,7 +87,7 @@ private:
   float timeStartRun_;
   int cycleCount_;
 
-  std::string topic_pose_target_;
+  std::string topicPoseTarget_;
 
   // Velocity commands to be sent to the robots
   std_msgs::Float64MultiArray pubVel_[NB_ROBOTS];
@@ -335,16 +335,16 @@ public:
   void keyboardReferenceObjectControl();
   void keyboardVirtualObjectControl();
 
-  float getDesiredYawAngleTarget(const Eigen::Vector4f& qt, const Eigen::Vector3f& ang_lim);
+  float getDesiredYawAngleTarget(const Eigen::Vector4f& qt, const Eigen::Vector3f& angLimit);
   void getPassiveDSDamping();
-  void prepareCommands(Vector6f Vd_ee[], Eigen::Vector4f qd[], Vector6f V_gpo[]);
+  void prepareCommands(Vector6f vDesEE[], Eigen::Vector4f qd[], Vector6f vGpo[]);
   void updatePoses();
   void resetVariables();
   void updateReleasePosition();
-  void set2DPositionBoxConstraints(Eigen::Vector3f& position_vec, float limits[]);
-  void mirrorTargetToObjectOrientation(Eigen::Vector4f qt, Eigen::Vector4f& qo, Eigen::Vector3f ang_lim);
+  void set2DPositionBoxConstraints(Eigen::Vector3f& positionVec, float limits[]);
+  void mirrorTargetToObjectOrientation(Eigen::Vector4f qt, Eigen::Vector4f& qo, Eigen::Vector3f angLimit);
   void findDesiredLandingPosition(bool isPlacing, bool isPlaceTossing, bool isThrowing);
-  void updateInterceptPosition(float flyTimeObj, float intercep_limits[]);
+  void updateInterceptPosition(float flyTimeObj, float intercepLimits[]);
   void findReleaseConfiguration();
   void setReleaseState();
   void estimateTargetStateToGo(Eigen::Vector2f lengthPathAvgSpeedRobot,
@@ -356,5 +356,5 @@ public:
   Eigen::Vector3f
   getImpactDirection(Eigen::Vector3f objectDesiredForce, Eigen::Vector3f objNormal, float coeffFriction);
   Eigen::Vector3f
-  computeInterceptWithTarget(const Eigen::Vector3f& x_target, const Eigen::Vector3f& v_target, float phi_i);
+  computeInterceptWithTarget(const Eigen::Vector3f& xTarget, const Eigen::Vector3f& vTarget, float phiInit);
 };

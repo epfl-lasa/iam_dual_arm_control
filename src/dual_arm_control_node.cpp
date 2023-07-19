@@ -1,5 +1,5 @@
 
-#include "iam_dual_arm_control/DualArmControl.h"
+#include "iam_dual_arm_control/DualArmControl.hpp"
 #include "ros/ros.h"
 
 int main(int argc, char** argv) {

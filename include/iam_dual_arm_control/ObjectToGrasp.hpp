@@ -75,7 +75,7 @@ public:
     this->getDesiredHmgTransform();
   }
 
-  void getHmgTransform() { wHo_ = Utils<float>::pose2HomoMx(xo_, qo_); }
+  void computeHmgTransform() { wHo_ = Utils<float>::pose2HomoMx(xo_, qo_); }
 
   void getDesiredHmgTransform() { wHDo_ = Utils<float>::pose2HomoMx(xDo_, qDo_); }
 
@@ -98,11 +98,11 @@ public:
     //Velocity of grasp points on the object
     for (int i = 0; i < NB_ROBOTS; i++) {
       Eigen::Vector3f t = wHo_.block<3, 3>(0, 0) * xGpO_[i];
-      Eigen::Matrix3f skew_Mx_gpo;
-      skew_Mx_gpo << 0.0f, -t(2), t(1), t(2), 0.0f, -t(0), -t(1), t(0), 0.0f;
+      Eigen::Matrix3f skewMxGpo;
+      skewMxGpo << 0.0f, -t(2), t(1), t(2), 0.0f, -t(0), -t(1), t(0), 0.0f;
 
       // Velocity
-      vGpO_[i].head(3) = vo_ - 0 * skew_Mx_gpo * wo_;
+      vGpO_[i].head(3) = vo_ - 0 * skewMxGpo * wo_;
       vGpO_[i].tail(3) = 0 * wo_;
 
       vGpO_[i].head(3) *= 0.0f;

@@ -73,9 +73,9 @@ public:
     return yt_;
   }
 
-  void setGain(float _gain) { gain_ = _gain; }
+  void setGain(float gain) { gain_ = gain; }
 
-  void setPole(float _pole) { pole_ = _pole; }
+  void setPole(float pole) { pole_ = pole; }
 
   void setSampleTime(float t) { ts_ = t; }
 };

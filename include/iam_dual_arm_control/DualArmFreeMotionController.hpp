@@ -10,7 +10,7 @@
 #include "eigen3/Eigen/Dense"
 #include "eigen3/Eigen/Geometry"
 
-#include "iam_dual_arm_control/ThrowingDS.h"
+#include "iam_dual_arm_control/ThrowingDS.hpp"
 #include "iam_dual_arm_control/tools/Utils.hpp"
 
 #define NB_ROBOTS 2// Number of robots
@@ -82,7 +82,7 @@ public:
                                  Eigen::Matrix4f wHee[],
                                  Eigen::Matrix4f wHgp[],
                                  Eigen::Matrix4f wHo,
-                                 Eigen::Vector4f _qd[],
+                                 Eigen::Vector4f qd[],
                                  bool isOrient3d);
 
   void computeConstrainedMotion(Eigen::Matrix4f wHee[],
@@ -111,11 +111,11 @@ public:
                                          Eigen::Vector3f activationEENorm,
                                          Eigen::Vector3f activationEETang);
 
-  Vector6f compute_modulated_motion_dual(float activation,
-                                         Eigen::Matrix3f basisQ[],
-                                         Vector6f dsEENominal,
-                                         Vector6f activationEENorm,
-                                         Vector6f activationEETang);
+  Vector6f computeModulatedMotionDual(float activation,
+                                      Eigen::Matrix3f basisQ[],
+                                      Vector6f dsEENominal,
+                                      Vector6f activationEENorm,
+                                      Vector6f activationEETang);
 
   void dualArmMotion(Eigen::Matrix4f wHee[],
                      Vector6f Vee[],
@@ -129,7 +129,7 @@ public:
                      int taskType,
                      Vector6f vDesEE[],
                      Eigen::Vector4f qd[],
-                     bool& release_flag);
+                     bool& releaseFlag);
 
   Eigen::Vector3f getAbsoluteTangentError(Eigen::Matrix4f wHo, Eigen::Matrix4f wHee[], Eigen::Matrix4f wHgp[]);
 
@@ -137,17 +137,17 @@ public:
                              Eigen::Matrix4f wHgp[],
                              Eigen::Matrix4f wHo,
                              Eigen::Matrix4f wHDo,
-                             float via_height,
+                             float viaHeight,
                              Vector6f vDesEE[],
                              Eigen::Vector4f qd[],
                              bool isOrient3d);
 
   Vector6f
-  generatePlacingMotion2(Eigen::Matrix4f wHo, Eigen::Matrix4f wHDo, float via_height, Vector6f Vo, bool isPlaceTossing);
+  generatePlacingMotion2(Eigen::Matrix4f wHo, Eigen::Matrix4f wHDo, float viaHeight, Vector6f Vo, bool isPlaceTossing);
 
   void computeEEAvoidanceVelocity(Eigen::Matrix4f wHee[], Vector6f (&vEEOA)[NB_ROBOTS]);
 
-  void setVirtualObjectFrame(Eigen::Matrix4f w_H_vo);
+  void setVirtualObjectFrame(Eigen::Matrix4f wHVo);
 
   void getCoordinatedTranslation(Eigen::Vector3f xEE[],
                                  Eigen::Vector3f xGP[],
@@ -166,9 +166,9 @@ public:
                                           float speedScaling);
 
   Eigen::MatrixXf getBimanualGraspMx(const Eigen::Matrix4f& wHo, Eigen::Matrix4f wHgp[]);
-  Vector6f computeDesiredTaskTwist(const Eigen::Matrix4f& w_H_c, const Eigen::Matrix4f& w_H_d);
+  Vector6f computeDesiredTaskTwist(const Eigen::Matrix4f& wHC, const Eigen::Matrix4f& wHD);
 
-  Vector6f get_des_object_motion();
+  Vector6f getDesObjectMotion();
 
   void setDt(float dt);
   void setReachableP(float reachableP);

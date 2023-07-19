@@ -1,5 +1,5 @@
 
-#include "iam_dual_arm_control/DualArmControl.h"
+#include "iam_dual_arm_control/DualArmControl.hpp"
 
 using namespace std;
 using namespace Eigen;
@@ -150,7 +150,7 @@ bool DualArmControl::initRosSubscribers() {
                                  &DualArmControl::objectPoseCallback,
                                  this,
                                  ros::TransportHints().reliable().tcpNoDelay());
-  subTargetPose_ = nh_.subscribe(topic_pose_target_,
+  subTargetPose_ = nh_.subscribe(topicPoseTarget_,
                                  1,
                                  &DualArmControl::targetPoseCallback,
                                  this,
@@ -404,12 +404,12 @@ bool DualArmControl::initRobotParam() {
       Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(qrbStandbyVect[RIGHT].data(), qrbStandbyVect[RIGHT].size());
 
   // Savitzky-Golay Filter params
-  int sgf_dq[3];
-  sgf_dq[0] = 7;// dim
-  sgf_dq[1] = 3;// order
-  sgf_dq[2] = 6;// window length
+  int sgfDq[3];
+  sgfDq[0] = 7;// dim
+  sgfDq[1] = 3;// order
+  sgfDq[2] = 6;// window length
 
-  robot_.init(sgf_dq, dt_, gravity_);
+  robot_.init(sgfDq, dt_, gravity_);
 
   robot_.setInitParameters(paramToolMass, toolOffsetFromEE, toolComPositionFromSensor, xrbStandby, qrbStandby);
 
@@ -591,9 +591,9 @@ bool DualArmControl::initDesTasksPosAndLimits() {
   dualAngularLimit_ =
       Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(paramDualAngularLimit.data(), paramDualAngularLimit.size());
 
-  Eigen::Matrix3f RDo_lifting = Utils<float>::quaternionToRotationMatrix(qLifting_);
-  filtDeltaAng_ = Utils<float>::getEulerAnglesXYZ_FixedFrame(RDo_lifting);
-  filtDeltaAngMir_ = Utils<float>::getEulerAnglesXYZ_FixedFrame(RDo_lifting);
+  Eigen::Matrix3f RDoLifting = Utils<float>::quaternionToRotationMatrix(qLifting_);
+  filtDeltaAng_ = Utils<float>::getEulerAnglesXYZFixedFrame(RDoLifting);
+  filtDeltaAngMir_ = Utils<float>::getEulerAnglesXYZFixedFrame(RDoLifting);
 
   return true;
 }
@@ -667,14 +667,14 @@ bool DualArmControl::initUserInteraction() {
 
 bool DualArmControl::initTossParamEstimator() {
   std::string path2LearnedModelfolder = ros::package::getPath(std::string("dual_arm_control")) + "/LearnedModel/model1";
-  std::string file_gmm[3];
+  std::string fileGMM[3];
   std::string dataType = "/throwingParam";
 
-  file_gmm[0] = path2LearnedModelfolder + dataType + "_prio.txt";
-  file_gmm[1] = path2LearnedModelfolder + dataType + "_mu.txt";
-  file_gmm[2] = path2LearnedModelfolder + dataType + "_sigma.txt";
+  fileGMM[0] = path2LearnedModelfolder + dataType + "_prio.txt";
+  fileGMM[1] = path2LearnedModelfolder + dataType + "_mu.txt";
+  fileGMM[2] = path2LearnedModelfolder + dataType + "_sigma.txt";
 
-  tossParamEstimator_.init(file_gmm,
+  tossParamEstimator_.init(fileGMM,
                            tossVar_.releasePosition,
                            tossVar_.releaseOrientation,
                            tossVar_.releaseLinearVelocity,
@@ -719,7 +719,7 @@ bool DualArmControl::initDSThrowing() {
 
 bool DualArmControl::init() {
 
-  topic_pose_target_ = "/simo_track/target_pose";
+  topicPoseTarget_ = "/simo_track/target_pose";
 
   while (!nh_.getParam("dual_system/simulation", isSimulation_)) {
     ROS_INFO("Waitinng for param: dual_system/simulation ");
@@ -1126,9 +1126,9 @@ void DualArmControl::computeCommands() {
 
     // ---------- Generate grasping force and apply it in velocity space ----------
     // Desired object's task wrench
-    desiredObjectWrench_.head(3) = -12.64f * (object_.getVo() - freeMotionCtrl_.get_des_object_motion().head(3))
-        - object_.getObjectMass() * gravity_;
-    desiredObjectWrench_.tail(3) = -25.00f * (object_.getWo() - freeMotionCtrl_.get_des_object_motion().tail(3));
+    desiredObjectWrench_.head(3) =
+        -12.64f * (object_.getVo() - freeMotionCtrl_.getDesObjectMotion().head(3)) - object_.getObjectMass() * gravity_;
+    desiredObjectWrench_.tail(3) = -25.00f * (object_.getWo() - freeMotionCtrl_.getDesObjectMotion().tail(3));
 
     CooperativeCtrl.getAppliedWrenches(goHome_,
                                        contactState_,
@@ -1510,9 +1510,9 @@ void DualArmControl::mirrorTargetToObjectOrientation(Eigen::Vector4f qt,
                                                      Eigen::Vector4f& qo,
                                                      Eigen::Vector3f angleLimit) {
   Eigen::Vector3f eulerAngleTarget =
-      Utils<float>::getEulerAnglesXYZ_FixedFrame(Utils<float>::quaternionToRotationMatrix(qt));
+      Utils<float>::getEulerAnglesXYZFixedFrame(Utils<float>::quaternionToRotationMatrix(qt));
   Eigen::Vector3f eulerAngleDesired =
-      Utils<float>::getEulerAnglesXYZ_FixedFrame(Utils<float>::quaternionToRotationMatrix(qo));
+      Utils<float>::getEulerAnglesXYZFixedFrame(Utils<float>::quaternionToRotationMatrix(qo));
 
   filtDeltaAngMir_ = 0.95 * filtDeltaAngMir_ + 0.05 * (eulerAngleTarget - eulerAngleDesired);
   eulerAngleTarget(0) = eulerAngleDesired(0) + filtDeltaAngMir_(0);
@@ -1665,7 +1665,7 @@ Eigen::Vector3f DualArmControl::computeInterceptWithTarget(const Eigen::Vector3f
 
 float DualArmControl::getDesiredYawAngleTarget(const Eigen::Vector4f& qt, const Eigen::Vector3f& angLimit) {
   Eigen::Vector3f eulerAngTarget =
-      Utils<float>::getEulerAnglesXYZ_FixedFrame(Utils<float>::quaternionToRotationMatrix(qt));
+      Utils<float>::getEulerAnglesXYZFixedFrame(Utils<float>::quaternionToRotationMatrix(qt));
 
   float phiTargetRot = eulerAngTarget(2);
 
@@ -1765,9 +1765,9 @@ void DualArmControl::computeAdaptationFactors(Eigen::Vector2f lengthPathAvgSpeed
                                               float flyTimeObj) {
   if (isMotionTriggered_) { isIntercepting_ = true; }
 
-  float beta_vel_mod_max = min(2.0f,
-                               min((vMax_ / robot_.getVelDesEESpecific(LEFT).head(3).norm()),
-                                   (vMax_ / robot_.getVelDesEESpecific(RIGHT).head(3).norm())));
+  float betaVelModMax = min(2.0f,
+                            min((vMax_ / robot_.getVelDesEESpecific(LEFT).head(3).norm()),
+                                (vMax_ / robot_.getVelDesEESpecific(RIGHT).head(3).norm())));
 
   if (isIntercepting_ && !releaseAndretract_) {
     float epsilon = 1e-6;
@@ -1785,7 +1785,7 @@ void DualArmControl::computeAdaptationFactors(Eigen::Vector2f lengthPathAvgSpeed
       betaVelModUnfilt_ = (std::tanh(7.0f * (timeToInterceptBot_ - timeToInterceptTgt_)) + 1.0);
     }
 
-    if (betaVelModUnfilt_ >= beta_vel_mod_max) { betaVelModUnfilt_ = beta_vel_mod_max; }
+    if (betaVelModUnfilt_ >= betaVelModMax) { betaVelModUnfilt_ = betaVelModMax; }
 
     // Attractor-based adaptation factor
     freeMotionCtrl_.setActivationAperture(
@@ -1815,9 +1815,9 @@ void DualArmControl::objectPoseCallback(const geometry_msgs::Pose::ConstPtr& msg
   newQo << msg->orientation.w, msg->orientation.x, msg->orientation.y, msg->orientation.z;
   object_.setQo(newQo);
 
-  Eigen::Matrix3f w_R_o = Utils<float>::quaternionToRotationMatrix(object_.getQo());
-  object_.setXo(xom + w_R_o * tXoXom);
-  object_.getHmgTransform();
+  Eigen::Matrix3f wRo = Utils<float>::quaternionToRotationMatrix(object_.getQo());
+  object_.setXo(xom + wRo * tXoXom);
+  object_.computeHmgTransform();
 }
 
 void DualArmControl::targetPoseCallback(const geometry_msgs::Pose::ConstPtr& msg) {
@@ -1830,7 +1830,7 @@ void DualArmControl::targetPoseCallback(const geometry_msgs::Pose::ConstPtr& msg
   target_.setQt(newQt);
 
   // filtered object position
-  target_.getFilteredState();
+  target_.computeFilteredState();
 }
 
 void DualArmControl::updateBasePoseCallback(const geometry_msgs::Pose::ConstPtr& msg, int k) {
@@ -1849,7 +1849,7 @@ void DualArmControl::updateEEPoseCallback(const geometry_msgs::Pose::ConstPtr& m
 void DualArmControl::updateEETwistCallback(const geometry_msgs::Twist::ConstPtr& msg, int k) {
   Eigen::Vector3f vE = Eigen::Vector3f(msg->linear.x, msg->linear.y, msg->linear.z);
   Eigen::Vector3f wE = Eigen::Vector3f(msg->angular.x, msg->angular.y, msg->angular.z);
-  robot_.update_EndEffectorVelocity(vE, wE, k);
+  robot_.updateEndEffectorVelocity(vE, wE, k);
 }
 
 void DualArmControl::updateRobotWrenchCallback(const geometry_msgs::WrenchStamped::ConstPtr& msg, int k) {
@@ -1883,7 +1883,7 @@ void DualArmControl::updateRobotStatesCallback(const sensor_msgs::JointState::Co
 // ---- Publish commands and data
 
 void DualArmControl::publishCommands() {
-  geometry_msgs::Pose vel_quat[NB_ROBOTS];
+  geometry_msgs::Pose velQuat[NB_ROBOTS];
 
   for (int k = 0; k < NB_ROBOTS; k++) {
     Eigen::Vector3f axisAngleDes = robot_.getAxisAngleDes(k);
@@ -1896,21 +1896,21 @@ void DualArmControl::publishCommands() {
     pubVel_[k].data.push_back(vDes(1));        // linear velocity v_y
     pubVel_[k].data.push_back(vDes(2));        // linear velocity v_z
 
-    vel_quat[k].position.x = vDes(0);// desired velocity x
-    vel_quat[k].position.y = vDes(1);// desired velocity y
-    vel_quat[k].position.z = vDes(2);// desired velocity z
+    velQuat[k].position.x = vDes(0);// desired velocity x
+    velQuat[k].position.y = vDes(1);// desired velocity y
+    velQuat[k].position.z = vDes(2);// desired velocity z
 
     Eigen::Vector4f qd = robot_.getQdSpecific(k);
-    vel_quat[k].orientation.w = qd(0);// desired pose
-    vel_quat[k].orientation.x = qd(1);
-    vel_quat[k].orientation.y = qd(2);
-    vel_quat[k].orientation.z = qd(3);
+    velQuat[k].orientation.w = qd(0);// desired pose
+    velQuat[k].orientation.x = qd(1);
+    velQuat[k].orientation.y = qd(2);
+    velQuat[k].orientation.z = qd(3);
   }
 
   pubTSCommands_[LEFT].publish(pubVel_[LEFT]);
   pubTSCommands_[RIGHT].publish(pubVel_[RIGHT]);
-  pubDesiredVelQuat_[LEFT].publish(vel_quat[LEFT]);
-  pubDesiredVelQuat_[RIGHT].publish(vel_quat[RIGHT]);
+  pubDesiredVelQuat_[LEFT].publish(velQuat[LEFT]);
+  pubDesiredVelQuat_[RIGHT].publish(velQuat[RIGHT]);
 }
 
 void DualArmControl::publishData() {
@@ -2013,8 +2013,8 @@ void DualArmControl::saveData() {
   Eigen::Vector4f qgrL = Utils<float>::rotationMatrixToQuaternion(object_.getWHGpSpecific(LEFT).block(0, 0, 3, 3)); //
   Eigen::Vector4f qgrR = Utils<float>::rotationMatrixToQuaternion(object_.getWHGpSpecific(RIGHT).block(0, 0, 3, 3));//
   //
-  Eigen::MatrixXf power_left = robot_.getJointsTorques(LEFT).transpose() * robot_.getJointsVelocities(LEFT);
-  Eigen::MatrixXf power_right = robot_.getJointsTorques(RIGHT).transpose() * robot_.getJointsVelocities(RIGHT);
+  Eigen::MatrixXf powerLeft = robot_.getJointsTorques(LEFT).transpose() * robot_.getJointsVelocities(LEFT);
+  Eigen::MatrixXf powerRight = robot_.getJointsTorques(RIGHT).transpose() * robot_.getJointsVelocities(RIGHT);
   Eigen::Matrix4f wHDoObject = object_.getWHDo();
 
   dataLog_.outRecordPose << (float) (cycleCount_ * dt_) << ", ";// cycle time
@@ -2085,7 +2085,7 @@ void DualArmControl::saveData() {
                                 << robot_.getJointsAccelerations(RIGHT).transpose().format(CSVFormat) << " , ";
   dataLog_.outRecordJointStates << robot_.getJointsTorques(LEFT).transpose().format(CSVFormat) << " , "
                                 << robot_.getJointsTorques(RIGHT).transpose().format(CSVFormat) << " , ";
-  dataLog_.outRecordJointStates << power_left(0, 0) << " , " << power_right(0, 0) << std::endl;
+  dataLog_.outRecordJointStates << powerLeft(0, 0) << " , " << powerRight(0, 0) << std::endl;
 }
 
 void DualArmControl::publishConveyorBeltCmds() {

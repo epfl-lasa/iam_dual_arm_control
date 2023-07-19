@@ -33,7 +33,7 @@ public:
   TossingTarget(){};
   ~TossingTarget(){};
 
-  void init(int dim, int order, int win_l, float dt) {
+  void init(int dim, int order, int winL, float dt) {
     // Target
     xt_.setZero();
     qt_.setZero();
@@ -41,12 +41,12 @@ public:
     qt_ << 1.0f, 0.0f, 0.0f, 0.0f;
     xtStateToGo_.setZero();
 
-    xtFiltered_ = std::make_unique<SGF::SavitzkyGolayFilter>(dim, order, win_l, dt);
+    xtFiltered_ = std::make_unique<SGF::SavitzkyGolayFilter>(dim, order, winL, dt);
     xtKalmanFiltered_.init(dt, Eigen::Vector2f(0.004, 0.1), 0.004, xt_);
     xtKalmanFiltered_.update(xt_);
   }
 
-  void getFilteredState() {
+  void computeFilteredState() {
     // Filtered target position
     SGF::Vec temp(3);
     xtFiltered_->AddData(xt_);

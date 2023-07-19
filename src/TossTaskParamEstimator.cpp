@@ -1,5 +1,5 @@
 
-#include "iam_dual_arm_control/TossTaskParamEstimator.h"
+#include "iam_dual_arm_control/TossTaskParamEstimator.hpp"
 
 //
 TossTaskParamEstimator::TossTaskParamEstimator() {}

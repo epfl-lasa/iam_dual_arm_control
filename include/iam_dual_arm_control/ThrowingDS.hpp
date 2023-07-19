@@ -119,7 +119,7 @@ public:
             Eigen::Matrix3f Do[],
             bool is2ndOrder);
 
-  bool init(tossDsParam ds_param,
+  bool init(tossDsParam dsParam,
             Eigen::Vector3f releasePos,
             Eigen::Vector4f releaseOrient,
             Eigen::Vector3f releaseLinVel,
@@ -146,9 +146,9 @@ public:
 
   Eigen::Vector3f computeModulatedMotion(float activation,
                                          Eigen::Matrix3f basisQ,
-                                         Eigen::Vector3f Areach_ee,
-                                         Eigen::Vector3f Amodul_ee_norm,
-                                         Eigen::Vector3f Amodul_ee_tang);
+                                         Eigen::Vector3f AreachEE,
+                                         Eigen::Vector3f AmodulEENorm,
+                                         Eigen::Vector3f AmodulEEtang);
   Eigen::Vector3f computeAngularMotion(float coupling,
                                        Eigen::Matrix4f wHc,
                                        Eigen::Vector3f Omega,

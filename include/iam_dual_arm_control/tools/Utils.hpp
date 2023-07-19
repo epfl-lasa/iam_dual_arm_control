@@ -592,7 +592,7 @@ public:
     rightV = Th.bottomLeftCorner(6, 6) * velA + Th.bottomRightCorner(6, 6) * velR;
   }
 
-  static Eigen::Matrix<T, 3, 1> getEulerAnglesXYZ_FixedFrame(Eigen::Matrix<T, 3, 3> R) {
+  static Eigen::Matrix<T, 3, 1> getEulerAnglesXYZFixedFrame(Eigen::Matrix<T, 3, 3> R) {
     // This function computed for a given rotation matrix the rotation angles around X, Y and Z axis considered as fixed.
     // the rotation matrix is assumed to be a Euler rotation matrix of type ZYX
     Eigen::Matrix<T, 3, 1> angles;
@@ -713,7 +713,7 @@ public:
                                           Eigen::Matrix<T, 3, 1>& curPos,
                                           Eigen::Matrix<T, 4, 1>& curOrient) {
 
-    Eigen::Matrix<T, 4, 4> cur_Hmg_Trsf = Utils<T>::pose2HomoMx(curPos, curOrient);
+    Eigen::Matrix<T, 4, 4> curHmgTrsf = Utils<T>::pose2HomoMx(curPos, curOrient);
 
     // update position
     curPos = curPos + dt * inVeloTwist.head(3);
