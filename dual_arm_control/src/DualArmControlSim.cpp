@@ -4,9 +4,10 @@
 
 #include <mutex>
 
-DualArmControlSim::DualArmControlSim() {
+DualArmControlSim::DualArmControlSim(double dt) {
   deltaRelPos_.setZero();
   deltaPos_.setZero();
+  periodT_ = dt;
 }
 
 DualArmControlSim::~DualArmControlSim() {}

@@ -115,7 +115,7 @@ int main(int argc, char** argv) {
   // =================================================================
   // Instantiation of dual arm control object
   // =================================================================
-  DualArmControlSim dualArmControlSim;
+  DualArmControlSim dualArmControlSim(dt);
 
   std::string pathYamlFile = ros::package::getPath(std::string("ros_dual_arm_control")) + "/config/parameters.yaml";
   std::string pathLearnedModelfolder =

@@ -355,7 +355,7 @@ public:
   };
   // 0=reach, 1=pick, 2=toss, 3=pick_and_toss, 4=pick_and_place
 
-  DualArmControlSim();
+  DualArmControlSim(double dt);
 
   ~DualArmControlSim();
 
