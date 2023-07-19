@@ -1203,7 +1203,6 @@ StateMachine DualArmControlSim::getStateMachine() {
   stateMachine.desiredVelImp = desiredVelImp_;
   stateMachine.placingPosHeight = xPlacing_(2);
   stateMachine.releasePosY = tossVar_.releasePosition(1);
-  stateMachine.startlogging = startlogging_;
 
   stateMachine.incrementReleasePos = incrementReleasePos_;
   stateMachine.deltaRelPos = deltaRelPos_;
@@ -1237,6 +1236,88 @@ void DualArmControlSim::updateStateMachine(StateMachine stateMachine) {
     dsThrowing_.setTossLinearVelocity(desVtoss_ * tossVar_.releaseLinearVelocity.normalized());
     dsThrowingEstim_.setTossLinearVelocity(desVtoss_ * tossVar_.releaseLinearVelocity.normalized());
   }
+}
 
-  startlogging_ = stateMachine.startlogging;
+DataToSave DualArmControlSim::getDataToSave() {
+  DataToSave dataToSave;
+
+  // Robot
+  dataToSave.robotX[LEFT] = robot_.getX(LEFT);
+  dataToSave.robotX[RIGHT] = robot_.getX(RIGHT);
+  dataToSave.robotQ[LEFT] = robot_.getQ(LEFT);
+  dataToSave.robotQ[RIGHT] = robot_.getQ(RIGHT);
+  dataToSave.robotVelDesEE[LEFT] = robot_.getVelDesEESpecific(LEFT);
+  dataToSave.robotVelDesEE[RIGHT] = robot_.getVelDesEESpecific(RIGHT);
+  dataToSave.robotVelEE[LEFT] = robot_.getVelEESpecific(LEFT);
+  dataToSave.robotVelEE[RIGHT] = robot_.getVelEESpecific(RIGHT);
+  dataToSave.robotVDes[LEFT] = robot_.getVDes(LEFT);
+  dataToSave.robotVDes[RIGHT] = robot_.getVDes(RIGHT);
+  dataToSave.robotOmegaDes[LEFT] = robot_.getOmegaDes(LEFT);
+  dataToSave.robotOmegaDes[RIGHT] = robot_.getOmegaDes(RIGHT);
+  dataToSave.robotFilteredWrench[LEFT] = robot_.getFilteredWrench(LEFT);
+  dataToSave.robotFilteredWrench[RIGHT] = robot_.getFilteredWrench(RIGHT);
+  dataToSave.robotJointsPositions[LEFT] = robot_.getJointsPositions(LEFT);
+  dataToSave.robotJointsPositions[RIGHT] = robot_.getJointsPositions(RIGHT);
+  dataToSave.robotJointsVelocities[LEFT] = robot_.getJointsVelocities(LEFT);
+  dataToSave.robotJointsVelocities[RIGHT] = robot_.getJointsVelocities(RIGHT);
+  dataToSave.robotJointsAccelerations[LEFT] = robot_.getJointsAccelerations(LEFT);
+  dataToSave.robotJointsAccelerations[RIGHT] = robot_.getJointsAccelerations(RIGHT);
+  dataToSave.robotJointsTorques[LEFT] = robot_.getJointsTorques(LEFT);
+  dataToSave.robotJointsTorques[RIGHT] = robot_.getJointsTorques(RIGHT);
+
+  // Object
+  dataToSave.objectWHGpSpecific[LEFT] = object_.getWHGpSpecific(LEFT);
+  dataToSave.objectWHGpSpecific[RIGHT] = object_.getWHGpSpecific(RIGHT);
+  dataToSave.objectWHDo = object_.getWHDo();
+  dataToSave.objectXo = object_.getXo();
+  dataToSave.objectQo = object_.getQo();
+  dataToSave.objectVo = object_.getVo();
+  dataToSave.objectWo = object_.getWo();
+
+  dataToSave.objVelDes = objVelDes_;
+
+  // Target
+  dataToSave.targetXt = target_.getXt();
+  dataToSave.targetQt = target_.getQt();
+  dataToSave.targetVt = target_.getVt();
+  dataToSave.targetXdLanding = target_.getXdLanding();
+  dataToSave.targetXIntercept = target_.getXIntercept();
+  dataToSave.targetXtStateToGo = target_.getXtStateToGo();
+
+  // Tossing
+  dataToSave.tossVar = tossVar_;
+
+  // Task
+  dataToSave.taskXPlacing = xPlacing_;
+  dataToSave.desiredVelImp = desiredVelImp_;
+  dataToSave.betaVelMod = betaVelMod_;
+  dataToSave.dualPathLenAvgSpeed = dualPathLenAvgSpeed_;
+
+  // Cooperative control
+  dataToSave.cooperativeCtrlForceApplied[LEFT] = CooperativeCtrl.getForceApplied(LEFT);
+  dataToSave.cooperativeCtrlForceApplied[RIGHT] = CooperativeCtrl.getForceApplied(RIGHT);
+
+  // Free motion control
+  dataToSave.freeMotionCtrlActivationProximity = freeMotionCtrl_.getActivationProximity();
+  dataToSave.freeMotionCtrlActivationNormal = freeMotionCtrl_.getActivationNormal();
+  dataToSave.freeMotionCtrlActivationTangent = freeMotionCtrl_.getActivationTangent();
+  dataToSave.freeMotionCtrlActivationRelease = freeMotionCtrl_.getActivationRelease();
+  dataToSave.freeMotionCtrlActivationRetract = freeMotionCtrl_.getActivationRetract();
+
+  // DS throwing
+  dataToSave.dsThrowingActivationProximity = dsThrowing_.getActivationProximity();
+  dataToSave.dsThrowingActivationNormal = dsThrowing_.getActivationNormal();
+  dataToSave.dsThrowingActivationTangent = dsThrowing_.getActivationTangent();
+  dataToSave.dsThrowingActivationToss = dsThrowing_.getActivationToss();
+
+  // State machine
+  dataToSave.desVtoss = desVtoss_;
+  dataToSave.goHome = goHome_;
+  dataToSave.goToAttractors = goToAttractors_;
+  dataToSave.releaseAndretract = releaseAndretract_;
+  dataToSave.isThrowing = isThrowing_;
+  dataToSave.isPlacing = isPlacing_;
+  dataToSave.isContact = isContact_;
+
+  return dataToSave;
 }

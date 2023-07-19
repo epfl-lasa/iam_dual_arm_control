@@ -98,8 +98,6 @@ struct StateMachine {
   Eigen::Vector3f deltaPos;
   float trackingFactor;
   bool adaptationActive;
-
-  bool startlogging;
 };
 
 struct SphericalPosition {
@@ -128,6 +126,72 @@ struct tossingTaskVariables {
   Eigen::Vector3f releaseAngularVelocity;
   Eigen::Vector3f restPosition;
   Eigen::Vector4f restOrientation;
+};
+
+struct DataToSave {
+  // Robot
+  Eigen::Vector3f robotX[NB_ROBOTS];
+  Eigen::Vector4f robotQ[NB_ROBOTS];
+  Vector6f robotVelDesEE[NB_ROBOTS];
+  Vector6f robotVelEE[NB_ROBOTS];
+  Eigen::Vector3f robotVDes[NB_ROBOTS];
+  Eigen::Vector3f robotOmegaDes[NB_ROBOTS];
+  Vector6f robotFilteredWrench[NB_ROBOTS];
+  Vector7f robotJointsPositions[NB_ROBOTS];
+  Vector7f robotJointsVelocities[NB_ROBOTS];
+  Vector7f robotJointsAccelerations[NB_ROBOTS];
+  Vector7f robotJointsTorques[NB_ROBOTS];
+
+  // Object
+  Eigen::Matrix4f objectWHGpSpecific[NB_ROBOTS];
+  Eigen::Matrix4f objectWHDo;
+  Eigen::Vector3f objectXo;
+  Eigen::Vector4f objectQo;
+  Eigen::Vector3f objectVo;
+  Eigen::Vector3f objectWo;
+  Vector6f objVelDes;
+
+  // Target
+  Eigen::Vector3f targetXt;
+  Eigen::Vector4f targetQt;
+  Eigen::Vector3f targetVt;
+  Eigen::Vector3f targetXdLanding;
+  Eigen::Vector3f targetXIntercept;
+  Eigen::Vector3f targetXtStateToGo;
+
+  // Tossing
+  tossingTaskVariables tossVar;
+
+  // Task
+  Eigen::Vector3f taskXPlacing;
+  float desiredVelImp;
+  float betaVelMod;
+  Eigen::Vector2f dualPathLenAvgSpeed;
+
+  // Cooperative control
+  Vector6f cooperativeCtrlForceApplied[NB_ROBOTS];
+
+  // Free motion control
+  float freeMotionCtrlActivationProximity;
+  float freeMotionCtrlActivationNormal;
+  float freeMotionCtrlActivationTangent;
+  float freeMotionCtrlActivationRelease;
+  float freeMotionCtrlActivationRetract;
+
+  // DS throwing
+  float dsThrowingActivationProximity;
+  float dsThrowingActivationNormal;
+  float dsThrowingActivationTangent;
+  float dsThrowingActivationToss;
+
+  // State machine
+  bool goHome;
+  bool goToAttractors;
+  bool releaseAndretract;
+  bool isThrowing;
+  bool isPlacing;
+  bool isContact;
+  float desVtoss;
 };
 
 class DualArmControlSim {
@@ -372,4 +436,7 @@ public:
   void keyboardReferenceObjectControl();
   StateMachine getStateMachine();
   void updateStateMachine(StateMachine stateMachine);
+
+  // ---- Get data for log
+  DataToSave getDataToSave();
 };

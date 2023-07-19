@@ -34,6 +34,9 @@ namespace keyboardinteraction {
 struct InteractionVar {
   StateMachine stateMachine;
   ConveyorBeltState conveyorBeltState;
+  bool startLogging;
+  bool resetLogging;
+
 };
 
 enum TaskType {
@@ -117,9 +120,9 @@ InteractionVar getKeyboard(InteractionVar interactionVar) {
         interactionVar.stateMachine.goHome = !interactionVar.stateMachine.goHome;
         if (interactionVar.stateMachine.goHome) {
           interactionVar.stateMachine.goToAttractors = true;
-          //   interactionVar.stateMachine.startlogging = false;
+            interactionVar.startLogging = false;
         } else if (!interactionVar.stateMachine.goHome) {
-          //   interactionVar.stateMachine.startlogging = true;
+            interactionVar.startLogging = true;
         }
       } break;
       case 'g': {
@@ -182,8 +185,8 @@ InteractionVar getKeyboard(InteractionVar interactionVar) {
 
       // Reset the data logging
       case 'c': {
-        interactionVar.stateMachine.startlogging = false;// TODO WHEN LOGGING
-        // dataLog_.reset(ros::package::getPath(std::string("dual_arm_control")) + "/Data");
+        interactionVar.startLogging = false;// TODO WHEN LOGGING
+        interactionVar.resetLogging = true;
       } break;
 
       // Disturb the target speed
@@ -211,7 +214,7 @@ InteractionVar getKeyboard(InteractionVar interactionVar) {
       case 'a': {
         if (interactionVar.conveyorBeltState.ctrlModeConveyorBelt) {
           interactionVar.conveyorBeltState.modeConveyorBelt = 2;
-          //   interactionVar.stateMachine.startlogging = true; TODO
+            interactionVar.startLogging = true;
         } else if (interactionVar.stateMachine.incrementReleasePos) {
           interactionVar.stateMachine.deltaRelPos(0) -= 0.025f;//[m]
         } else {

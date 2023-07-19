@@ -27,7 +27,7 @@
 
 #include "eigen3/Eigen/Core"
 
-// #include "dual_arm_control_iam/DataLogging.hpp"
+#include "dual_arm_control_iam/tools/Utils.hpp"
 
 using namespace std;
 class PdfGMR {
@@ -43,7 +43,7 @@ public:
   ~PdfGMR(){};
 
   bool init(std::string fileGMM[]) {
-    // datalog_.loadGMMParam(fileGMM, priorGMMToss_, meanGMMToss_, covMxGMMToss_);
+    Utils<double>::loadGMMParam(fileGMM, priorGMMToss_, meanGMMToss_, covMxGMMToss_);
     return true;
   }
 

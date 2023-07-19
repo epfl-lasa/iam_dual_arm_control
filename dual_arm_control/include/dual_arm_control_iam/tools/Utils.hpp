@@ -28,6 +28,7 @@
 #include "Eigen/Eigen"
 #include <float.h>
 #include <fstream>
+#include <iostream>
 
 template<typename T = float>
 class Utils {
@@ -797,6 +798,64 @@ public:
 
   static Eigen::Matrix<T, 3, 1> getAbs3D(Eigen::Matrix<T, 4, 4> H[2]) {
     return 0.5 * (H[0].block(0, 3, 3, 1) + H[1].block(0, 3, 3, 1));
+  }
+
+  // Function to load data from file
+  static bool loadDataFromFile(std::string fileName, Eigen::VectorXf& dataAllVal) {
+    // Eigen::Matrix<T, Eigen::Dynamic, 1> &data_all_val
+    std::ifstream inFile;
+    inFile.open(fileName);
+    if (!inFile) {
+      std::cout << "Unable to open file \n" << std::endl;
+      exit(1);// terminate with error
+    }
+
+    std::vector<float> dataVal;
+    float x;
+    while (inFile >> x) { dataVal.push_back(x); }
+
+    int sizeDataVal = dataVal.size();
+    dataAllVal.resize(sizeDataVal);
+    for (int i = 0; i < sizeDataVal; i++) dataAllVal(i) = dataVal[i];
+
+    return true;
+  }
+
+  static bool
+  loadGMMParam(std::string fileName[], Eigen::VectorXf& priors, Eigen::MatrixXf& means, Eigen::MatrixXf& covars) {
+
+    std::string priorsFileName = fileName[0];
+    std::string meansFileName = fileName[1];
+    std::string covarFileName = fileName[2];
+    Eigen::VectorXf priorsAllVal;
+    Eigen::VectorXf meansAllVal;
+    Eigen::VectorXf covarsAllVal;
+
+    Utils<double>::loadDataFromFile(priorsFileName, priorsAllVal);
+    Utils<double>::loadDataFromFile(meansFileName, meansAllVal);
+    Utils<double>::loadDataFromFile(covarFileName, covarsAllVal);
+
+    // Priors
+    priors = priorsAllVal;
+
+    int nbStates = priorsAllVal.rows();
+    int dataDim = int(meansAllVal.rows() / nbStates);
+
+    // Means
+    Eigen::Map<Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> meansMx(meansAllVal.data(),
+                                                                                              dataDim,
+                                                                                              nbStates);
+    means = meansMx;
+
+    int rowCov = dataDim * nbStates;
+
+    // Covariance
+    Eigen::Map<Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>> covarMx(covarsAllVal.data(),
+                                                                                              rowCov,
+                                                                                              dataDim);
+    covars = covarMx;
+
+    return true;
   }
 };
 

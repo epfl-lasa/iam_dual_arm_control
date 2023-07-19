@@ -41,5 +41,5 @@ include_directories(
   ${Boost_INCLUDE_DIR}
   )
 
-add_executable(dual_arm_control_node ${SRC_FOLDER}/dual_arm_control_sim.cpp)              
+add_executable(dual_arm_control_node ${SRC_FOLDER}/dual_arm_control_sim.cpp ${SRC_FOLDER}/DataLogging.cpp)              
 target_link_libraries(dual_arm_control_node  ${catkin_LIBRARIES} dual_arm_control_iam) 
