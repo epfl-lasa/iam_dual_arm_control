@@ -132,11 +132,11 @@ bool DualArmCooperativeController::computeBimanualGraspMatrix(Eigen::Matrix4f wH
 
 void DualArmCooperativeController::setMinNormalForcesEEs(float min, Eigen::Matrix3f wRh, Vector6f& wrenchW) {
   // Thresholding normal forces
-  Vector6f Wrench_h = Eigen::VectorXf::Zero(6);
-  Wrench_h(2) = min;
+  Vector6f WrenchH = Eigen::VectorXf::Zero(6);
+  WrenchH(2) = min;
 
-  wrenchW.head<3>() = wRh * Wrench_h.head<3>();
-  wrenchW.tail<3>() = wRh * Wrench_h.tail<3>();
+  wrenchW.head<3>() = wRh * WrenchH.head<3>();
+  wrenchW.tail<3>() = wRh * WrenchH.tail<3>();
 }
 
 void DualArmCooperativeController::thresholdNormalForcesEEs(float min,
@@ -144,16 +144,16 @@ void DualArmCooperativeController::thresholdNormalForcesEEs(float min,
                                                             Eigen::Matrix3f wRh,
                                                             Vector6f& wrenchW) {
   // Thresholding normal forces
-  Vector6f Wrench_h;
-  Wrench_h.head<3>() = wRh.transpose() * wrenchW.head<3>();
-  Wrench_h.tail<3>() = wRh.transpose() * wrenchW.tail<3>();
+  Vector6f WrenchH;
+  WrenchH.head<3>() = wRh.transpose() * wrenchW.head<3>();
+  WrenchH.tail<3>() = wRh.transpose() * wrenchW.tail<3>();
 
-  if (Wrench_h(2) <= min) Wrench_h(2) = min;
-  else if (Wrench_h(2) >= max)
-    Wrench_h(2) = max;
+  if (WrenchH(2) <= min) WrenchH(2) = min;
+  else if (WrenchH(2) >= max)
+    WrenchH(2) = max;
 
-  wrenchW.head<3>() = wRh * Wrench_h.head<3>();
-  wrenchW.tail<3>() = wRh * Wrench_h.tail<3>();
+  wrenchW.head<3>() = wRh * WrenchH.head<3>();
+  wrenchW.tail<3>() = wRh * WrenchH.tail<3>();
 }
 
 bool DualArmCooperativeController::getComplementaryConstraints(Matrix6f worldXstartDesiredEE[],
@@ -166,15 +166,13 @@ bool DualArmCooperativeController::getComplementaryConstraints(Matrix6f worldXst
     if (fabs(distToContact[k]) <= toleranceDistToContact) { thresholdDistToContact[k] = 0.0; }
 
     // Transformation from the world to desired lhand frame
-    Matrix6f desEE_X_world = worldXstartDesiredEE[k].transpose();
-    complementaryConstraintMatrix_[k].block<1, 6>(0, 0) = thresholdDistToContact[k] * desEE_X_world.block<1, 6>(2, 0);
+    Matrix6f desEEXWorld = worldXstartDesiredEE[k].transpose();
+    complementaryConstraintMatrix_[k].block<1, 6>(0, 0) = thresholdDistToContact[k] * desEEXWorld.block<1, 6>(2, 0);
   }
   return true;
 }
 
 void DualArmCooperativeController::computeOptimalWrench(Vector6f desiredObjectWrench) {
-  // float t_ctrl = ros::Time::now().toSec();
-
   // Get the contact constraints
   this->getContactConstraints(worldXstartDesiredEE_);
 
@@ -201,30 +199,28 @@ void DualArmCooperativeController::computeOptimalWrench(Vector6f desiredObjectWr
 bool DualArmCooperativeController::getContactConstraints(Matrix6f worldXstarEE[]) {
   for (int k = 0; k < NB_ROBOTS; k++) {
 
-    Matrix6f ee_X_world = worldXstarEE[k].inverse();
+    Matrix6f eeXWorld = worldXstarEE[k].inverse();
 
     // Inequality Constraint matrix
-    contactConstraintMatrix_[k].block<1, 6>(0, 0) = -1.0f * ee_X_world.block<1, 6>(2, 0);
+    contactConstraintMatrix_[k].block<1, 6>(0, 0) = -1.0f * eeXWorld.block<1, 6>(2, 0);
     contactConstraintMatrix_[k].block<1, 6>(1, 0) =
-        -muEE_ / sqrt(2.0f) * ee_X_world.block<1, 6>(2, 0) - ee_X_world.block<1, 6>(0, 0);
+        -muEE_ / sqrt(2.0f) * eeXWorld.block<1, 6>(2, 0) - eeXWorld.block<1, 6>(0, 0);
     contactConstraintMatrix_[k].block<1, 6>(2, 0) =
-        -muEE_ / sqrt(2.0f) * ee_X_world.block<1, 6>(2, 0) + ee_X_world.block<1, 6>(0, 0);
+        -muEE_ / sqrt(2.0f) * eeXWorld.block<1, 6>(2, 0) + eeXWorld.block<1, 6>(0, 0);
     contactConstraintMatrix_[k].block<1, 6>(3, 0) =
-        -muEE_ / sqrt(2.0f) * ee_X_world.block<1, 6>(2, 0) - ee_X_world.block<1, 6>(1, 0);
+        -muEE_ / sqrt(2.0f) * eeXWorld.block<1, 6>(2, 0) - eeXWorld.block<1, 6>(1, 0);
     contactConstraintMatrix_[k].block<1, 6>(4, 0) =
-        -muEE_ / sqrt(2.0f) * ee_X_world.block<1, 6>(2, 0) + ee_X_world.block<1, 6>(1, 0);
-    contactConstraintMatrix_[k].block<1, 6>(5, 0) =
-        -gammaEE_ * ee_X_world.block<1, 6>(2, 0) - ee_X_world.block<1, 6>(5, 0);
-    contactConstraintMatrix_[k].block<1, 6>(6, 0) =
-        -gammaEE_ * ee_X_world.block<1, 6>(2, 0) + ee_X_world.block<1, 6>(5, 0);
+        -muEE_ / sqrt(2.0f) * eeXWorld.block<1, 6>(2, 0) + eeXWorld.block<1, 6>(1, 0);
+    contactConstraintMatrix_[k].block<1, 6>(5, 0) = -gammaEE_ * eeXWorld.block<1, 6>(2, 0) - eeXWorld.block<1, 6>(5, 0);
+    contactConstraintMatrix_[k].block<1, 6>(6, 0) = -gammaEE_ * eeXWorld.block<1, 6>(2, 0) + eeXWorld.block<1, 6>(5, 0);
     contactConstraintMatrix_[k].block<1, 6>(7, 0) =
-        -deltaXEE_ * ee_X_world.block<1, 6>(2, 0) - ee_X_world.block<1, 6>(4, 0);
+        -deltaXEE_ * eeXWorld.block<1, 6>(2, 0) - eeXWorld.block<1, 6>(4, 0);
     contactConstraintMatrix_[k].block<1, 6>(8, 0) =
-        -deltaXEE_ * ee_X_world.block<1, 6>(2, 0) + ee_X_world.block<1, 6>(4, 0);
+        -deltaXEE_ * eeXWorld.block<1, 6>(2, 0) + eeXWorld.block<1, 6>(4, 0);
     contactConstraintMatrix_[k].block<1, 6>(9, 0) =
-        -deltaYEE_ * ee_X_world.block<1, 6>(2, 0) - ee_X_world.block<1, 6>(3, 0);
+        -deltaYEE_ * eeXWorld.block<1, 6>(2, 0) - eeXWorld.block<1, 6>(3, 0);
     contactConstraintMatrix_[k].block<1, 6>(10, 0) =
-        -deltaYEE_ * ee_X_world.block<1, 6>(2, 0) + ee_X_world.block<1, 6>(3, 0);
+        -deltaYEE_ * eeXWorld.block<1, 6>(2, 0) + eeXWorld.block<1, 6>(3, 0);
 
     // Inequality Constraint vector
     contactConstraintVector_[k](0) = minNF_; // minimal normal forces
@@ -320,14 +316,14 @@ void DualArmCooperativeController::computeControlWrench(Eigen::Matrix4f wHo,
   forceApplied_[LEFT] = contactConfidence_ * forceApplied_[LEFT];
   forceApplied_[RIGHT] = contactConfidence_ * forceApplied_[RIGHT];
 
-  Eigen::Vector3f z_axis = {0.0f, 0.0f, 1.0f};
+  Eigen::Vector3f zAxis = {0.0f, 0.0f, 1.0f};
 
   forceApplied_[LEFT].head(3) =
       (normalVectToObjSurface_[LEFT].transpose() * forceApplied_[LEFT].head(3)) * normalVectToObjSurface_[LEFT]
-      + (z_axis.transpose() * forceApplied_[LEFT].head(3)) * z_axis;
+      + (zAxis.transpose() * forceApplied_[LEFT].head(3)) * zAxis;
   forceApplied_[RIGHT].head(3) =
       (normalVectToObjSurface_[RIGHT].transpose() * forceApplied_[RIGHT].head(3)) * normalVectToObjSurface_[RIGHT]
-      + (z_axis.transpose() * forceApplied_[RIGHT].head(3)) * z_axis;
+      + (zAxis.transpose() * forceApplied_[RIGHT].head(3)) * zAxis;
 }
 
 void DualArmCooperativeController::getPredefinedContactForceProfile(bool goHome,

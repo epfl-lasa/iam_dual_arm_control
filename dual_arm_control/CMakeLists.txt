@@ -98,13 +98,3 @@ install(TARGETS ${PROJECT_NAME}
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin)
-
-
-
-# # generate and install export file
-# install(EXPORT ${LIBRARY_NAME}_targets
-#   FILE ${PROJECT_NAME}_${LIBRARY_NAME}_targets.cmake
-#   NAMESPACE ${PROJECT_NAME}::
-#   DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
-# )
-

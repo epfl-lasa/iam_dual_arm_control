@@ -35,12 +35,13 @@
 
 #include "dual_arm_control_iam/tools/Utils.hpp"
 
-#define NB_ROBOTS 2// Number of robots
-#define NB_FT_SENSOR_SAMPLES                                                                                           \
-  50// Number of force torque sensors' samples used for initial calibration (compute the offsets)
+#define NB_ROBOTS 2                // Number of robots
+#define NB_FT_SENSOR_SAMPLES 50    // Number of FT sensors' samples used for initial calibration (compute the offsets)
 #define MOVING_FORCE_WINDOW_SIZE 10// Window's size used to average the force data and detect peristent contact
 
 typedef Eigen::Matrix<float, 7, 1> Vector7f;
+typedef Eigen::Matrix<float, 6, 1> Vector6f;
+typedef Eigen::Matrix<float, 6, 6> Matrix6f;
 
 class RobotVariable {
 
@@ -190,9 +191,9 @@ public:
 
     // update velocity Twist transformation from EE to tcp
     Eigen::Vector3f tcp = toolOffsetFromEE_[k] * wRb_[k].col(2);
-    Eigen::Matrix3f skew_Mx_tcp;
-    skew_Mx_tcp << 0.0f, -tcp(2), tcp(1), tcp(2), 0.0f, -tcp(0), -tcp(1), tcp(0), 0.0f;
-    twistEEToolCenterPoint_[k].block(0, 3, 3, 3) = skew_Mx_tcp;
+    Eigen::Matrix3f skewMxTcp;
+    skewMxTcp << 0.0f, -tcp(2), tcp(1), tcp(2), 0.0f, -tcp(0), -tcp(1), tcp(0), 0.0f;
+    twistEEToolCenterPoint_[k].block(0, 3, 3, 3) = skewMxTcp;
   }
 
   void updateEndEffectorVelocity(Eigen::Vector3f vE, Eigen::Vector3f wE, int k) {
@@ -264,19 +265,19 @@ public:
     }
   }
 
-  void setInitParameters(float toolMass_param[],
-                         float toolOffsetFromEE_param[],
-                         Eigen::Vector3f toolComPositionFromSensor_param[],
-                         Eigen::Vector3f xrbStandby_param[],
-                         Eigen::Vector4f qrbStandby_param[]) {
+  void setInitParameters(float toolMassParam[],
+                         float toolOffsetFromEEParam[],
+                         Eigen::Vector3f toolComPositionFromSensorParam[],
+                         Eigen::Vector3f xrbStandbyParam[],
+                         Eigen::Vector4f qrbStandbyParam[]) {
 
-    memcpy(toolMass_, &toolMass_param[0], NB_ROBOTS * sizeof *toolMass_param);
-    memcpy(toolOffsetFromEE_, &toolOffsetFromEE_param[0], NB_ROBOTS * sizeof *toolOffsetFromEE_param);
+    memcpy(toolMass_, &toolMassParam[0], NB_ROBOTS * sizeof *toolMassParam);
+    memcpy(toolOffsetFromEE_, &toolOffsetFromEEParam[0], NB_ROBOTS * sizeof *toolOffsetFromEEParam);
     memcpy(toolComPositionFromSensor_,
-           &toolComPositionFromSensor_param[0],
-           NB_ROBOTS * sizeof *toolComPositionFromSensor_param);
-    memcpy(xrbStandby_, &xrbStandby_param[0], NB_ROBOTS * sizeof *xrbStandby_param);
-    memcpy(qrbStandby_, &qrbStandby_param[0], NB_ROBOTS * sizeof *qrbStandby_param);
+           &toolComPositionFromSensorParam[0],
+           NB_ROBOTS * sizeof *toolComPositionFromSensorParam);
+    memcpy(xrbStandby_, &xrbStandbyParam[0], NB_ROBOTS * sizeof *xrbStandbyParam);
+    memcpy(qrbStandby_, &qrbStandbyParam[0], NB_ROBOTS * sizeof *qrbStandbyParam);
 
     // get stanby transformation of the EEs wrt. the dual-robot Base frame
     this->getStandbyHmgTransformInBase();

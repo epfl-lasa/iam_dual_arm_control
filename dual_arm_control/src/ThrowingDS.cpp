@@ -121,7 +121,7 @@ bool ThrowingDS::init(float modulRegion[],
   return true;
 }
 
-bool ThrowingDS::init(tossDsParam ds_param,
+bool ThrowingDS::init(tossDsParam dsParam,
                       Eigen::Vector3f releasePos,
                       Eigen::Vector4f releaseOrient,
                       Eigen::Vector3f releaseLinVel,
@@ -129,15 +129,15 @@ bool ThrowingDS::init(tossDsParam ds_param,
                       Eigen::Vector3f restPos,
                       Eigen::Vector4f restOrient) {
   // Initialize the gains
-  memcpy(Kp_, &ds_param.Kp[0], 3 * sizeof *ds_param.Kp);
-  memcpy(Dp_, &ds_param.Dp[0], 3 * sizeof *ds_param.Dp);
-  memcpy(Ko_, &ds_param.Ko[0], 3 * sizeof *ds_param.Ko);
-  memcpy(Do_, &ds_param.Do[0], 3 * sizeof *ds_param.Do);
+  memcpy(Kp_, &dsParam.Kp[0], 3 * sizeof *dsParam.Kp);
+  memcpy(Dp_, &dsParam.Dp[0], 3 * sizeof *dsParam.Dp);
+  memcpy(Ko_, &dsParam.Ko[0], 3 * sizeof *dsParam.Ko);
+  memcpy(Do_, &dsParam.Do[0], 3 * sizeof *dsParam.Do);
 
-  is2ndOrder_ = ds_param.is2ndOrder;
-  rho_ = ds_param.modulRegion[0];
-  rangeNorm_ = ds_param.modulRegion[1];
-  rangeTang_ = ds_param.modulRegion[2];
+  is2ndOrder_ = dsParam.is2ndOrder;
+  rho_ = dsParam.modulRegion[0];
+  rangeNorm_ = dsParam.modulRegion[1];
+  rangeTang_ = dsParam.modulRegion[2];
 
   vToss_ = releaseLinVel;
   wToss_ = releaseAngVel;
@@ -281,7 +281,7 @@ Vector6f ThrowingDS::generateThrowingMotion(Eigen::Matrix4f wHce,
     // DS for retracting after the tossing position
     Eigen::Vector3f activationRetractEE = Kp_[RETRACT] * (x - xRetr);
 
-    // Get the modulated motion (out_motion: Velocity)
+    // Get the modulated motion (outMotion: Velocity)
     outMotion.head(3) = (1.0 - activationRetract_)
             * this->computeModulatedMotion(activation, basisQ, activationReachEE, activationEENorm, activationEETang)
         + activationRetract_ * activationRetractEE;

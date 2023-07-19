@@ -100,9 +100,14 @@ private:
   Eigen::Vector3f Xt_;
 
 public:
-  // TASK ID: Reaching, tossing, going to retract
+  /** 
+   * TASK ID: 0=Reaching, 1=Tossing, 2=Going to retract
+  */
   enum TASK_ID { REACH = 0, TOSS = 1, RETRACT = 2 };
-  // MOTION ID
+
+  /** 
+   * MOTION_ID: 0=Translation, 1=Rotation
+  */
   enum MOTION_ID { TRANSLATION = 0, ROTATION = 1 };
 
   ThrowingDS();
@@ -115,7 +120,7 @@ public:
             Eigen::Matrix3f Do[],
             bool is2ndOrder);
 
-  bool init(tossDsParam ds_param,
+  bool init(tossDsParam dsParam,
             Eigen::Vector3f releasePos,
             Eigen::Vector4f releaseOrient,
             Eigen::Vector3f releaseLinVel,
@@ -142,9 +147,9 @@ public:
 
   Eigen::Vector3f computeModulatedMotion(float activation,
                                          Eigen::Matrix3f basisQ,
-                                         Eigen::Vector3f Areach_ee,
-                                         Eigen::Vector3f Amodul_ee_norm,
-                                         Eigen::Vector3f Amodul_ee_tang);
+                                         Eigen::Vector3f AreachEE,
+                                         Eigen::Vector3f AmodulEENorm,
+                                         Eigen::Vector3f AmodulEETang);
   Eigen::Vector3f computeAngularMotion(float coupling,
                                        Eigen::Matrix4f wHc,
                                        Eigen::Vector3f Omega,

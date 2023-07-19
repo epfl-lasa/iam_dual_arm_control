@@ -85,16 +85,24 @@ private:
   Vector6f ForceInEE_[NB_ROBOTS];
 
 public:
-  // Robot ID: left or right
+  /** 
+   * Robot ID: left or right 
+  */
   enum ROBOT { LEFT = 0, RIGHT = 1 };
-  // Contact state:
-  // CONTACT: Both robots are in contact with the object
-  // CLOSE_TO_CONTACT: Both robots are close to make contact with the object
-  // NO_CONTACT: Both robots are not in contact with the object
+
+  /**
+   * Contact state:
+   * CONTACT: Both robots are in contact with the object
+   * CLOSE_TO_CONTACT: Both robots are close to make contact with the object
+   * NO_CONTACT: Both robots are not in contact with the object
+  */
   enum ContactState { CONTACT = 0, CLOSE_TO_CONTACT = 1, NO_CONTACT = 2 };
-  // Exection mode:
-  // REACHING_GRASPING_ONLY: The two robots reach and grasp the object
-  // REACHING_GRASPING_MANIPULATING: The two robots reach, grasp and move the object to a predefined position
+
+  /**
+   * Exection mode:
+   * REACHING_GRASPING_ONLY: The two robots reach and grasp the object
+   * REACHING_GRASPING_MANIPULATING: The two robots reach, grasp and move the object to a predefined position
+  */
   enum Mode { REACHING_GRASPING = 0, REACHING_GRASPING_MANIPULATING = 1 };
 
   DualArmCooperativeController();

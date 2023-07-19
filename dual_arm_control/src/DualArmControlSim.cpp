@@ -2,8 +2,6 @@
 
 #include "dual_arm_control_iam/DualArmControlSim.hpp"
 
-#include <mutex>
-
 DualArmControlSim::DualArmControlSim(double dt) {
   deltaRelPos_.setZero();
   deltaPos_.setZero();
@@ -197,8 +195,8 @@ bool DualArmControlSim::initDesTasksPosAndLimits(YAML::Node config) {
   dualAngularLimit_ =
       Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(paramDualAngularLimit.data(), paramDualAngularLimit.size());
 
-  Eigen::Matrix3f RDo_lifting = Utils<float>::quaternionToRotationMatrix(qLifting_);
-  filtDeltaAngMir_ = Utils<float>::getEulerAnglesXYZ_FixedFrame(RDo_lifting);
+  Eigen::Matrix3f RDoLifting = Utils<float>::quaternionToRotationMatrix(qLifting_);
+  filtDeltaAngMir_ = Utils<float>::getEulerAnglesXYZFixedFrame(RDoLifting);
 
   return true;
 }
@@ -333,8 +331,6 @@ void DualArmControlSim::reset() {
 }
 
 bool DualArmControlSim::init() {
-
-  // TODO PUT IN YAML FILE?
   gravity_ << 0.0f, 0.0f, -9.80665f;
 
   for (int k = 0; k < NB_ROBOTS; k++) {
@@ -390,7 +386,7 @@ bool DualArmControlSim::init() {
 
   adaptationActive_ = false;
 
-  feasibleAlgo_ = false;// ? TODO
+  feasibleAlgo_ = false;// TODO in yaml file?
   pickupBased_ = true;
   trackTargetRotation_ = true;
   isMotionTriggered_ = false;
@@ -404,9 +400,6 @@ bool DualArmControlSim::init() {
   //Keyboard interaction
   deltaRelPos_.setZero();
   deltaPos_.setZero();
-
-  // TODO LOGGING OR NOT HERE?
-  // startlogging_ = false;
 
   return true;
 }
@@ -445,12 +438,12 @@ bool DualArmControlSim::updateSim(Eigen::Matrix<float, 6, 1> robotWrench[],
 
   object_.setXo(objectPose);
   object_.setQo(objectOrientation);
-  object_.getHmgTransform();//TODO change name, not really a get?
+  object_.computeHmgTransform();
 
   target_.setXt(targetPose);
   target_.setQt(targetOrientation);
   // filtered object position
-  target_.getFilteredState();//TODO change name, not really a get?
+  target_.computeFilteredState();
 
   return true;
 }
@@ -797,12 +790,12 @@ void DualArmControlSim::computeCommands(Eigen::Vector3f eePose[], Eigen::Vector4
         Eigen::Vector3f errPosAbs = object_.getWHo().block(0, 3, 3, 1) - Utils<float>::getAbs3D(robot_.getWHEE());
         Eigen::Vector3f objErrPosAbs = object_.getWHo().block<3, 3>(0, 0).transpose() * errPosAbs;
         Eigen::Vector3f objErrPosAbsParallel = Eigen::Vector3f(objErrPosAbs(0), 0.0f, objErrPosAbs(2));
-        float cp_ap = Utils<float>::computeCouplingFactor(objErrPosAbsParallel, 50.0f, 0.17f, 1.0f, true);
+        float cpAp = Utils<float>::computeCouplingFactor(objErrPosAbsParallel, 50.0f, 0.17f, 1.0f, true);
 
         // Create impact at grabbing
         Vector6f* vDesEETest = robot_.getVelDesEE();
-        vDesEE[LEFT].head(3) = vDesEE[LEFT].head(3) + dirImp_[LEFT] * cp_ap * desiredVelImp_;
-        vDesEE[RIGHT].head(3) = vDesEE[RIGHT].head(3) + dirImp_[RIGHT] * cp_ap * desiredVelImp_;
+        vDesEE[LEFT].head(3) = vDesEE[LEFT].head(3) + dirImp_[LEFT] * cpAp * desiredVelImp_;
+        vDesEE[RIGHT].head(3) = vDesEE[RIGHT].head(3) + dirImp_[RIGHT] * cpAp * desiredVelImp_;
       } else {
         freeMotionCtrl_.dualArmMotion(robot_.getWHEE(),
                                       robot_.getVelEE(),
@@ -868,9 +861,9 @@ void DualArmControlSim::computeCommands(Eigen::Vector3f eePose[], Eigen::Vector4
 
     // ---------- Generate grasping force and apply it in velocity space ----------
     // Desired object's task wrench
-    desiredObjectWrench_.head(3) = -12.64f * (object_.getVo() - freeMotionCtrl_.get_des_object_motion().head(3))
-        - object_.getObjectMass() * gravity_;
-    desiredObjectWrench_.tail(3) = -25.00f * (object_.getWo() - freeMotionCtrl_.get_des_object_motion().tail(3));
+    desiredObjectWrench_.head(3) =
+        -12.64f * (object_.getVo() - freeMotionCtrl_.getDesObjectMotion().head(3)) - object_.getObjectMass() * gravity_;
+    desiredObjectWrench_.tail(3) = -25.00f * (object_.getWo() - freeMotionCtrl_.getDesObjectMotion().tail(3));
 
     CooperativeCtrl.getAppliedWrenches(goHome_,
                                        contactState_,
@@ -948,7 +941,7 @@ void DualArmControlSim::findDesiredLandingPosition(bool isPlacing, bool isPlaceT
 
 float DualArmControlSim::getDesiredYawAngleTarget(const Eigen::Vector4f& qt, const Eigen::Vector3f& angLimit) {
   Eigen::Vector3f eulerAngTarget =
-      Utils<float>::getEulerAnglesXYZ_FixedFrame(Utils<float>::quaternionToRotationMatrix(qt));
+      Utils<float>::getEulerAnglesXYZFixedFrame(Utils<float>::quaternionToRotationMatrix(qt));
 
   float phiTargetRot = eulerAngTarget(2);
 
@@ -1021,11 +1014,11 @@ void DualArmControlSim::setReleaseState() {
   dsThrowing_.setPickupObjectPose(object_.getXPickup(), object_.getQo());
 }
 
-void DualArmControlSim::set2DPositionBoxConstraints(Eigen::Vector3f& position_Vect, float limits[]) {
-  if (position_Vect(0) < limits[0]) position_Vect(0) = limits[0];// x_min
-  if (position_Vect(0) > limits[1]) position_Vect(0) = limits[1];// x_max
-  if (position_Vect(1) < limits[2]) position_Vect(1) = limits[2];// y_min
-  if (position_Vect(1) > limits[3]) position_Vect(1) = limits[3];// y_max
+void DualArmControlSim::set2DPositionBoxConstraints(Eigen::Vector3f& positionVect, float limits[]) {
+  if (positionVect(0) < limits[0]) positionVect(0) = limits[0];// x_min
+  if (positionVect(0) > limits[1]) positionVect(0) = limits[1];// x_max
+  if (positionVect(1) < limits[2]) positionVect(1) = limits[2];// y_min
+  if (positionVect(1) > limits[3]) positionVect(1) = limits[3];// y_max
 }
 
 void DualArmControlSim::computeAdaptationFactors(Eigen::Vector2f lengthPathAvgSpeedRobot,
@@ -1033,9 +1026,9 @@ void DualArmControlSim::computeAdaptationFactors(Eigen::Vector2f lengthPathAvgSp
                                                  float flyTimeObj) {
   if (isMotionTriggered_) { isIntercepting_ = true; }
 
-  float beta_vel_mod_max = min(2.0f,
-                               min((vMax_ / robot_.getVelDesEESpecific(LEFT).head(3).norm()),
-                                   (vMax_ / robot_.getVelDesEESpecific(RIGHT).head(3).norm())));
+  float betaVelModMax = min(2.0f,
+                            min((vMax_ / robot_.getVelDesEESpecific(LEFT).head(3).norm()),
+                                (vMax_ / robot_.getVelDesEESpecific(RIGHT).head(3).norm())));
 
   if (isIntercepting_ && !releaseAndretract_) {
     float epsilon = 1e-6;
@@ -1053,7 +1046,7 @@ void DualArmControlSim::computeAdaptationFactors(Eigen::Vector2f lengthPathAvgSp
       betaVelModUnfilt_ = (std::tanh(7.0f * (timeToInterceptBot_ - timeToInterceptTgt_)) + 1.0);
     }
 
-    if (betaVelModUnfilt_ >= beta_vel_mod_max) { betaVelModUnfilt_ = beta_vel_mod_max; }
+    if (betaVelModUnfilt_ >= betaVelModMax) { betaVelModUnfilt_ = betaVelModMax; }
 
     // Attractor-based adaptation factor
     freeMotionCtrl_.setActivationAperture(
@@ -1098,9 +1091,9 @@ void DualArmControlSim::mirrorTargetToObjectOrientation(Eigen::Vector4f qt,
                                                         Eigen::Vector4f& qo,
                                                         Eigen::Vector3f angleLimit) {
   Eigen::Vector3f eulerAngleTarget =
-      Utils<float>::getEulerAnglesXYZ_FixedFrame(Utils<float>::quaternionToRotationMatrix(qt));
+      Utils<float>::getEulerAnglesXYZFixedFrame(Utils<float>::quaternionToRotationMatrix(qt));
   Eigen::Vector3f eulerAngleDesired =
-      Utils<float>::getEulerAnglesXYZ_FixedFrame(Utils<float>::quaternionToRotationMatrix(qo));
+      Utils<float>::getEulerAnglesXYZFixedFrame(Utils<float>::quaternionToRotationMatrix(qo));
 
   filtDeltaAngMir_ = 0.95 * filtDeltaAngMir_ + 0.05 * (eulerAngleTarget - eulerAngleDesired);
   eulerAngleTarget(0) = eulerAngleDesired(0) + filtDeltaAngMir_(0);

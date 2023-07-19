@@ -130,5 +130,5 @@ public:
   Eigen::VectorXf state() { return xHat_; };
   float time() { return t_; };
 
-  void setState(const Eigen::VectorXf& x_hat_1) { xHat_ = x_hat_1; }
+  void setState(const Eigen::VectorXf& xHat) { xHat_ = xHat; }
 };

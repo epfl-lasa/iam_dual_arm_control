@@ -36,7 +36,6 @@ struct InteractionVar {
   ConveyorBeltState conveyorBeltState;
   bool startLogging;
   bool resetLogging;
-
 };
 
 enum TaskType {
@@ -120,9 +119,9 @@ InteractionVar getKeyboard(InteractionVar interactionVar) {
         interactionVar.stateMachine.goHome = !interactionVar.stateMachine.goHome;
         if (interactionVar.stateMachine.goHome) {
           interactionVar.stateMachine.goToAttractors = true;
-            interactionVar.startLogging = false;
+          interactionVar.startLogging = false;
         } else if (!interactionVar.stateMachine.goHome) {
-            interactionVar.startLogging = true;
+          interactionVar.startLogging = true;
         }
       } break;
       case 'g': {
@@ -185,7 +184,7 @@ InteractionVar getKeyboard(InteractionVar interactionVar) {
 
       // Reset the data logging
       case 'c': {
-        interactionVar.startLogging = false;// TODO WHEN LOGGING
+        interactionVar.startLogging = false;
         interactionVar.resetLogging = true;
       } break;
 
@@ -214,7 +213,7 @@ InteractionVar getKeyboard(InteractionVar interactionVar) {
       case 'a': {
         if (interactionVar.conveyorBeltState.ctrlModeConveyorBelt) {
           interactionVar.conveyorBeltState.modeConveyorBelt = 2;
-            interactionVar.startLogging = true;
+          interactionVar.startLogging = true;
         } else if (interactionVar.stateMachine.incrementReleasePos) {
           interactionVar.stateMachine.deltaRelPos(0) -= 0.025f;//[m]
         } else {

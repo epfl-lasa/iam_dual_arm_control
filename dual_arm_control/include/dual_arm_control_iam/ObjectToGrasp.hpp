@@ -100,7 +100,7 @@ public:
     this->getDesiredHmgTransform();
   }
 
-  void getHmgTransform() { wHo_ = Utils<float>::pose2HomoMx(xo_, qo_); }
+  void computeHmgTransform() { wHo_ = Utils<float>::pose2HomoMx(xo_, qo_); }
 
   void getDesiredHmgTransform() { wHDo_ = Utils<float>::pose2HomoMx(xDo_, qDo_); }
 

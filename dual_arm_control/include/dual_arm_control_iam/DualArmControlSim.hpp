@@ -31,7 +31,6 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
-#include <mutex>
 #include <pthread.h>
 #include <signal.h>
 #include <sstream>
@@ -199,74 +198,55 @@ class DualArmControlSim {
 private:
   double periodT_;
 
+  CommandStruct commandGenerated_;
+
   // ---- Robot
   RobotVariable robot_;
 
+  bool wrenchBiasOK_[NB_ROBOTS];// Check if computation of force/torque sensor bias is OK
+  float applyVelo_;
+  float nuWr0_;
+  float nuWr1_;
+  float initSpeedScaling_;
+
   // ---- Object
   ObjectToGrasp object_;
-
-  // ----  User interaction
-  bool objCtrlKey_;
-  bool userSelect_ = true;
-
-  // ====================================================================================================================
-
-  int contactState_;            // Contact state with the object
-  float toolMass_;              // [kg]
-  float normalForce_[NB_ROBOTS];// Normal force to the surface [N]
-  float isContact_;             // Contact value (1 = CONTACT, 0 otherwise)
-  bool wrenchBiasOK_[NB_ROBOTS];// Check if computation of force/torque sensor bias is OK
-  Eigen::Vector3f gravity_;
-  float errorObjDim_;// Error to object dimension vector [m]
-  float errorObjPos_;// Error to object center position [m]
-
-  Eigen::Matrix4f oHEE_[NB_ROBOTS];
-
-  // Passive DS controller
-  float d1_[NB_ROBOTS];
-  float err_[NB_ROBOTS];
-  bool qpWrenchGeneration_;
-
-  bool sensedContact_;
-  bool startlogging_;
-
-  // ---- Object
-  Eigen::Vector3f filtDeltaAngMir_;
-
+  float errorObjDim_; // Error to object dimension vector [m]
+  float errorObjPos_; // Error to object center position [m]
   Vector6f objVelDes_;// desired object velocity (toss)
   Vector6f desiredObjectWrench_;
 
   // ---- Tossing target
   TossingTarget target_;
 
-  int initPoseCount_;// Counter of received initial poses measurements
+  // ----  User interaction
+  bool objCtrlKey_;
+  bool userSelect_ = true;
+
+  // ---- Controllers
+  DualArmFreeMotionController freeMotionCtrl_; // Motion generation
+  DualArmCooperativeController CooperativeCtrl;// Force generation
+  ThrowingDS dsThrowing_;
+  DualArmFreeMotionController freeMotionCtrlEstim_;
+  ThrowingDS dsThrowingEstim_;
 
   Matrix6f gainAbs_;
   Matrix6f gainRel_;
 
-  std::deque<Eigen::Vector3f> windowVelTarget_;
-  Eigen::Vector3f movingAvgVelTarget_;
+  Eigen::Vector3f dirImp_[NB_ROBOTS];
+  Eigen::Vector3f vdImpact_[NB_ROBOTS];
+  Eigen::Vector3f dualAngularLimit_;
+  Eigen::Matrix3f basisQ_[NB_ROBOTS];
+  float betaVelModUnfilt_ = 1.0f;
 
-  // ---- Task
-  Eigen::Vector3f xLifting_;
-  Eigen::Vector4f qLifting_;
-  Eigen::Vector3f xPlacing_;
-  Eigen::Vector4f qPlacing_;
+  // Passive DS controller
+  float d1_[NB_ROBOTS];
+  float err_[NB_ROBOTS];
+  bool qpWrenchGeneration_;
 
-  float vMax_;
-  float filteredForceGain_;
-  float forceThreshold_;
-  float nuWr0_;
-  float nuWr1_;
-  float applyVelo_;
-  float desVtoss_;
-  float desiredVelImp_;
-  float desVreach_;
-  float refVreach_;
-  float frictionAngle_ = 0.0f;
-  float frictionAngleMax_ = 0.0f;
-  float heightViaPoint_;
-
+  // ---- State
+  int contactState_;// Contact state with the object
+  bool sensedContact_;
   bool goHome_;
   bool releaseAndretract_;
   bool isThrowing_;    // if true execute throwing of the object
@@ -275,73 +255,77 @@ private:
   bool isPickupSet_;
   bool isPlaceTossing_;// fast interrupted placing motion
   bool impactDirPreset_ = true;
-  int dualTaskSelector_ = 1;
   bool oldDualMethod_ = false;
-
-  // create data logging object
-  // DataLogging dataLog_;
-
-  Eigen::Matrix3f basisQ_[NB_ROBOTS];
-  Eigen::Vector3f dirImp_[NB_ROBOTS];
-  Eigen::Vector3f vdImpact_[NB_ROBOTS];
-  Eigen::Vector3f dualAngularLimit_;
   bool releaseFlag_;// 0=reach, 1=pick, 2=toss, 3=pick_and_toss, 4=pick_and_place
-
-  float trackingFactor_;
-
   bool incrementReleasePos_ = false;
-  SphericalPosition releasePos_;
-
-  Eigen::Vector2f dualPathLenAvgSpeed_;
   bool isIntercepting_ = false;
-  float betaVelMod_;
-  float initSpeedScaling_;
-  std::deque<float> windowSpeedEE_;
-  float movingAvgSpeedEE_;
   bool adaptationActive_ = false;
   bool isTargetFixed_ = true;
-
   bool feasibleAlgo_ = false;
   bool pickupBased_ = true;
   bool trackTargetRotation_ = false;
   bool isMotionTriggered_ = false;
   bool isRatioFactor_ = false;
-  float tolAttractor_ = 0.07f;
-  float switchSlopeAdapt_ = 100.0f;
-  float betaVelModUnfilt_ = 1.0f;
+  int dualTaskSelector_ = 1;
+  int initPoseCount_;// Counter of received initial poses measurements
+  float isContact_;  // Contact value (1 = CONTACT, 0 otherwise)
+
+  // ---- Task
+  TossTaskParamEstimator tossParamEstimator_;// tossing task param estimator
+  tossingTaskVariables tossVar_;
+
+  Eigen::Vector3f xLifting_;
+  Eigen::Vector4f qLifting_;
+  Eigen::Vector3f xPlacing_;
+  Eigen::Vector4f qPlacing_;
+  float desVtoss_;
+  float desiredVelImp_;
+  float desVreach_;
+  float refVreach_;
+  Eigen::Vector3f filtDeltaAngMir_;
+  SphericalPosition releasePos_;
+  Eigen::Vector2f dualPathLenAvgSpeed_;
+  float betaVelMod_;
   float timeToInterceptTgt_;
   float timeToInterceptBot_;
 
-  // ---- Keyboard interaction
+  Eigen::Matrix4f oHEE_[NB_ROBOTS];
+
+  // ---- User interaction
   Eigen::Vector3f deltaRelPos_;
   Eigen::Vector3f deltaPos_;// variation of object position
 
-  // ---- Unconstrained and contrained motion and force generation
-  DualArmFreeMotionController freeMotionCtrl_; // Motion generation
-  DualArmCooperativeController CooperativeCtrl;// Force generation
-  ThrowingDS dsThrowing_;
-
-  TossTaskParamEstimator tossParamEstimator_;// tossing task param estimator
-  DualArmFreeMotionController freeMotionCtrlEstim_;
-  ThrowingDS dsThrowingEstim_;
-
-  tossingTaskVariables tossVar_;
-
-  CommandStruct commandGenerated_;
-  // ====================================================================================================================
-
-  std::mutex mutex;
+  // ---- constants
+  Eigen::Vector3f gravity_;
+  float vMax_;
+  float forceThreshold_;
+  float filteredForceGain_;
+  float frictionAngle_ = 0.0f;
+  float frictionAngleMax_ = 0.0f;
+  float heightViaPoint_;
+  float trackingFactor_;
+  float tolAttractor_ = 0.07f;
+  float switchSlopeAdapt_ = 100.0f;
 
 public:
-  // Robot ID: left or right
+  /** 
+   * Robot ID: left or right 
+  */
   enum Robot { LEFT = 0, RIGHT = 1 };
 
-  // Contact state:
-  // CONTACT: Both robots are in contact with the object
-  // CLOSE_TO_CONTACT: Both robots are close to make contact with the object
-  // NO_CONTACT: Both robots are not in contact with the object
+  /**
+   * Contact state:
+   * CONTACT: Both robots are in contact with the object
+   * CLOSE_TO_CONTACT: Both robots are close to make contact with the object
+   * NO_CONTACT: Both robots are not in contact with the object
+  */
   enum ContactState { CONTACT = 0, CLOSE_TO_CONTACT = 1, NO_CONTACT = 2 };
-  // TaskType: dual-arm reaching and manipulation tasks
+
+  /**
+   * TaskType: dual-arm reaching and manipulation tasks
+   * 0=reach, 1=pick, 2=toss, 3=pick_and_toss, 4=pick_and_place
+   * 5=place_tossing 6=throwing, 7=Handing_over 8=pause_motion
+  */
   enum TaskType {
     REACH = 0,
     PICK_AND_LIFT = 1,
@@ -353,7 +337,6 @@ public:
     HANDINGOVER = 7,
     PAUSE_MOTION = 8
   };
-  // 0=reach, 1=pick, 2=toss, 3=pick_and_toss, 4=pick_and_place
 
   DualArmControlSim(double dt);
 
@@ -372,7 +355,7 @@ public:
 
   void reset();
 
-  bool loadParamFromFile(const std::string path_to_yaml_file, const std::string pathLearnedModelfolder);
+  bool loadParamFromFile(const std::string pathToYamlFile, const std::string pathLearnedModelfolder);
   bool updateSim(Eigen::Matrix<float, 6, 1> robotWrench[],
                  Eigen::Vector3f eePose[],
                  Eigen::Vector4f eeOrientation[],
@@ -410,23 +393,23 @@ public:
 
   void updateReleasePosition();
   Eigen::Vector3f
-  computeInterceptWithTarget(const Eigen::Vector3f& x_target, const Eigen::Vector3f& v_target, float phi_i);
+  computeInterceptWithTarget(const Eigen::Vector3f& xTarget, const Eigen::Vector3f& vTarget, float phiInit);
   void findDesiredLandingPosition(bool isPlacing, bool isPlaceTossing, bool isThrowing);
-  float getDesiredYawAngleTarget(const Eigen::Vector4f& qt, const Eigen::Vector3f& ang_lim);
+  float getDesiredYawAngleTarget(const Eigen::Vector4f& qt, const Eigen::Vector3f& angLimit);
   void estimateTargetStateToGo(Eigen::Vector2f lengthPathAvgSpeedRobot,
                                Eigen::Vector2f lengthPathAvgSpeedTarget,
                                float flyTimeObj);
-  void updateInterceptPosition(float flyTimeObj, float intercep_limits[]);
+  void updateInterceptPosition(float flyTimeObj, float intercepLimits[]);
   void findReleaseConfiguration();
   void setReleaseState();
-  void set2DPositionBoxConstraints(Eigen::Vector3f& position_vec, float limits[]);
+  void set2DPositionBoxConstraints(Eigen::Vector3f& positionVect, float limits[]);
   void computeAdaptationFactors(Eigen::Vector2f lengthPathAvgSpeedRobot,
                                 Eigen::Vector2f lengthPathAvgSpeedTarget,
                                 float flyTimeObj);
   Eigen::Vector3f
   getImpactDirection(Eigen::Vector3f objectDesiredForce, Eigen::Vector3f objNormal, float coeffFriction);
-  void mirrorTargetToObjectOrientation(Eigen::Vector4f qt, Eigen::Vector4f& qo, Eigen::Vector3f ang_lim);
-  void prepareCommands(Vector6f Vd_ee[], Eigen::Vector4f qd[], Vector6f V_gpo[]);
+  void mirrorTargetToObjectOrientation(Eigen::Vector4f qt, Eigen::Vector4f& qo, Eigen::Vector3f angleLimit);
+  void prepareCommands(Vector6f vDesEE[], Eigen::Vector4f qd[], Vector6f velGraspPos[]);
 
   bool getReleaseFlag();
   double getPeriod();

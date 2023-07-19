@@ -754,11 +754,11 @@ Eigen::Vector3f DualArmFreeMotionController::computeModulatedMotion(float activa
   return basisQ * Lambda * basisQ.transpose() * activationReachEE;
 }
 
-Vector6f DualArmFreeMotionController::compute_modulated_motion_dual(float activation,
-                                                                    Eigen::Matrix3f basisQ[],
-                                                                    Vector6f dsEENominal,
-                                                                    Vector6f activationEENorm,
-                                                                    Vector6f activationEETang) {
+Vector6f DualArmFreeMotionController::computeModulatedMotionDual(float activation,
+                                                                 Eigen::Matrix3f basisQ[],
+                                                                 Vector6f dsEENominal,
+                                                                 Vector6f activationEENorm,
+                                                                 Vector6f activationEETang) {
   // computing the modulated second order DS (translation)
   Vector6f vdModulated = Eigen::VectorXf::Zero(6);
   vdModulated.head(3) = this->computeModulatedMotion(activation,
@@ -1104,7 +1104,7 @@ void DualArmFreeMotionController::dualArmMotion(Eigen::Matrix4f wHee[],
   // Get the modulated motion (out_motion: Velocity)
   Vector6f dsEEModulated = Eigen::VectorXf::Zero(6, 1);
   dsEEModulated =
-      this->compute_modulated_motion_dual(activation, basisQ, dsEENominal, activationEENorm, activationEETang);
+      this->computeModulatedMotionDual(activation, basisQ, dsEENominal, activationEENorm, activationEETang);
 
   vDesEE[LEFT].head(3) = dsEEModulated.head(3);
   vDesEE[LEFT].tail(3) = vdEENorm[LEFT].tail(3);
@@ -1403,7 +1403,7 @@ Vector6f DualArmFreeMotionController::computeDesiredTaskTwist(const Eigen::Matri
   return desTwistEE;
 }
 
-void DualArmFreeMotionController::setVirtualObjectFrame(Eigen::Matrix4f w_H_vo) { wHvo_ = w_H_vo; }
+void DualArmFreeMotionController::setVirtualObjectFrame(Eigen::Matrix4f wHVo) { wHvo_ = wHVo; }
 void DualArmFreeMotionController::setDt(float dt) { dt_ = dt; }
 void DualArmFreeMotionController::setReachableP(float reachableP) { reachableP_ = reachableP; }
 void DualArmFreeMotionController::setWHEEStandby(Eigen::Matrix4f wHEEStandby, int robotID) {
@@ -1423,7 +1423,7 @@ void DualArmFreeMotionController::setActivationAperture(float activationAperture
   activationAperture_ = activationAperture;
 }
 
-Vector6f DualArmFreeMotionController::get_des_object_motion() { return vDesO_; }
+Vector6f DualArmFreeMotionController::getDesObjectMotion() { return vDesO_; }
 float DualArmFreeMotionController::getActivationProximity() { return activationProximity_; }
 float DualArmFreeMotionController::getActivationNormal() { return activationNormal_; }
 float DualArmFreeMotionController::getActivationTangent() { return activationTangent_; }

@@ -36,8 +36,6 @@ private:
   Eigen::MatrixXf meanGMMToss_;
   Eigen::MatrixXf covMxGMMToss_;
 
-  // DataLogging datalog_;
-
 public:
   PdfGMR(){};
   ~PdfGMR(){};

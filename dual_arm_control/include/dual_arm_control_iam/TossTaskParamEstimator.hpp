@@ -63,9 +63,12 @@ private:
   FirstOrderFilter myRK4_;
 
 public:
-  // PHYS_IDEAL 			: physical model of ideal (point mass) projectile with no aerodynamic drag
-  // PHYS_WITH_DRAG 	: physical model of projectile (ball) with Newton (aerodynamic) drag
-  // LEARNED 					: learned model of projectile (ball) with Newton (aerodynamic) drag
+  /** 
+   * ProjectileType
+   * PHYS_IDEAL 			: physical model of ideal (point mass) projectile with no aerodynamic drag
+   * PHYS_WITH_DRAG 	: physical model of projectile (ball) with Newton (aerodynamic) drag
+   * LEARNED 					: learned model of projectile (ball) with Newton (aerodynamic) drag
+  */
   enum ProjectileType { PHYS_IDEAL = 0, PHYS_WITH_DRAG = 1, LEARNED = 2 };
 
   TossTaskParamEstimator();
@@ -107,7 +110,6 @@ public:
                           Eigen::Vector2f& xLand2D);//
   Eigen::Vector2f
   estimateTargetSimplePathLengthAverageSpeed(Eigen::Vector3f x, Eigen::Vector3f xD, Eigen::Vector3f aVtarget);
-  Eigen::Vector2f estimate_robot_Lpath_avgVel(Eigen::Vector3f X, Eigen::Vector3f Xd);
   Eigen::Vector3f estimateTargetStateToGo(Eigen::Vector3f dxTarget,
                                           Eigen::Vector3f xIntercept,
                                           Eigen::Vector2f lpVaPredBot,

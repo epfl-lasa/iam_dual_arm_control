@@ -71,7 +71,7 @@ public:
     xtKalmanFiltered_.update(xt_);
   }
 
-  void getFilteredState() {
+  void computeFilteredState() {
     // Filtered target position
     SGF::Vec temp(3);
     xtFiltered_->AddData(xt_);

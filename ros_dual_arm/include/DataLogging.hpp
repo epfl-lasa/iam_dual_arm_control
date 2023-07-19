@@ -30,8 +30,8 @@
 #include <cmath>
 #include <ctime>
 #include <fstream>
-#include <iostream>
 #include <iomanip>
+#include <iostream>
 #include <vector>
 
 using namespace std;
@@ -52,9 +52,4 @@ public:
   bool reset(std::string path2Datafolder);
 
   bool closeFiles();
-
-  // Function to log data from file
-  // bool loadDataFromFile(std::string fileName, Eigen::VectorXf& dataAllVal);
-
-  // bool loadGMMParam(std::string fileName[], Eigen::VectorXf& priors, Eigen::MatrixXf& means, Eigen::MatrixXf& covars);
 };

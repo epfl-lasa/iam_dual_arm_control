@@ -66,9 +66,6 @@ private:
   bool isSimulation_ = true;
   std::vector<float> objectDimVect_;
 
-  // Velocity commands to be sent to the robots
-  // std_msgs::Float64MultiArray pubVel_[NB_ROBOTS];
-
   // ---- Subscriber
   ros::Subscriber subObjectPose_;
   ros::Subscriber subTargetPose_;
@@ -110,7 +107,6 @@ private:
   int magniturePertConveyorBelt_;
   int desSpeedConveyorBelt_;
 
-public:
   // For controllers
   float firstEigenPassiveDamping_[NB_ROBOTS];
   Eigen::Vector3f eePose_[NB_ROBOTS], objectPose_, targetPose_, eeVelLin_[NB_ROBOTS], eeVelAng_[NB_ROBOTS],
@@ -118,10 +114,18 @@ public:
   Eigen::Vector4f eeOrientation_[NB_ROBOTS], objectOrientation_, targetOrientation_, robotBaseOrientation_[NB_ROBOTS];
   Vector7f jointPosition_[NB_ROBOTS], jointVelocity_[NB_ROBOTS], jointTorques_[NB_ROBOTS];
   Eigen::Matrix<float, 6, 1> robotWrench_[NB_ROBOTS];
-  float toolOffsetFromEE_[NB_ROBOTS];
 
+public:
   // Robot ID: left or right
   enum Robot { LEFT = 0, RIGHT = 1 };
+
+  // // For controllers
+  // // float firstEigenPassiveDamping_[NB_ROBOTS];
+  // Eigen::Vector3f eePose_[NB_ROBOTS], objectPose_, targetPose_, eeVelLin_[NB_ROBOTS], eeVelAng_[NB_ROBOTS],
+  //     robotBasePos_[NB_ROBOTS];
+  // Eigen::Vector4f eeOrientation_[NB_ROBOTS], objectOrientation_, targetOrientation_, robotBaseOrientation_[NB_ROBOTS];
+  // Vector7f jointPosition_[NB_ROBOTS], jointVelocity_[NB_ROBOTS], jointTorques_[NB_ROBOTS];
+  // float toolOffsetFromEE_[NB_ROBOTS];
 
   RosDualArmCommunication(ros::NodeHandle& n, double frequency) : nh_(n), loopRate_(frequency), frequency_(frequency){};
 
@@ -477,11 +481,6 @@ public:
       msgFilteredWrench.wrench.torque.z = filteredWrench[k](5);
       pubFilteredWrench_[k].publish(msgFilteredWrench);
 
-      // // Normal forces TODO
-      // std_msgs::Float64 msg;
-      // msg.data = normalForce_[k];
-      // pubNormalForce_[k].publish(msg);
-
       // Distance EE - attractor
       std_msgs::Float64 msg;
       msg.data = err[k];
@@ -716,4 +715,20 @@ public:
       if (ctrlModeConveyorBelt_ && (fmod(cycleCount, 30) == 0)) { pubConveyorBeltSpeed_.publish(speedMsgConveyorBelt); }
     }
   }
+
+  float* getFirstEigenPassiveDamping() { return firstEigenPassiveDamping_; }
+  Eigen::Vector3f getObjectPose() { return objectPose_; }
+  Eigen::Vector3f getTargetPose() { return targetPose_; }
+  Eigen::Vector3f* getEePose() { return eePose_; }
+  Eigen::Vector3f* getEeVelLin() { return eeVelLin_; }
+  Eigen::Vector3f* getEeVelAng() { return eeVelAng_; }
+  Eigen::Vector3f* getRobotBasePos() { return robotBasePos_; }
+  Eigen::Vector4f getObjectOrientation() { return objectOrientation_; }
+  Eigen::Vector4f getTargetOrientation() { return targetOrientation_; }
+  Eigen::Vector4f* getEeOrientation() { return eeOrientation_; }
+  Eigen::Vector4f* getRobotBaseOrientation() { return robotBaseOrientation_; }
+  Eigen::Matrix<float, 6, 1>* getRobotWrench() { return robotWrench_; }
+  Vector7f* getJointPosition() { return jointPosition_; }
+  Vector7f* getJointVelocity() { return jointVelocity_; }
+  Vector7f* getJointTorques() { return jointTorques_; }
 };
