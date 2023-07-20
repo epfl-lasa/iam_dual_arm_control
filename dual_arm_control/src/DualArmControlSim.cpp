@@ -599,22 +599,10 @@ void DualArmControlSim::computeCommands(Eigen::Vector3f eePose[], Eigen::Vector4
 
   // Self imposed limits on intercept region (placing on moving target)
   float betaVelModUnfiltered = 1.0f;
-
   bool isContact = true && sensedContact_ && CooperativeCtrl.getContactConfidence() == 1.0f;
   bool isPlacing = isPlacing_ || (dualTaskSelector_ == PICK_AND_PLACE);
   bool isThrowing = isThrowing_ || (dualTaskSelector_ == TOSSING) || (dualTaskSelector_ == PICK_AND_TOSS);
   bool isPlaceTossing = isPlaceTossing_ || (dualTaskSelector_ == PLACE_TOSSING);
-
-  bool placingDone = (releaseFlag_) || ((object_.getWHo().block<3, 1>(0, 3) - xPlacing_).norm() <= 0.08);
-  bool placeTossingDone = (releaseFlag_)
-      || (((object_.getWHo().block<3, 1>(0, 3) - tossVar_.releasePosition).norm() <= 0.07)
-          || ((object_.getWHo().block<2, 1>(0, 3) - xPlacing_.head(2)).norm() <= 0.05));
-  bool tossingDone =
-      (releaseFlag_) || (((object_.getWHo().block<3, 1>(0, 3) - tossVar_.releasePosition).norm() <= 0.035));
-  bool isForceDetected =
-      (robot_.getNormalForceAverage(LEFT) > forceThreshold_ || robot_.getNormalForceAverage(RIGHT) > forceThreshold_);
-
-  Vector6f vDesEE[NB_ROBOTS];
 
   // ---------- Intercept/ landing location ----------
   // Compute intercept position with yaw angle limits for throwing object
@@ -679,166 +667,20 @@ void DualArmControlSim::computeCommands(Eigen::Vector3f eePose[], Eigen::Vector4
   this->computeAdaptationFactors(lengthPathAvgSpeedRobot, lengthPathAvgSpeedTarget, flyTimeObj);
 
   if (goHome_) {
-    freeMotionCtrl_.computeAsyncMotion(robot_.getWHEE(),
-                                       robot_.getWHEEStandby(),
-                                       object_.getWHo(),
-                                       robot_.getVelDesEE(),
-                                       robot_.getQd(),
-                                       true);
-
-    objVelDes_ =
-        dsThrowing_.apply(object_.getXo(), object_.getQo(), object_.getVo(), Eigen::Vector3f(0.0f, 0.0f, 0.0f));
-
-    for (int i = 0; i < NB_ROBOTS; i++) {
-      dirImp_[i] =
-          this->getImpactDirection(objVelDes_.head(3), object_.getNormalVectSurfObjSpecific(i), frictionAngle_);
-      vdImpact_[i] = desiredVelImp_ * dirImp_[i];
-
-      // Orthogonal Basis of Modulated Dual-arm DS
-      basisQ_[i] = Utils<float>::create3dOrthonormalMatrixFromVector(dirImp_[i]);
-    }
-
-    // Reset some controller variables
-    this->reset();
-
+    asyncMotion();
   } else {//  release_and_retract || release
 
     if (releaseAndretract_) {
+      releaseRetractMotion();
 
-      freeMotionCtrl_.computeReleaseAndRetractMotion(robot_.getWHEE(),
-                                                     object_.getWHDgp(),
-                                                     object_.getWHo(),
-                                                     robot_.getVelDesEE(),
-                                                     robot_.getQd(),
-                                                     true);
-      isThrowing_ = false;
-      isPlacing_ = false;
-      isPickupSet_ = false;
-      isPlaceTossing_ = false;
-      nuWr0_ = nuWr1_ = 0.0f;
-      dsThrowing_.resetReleaseFlag();
-      isIntercepting_ = false;
     } else if (isContact) {// Constraint motion phase (Cooperative control)
-      objVelDes_ =
-          dsThrowing_.apply(object_.getXo(), object_.getQo(), object_.getVo(), Eigen::Vector3f(0.0f, 0.0f, 0.0f));
-
-      // Desired task position and orientation vectors
-      Eigen::Vector3f xDesTask = xLifting_;
-      Eigen::Vector4f qDesTask = qLifting_;
-      if (isPlacing) {
-        xDesTask = xPlacing_;
-        qDesTask = qPlacing_;
-      }
-      if (isPlaceTossing) {
-        xDesTask = xPlacing_;
-        qDesTask = qPlacing_;
-      }
-      if (isThrowing) {
-        xDesTask = tossVar_.releasePosition;
-        qDesTask = tossVar_.releaseOrientation;
-      }
-
-      // Target to object Orientation Adaptation
-      if (trackTargetRotation_) {
-        this->mirrorTargetToObjectOrientation(target_.getQt(), qDesTask, dualAngularLimit_);
-        dsThrowing_.setTossPose(tossVar_.releasePosition, qDesTask);
-      }
-
-      // Desired object pose
-      Eigen::Matrix4f desObjPosHomogTransfo = Utils<float>::pose2HomoMx(xDesTask, qDesTask);
-      object_.setWHDo(Utils<float>::pose2HomoMx(xDesTask, qDesTask));
-
-      // Desired pose of the grasping points
-      for (int k = 0; k < NB_ROBOTS; k++) {
-        object_.setWHDgp(object_.getWHDo() * oHEE_[k], k);
-        object_.getWHDgpSpecific(k).block(0, 0, 3, 3) = desObjPosHomogTransfo.block(0, 0, 3, 3)
-            * Utils<float>::pose2HomoMx(object_.getXGpO(k), object_.getQGpO(k)).block(0, 0, 3, 3);
-      }
-
-      // Motion generation
-      freeMotionCtrl_.dualArmMotion(robot_.getWHEE(),
-                                    robot_.getVelEE(),
-                                    object_.getWHDgp(),
-                                    object_.getWHo(),
-                                    object_.getWHDo(),
-                                    objVelDes_,
-                                    basisQ_,
-                                    vdImpact_,
-                                    false,
-                                    dualTaskSelector_,
-                                    robot_.getVelDesEE(),
-                                    robot_.getQd(),
-                                    releaseFlag_);
-
-      // Release and Retract condition
-      if ((isPlacing && placingDone) || (isPlaceTossing && placeTossingDone) || (isThrowing && tossingDone)) {
-        releaseAndretract_ = true;
-      }
+      constraintMotion(isPlacing, isPlaceTossing, isThrowing);
     } else {// Unconstraint (Free) motion phase
-      freeMotionCtrl_.setReachableP(
-          (robot_.getWHEESpecific(LEFT)(0, 3) >= 0.72f || robot_.getWHEESpecific(RIGHT)(0, 3) >= 0.72f) ? 0.0f : 1.0f);
 
-      if (false || oldDualMethod_) {
-
-        freeMotionCtrl_.computeCoordinatedMotion2(robot_.getWHEE(),
-                                                  object_.getWHGp(),
-                                                  object_.getWHo(),
-                                                  robot_.getVelDesEE(),
-                                                  robot_.getQd(),
-                                                  false);
-
-        Eigen::Vector3f errPosAbs = object_.getWHo().block(0, 3, 3, 1) - Utils<float>::getAbs3D(robot_.getWHEE());
-        Eigen::Vector3f objErrPosAbs = object_.getWHo().block<3, 3>(0, 0).transpose() * errPosAbs;
-        Eigen::Vector3f objErrPosAbsParallel = Eigen::Vector3f(objErrPosAbs(0), 0.0f, objErrPosAbs(2));
-        float cpAp = Utils<float>::computeCouplingFactor(objErrPosAbsParallel, 50.0f, 0.17f, 1.0f, true);
-
-        // Create impact at grabbing
-        Vector6f* vDesEETest = robot_.getVelDesEE();
-        vDesEE[LEFT].head(3) = vDesEE[LEFT].head(3) + dirImp_[LEFT] * cpAp * desiredVelImp_;
-        vDesEE[RIGHT].head(3) = vDesEE[RIGHT].head(3) + dirImp_[RIGHT] * cpAp * desiredVelImp_;
-      } else {
-        freeMotionCtrl_.dualArmMotion(robot_.getWHEE(),
-                                      robot_.getVelEE(),
-                                      object_.getWHGp(),
-                                      object_.getWHo(),
-                                      object_.getWHDo(),
-                                      objVelDes_,
-                                      basisQ_,
-                                      vdImpact_,
-                                      false,
-                                      0,
-                                      robot_.getVelDesEE(),
-                                      robot_.getQd(),
-                                      releaseFlag_);
-      }
-
-      dsThrowing_.setRefVtoss(desiredVelImp_);
-
-      // for data logging
-      objVelDes_.setZero();
-
-      if (freeMotionCtrl_.getActivationProximity() >= 0.2f) { betaVelModUnfilt_ = 1.0; }
+      unconstraintMotion();
     }
 
-    if (isPlacing || isThrowing || isPlaceTossing) {
-      // Force feedback to grab objects
-      float gainForce = 0.02f;
-      float absForceCorrection = nuWr0_ * gainForce * 0.5f
-          * ((robot_.getFilteredWrench(LEFT).segment(0, 3) - CooperativeCtrl.getForceApplied(LEFT).head(3))
-                 .dot(object_.getNormalVectSurfObjSpecific(LEFT))
-             + (robot_.getFilteredWrench(RIGHT).segment(0, 3) - CooperativeCtrl.getForceApplied(RIGHT).head(3))
-                   .dot(object_.getNormalVectSurfObjSpecific(RIGHT)));
-
-      if (fabs(absForceCorrection) > 0.2f) {
-        absForceCorrection = absForceCorrection / fabs(absForceCorrection) * 0.2f;
-      }
-
-      Vector6f* vDesEETest = robot_.getVelDesEE();
-      vDesEE[LEFT].head(3) =
-          vDesEE[LEFT].head(3) - 0.40 * absForceCorrection * object_.getNormalVectSurfObjSpecific(LEFT);
-      vDesEE[RIGHT].head(3) =
-          vDesEE[RIGHT].head(3) - 0.40 * absForceCorrection * object_.getNormalVectSurfObjSpecific(RIGHT);
-    }
+    if (isPlacing || isThrowing || isPlaceTossing) { adaptToForce(); }
 
     // ---------- Adaptation ----------
     if (!isContact && (freeMotionCtrl_.getActivationProximity() >= 0.2f)) { betaVelModUnfiltered = 1.0; }
@@ -847,12 +689,9 @@ void DualArmControlSim::computeCommands(Eigen::Vector3f eePose[], Eigen::Vector4
     betaVelMod_ = (1.f - filBeta) * betaVelMod_ + filBeta * betaVelModUnfiltered;
 
     if ((target_.getVt().norm() >= 0.05 && (!releaseAndretract_) && (dsThrowing_.getActivationProximity() <= 0.99f))) {
-
-      Vector6f* vDesEETest = robot_.getVelDesEE();
-
-      vDesEE[LEFT].head(3) *=
+      vDesEE_[LEFT].head(3) *=
           initSpeedScaling_ * ((float) adaptationActive_ * betaVelMod_ + (1. - (float) adaptationActive_));
-      vDesEE[RIGHT].head(3) *=
+      vDesEE_[RIGHT].head(3) *=
           initSpeedScaling_ * ((float) adaptationActive_ * betaVelMod_ + (1. - (float) adaptationActive_));
     }
 
@@ -860,25 +699,7 @@ void DualArmControlSim::computeCommands(Eigen::Vector3f eePose[], Eigen::Vector4
     object_.getGraspPointVelocity();
 
     // ---------- Generate grasping force and apply it in velocity space ----------
-    // Desired object's task wrench
-    desiredObjectWrench_.head(3) =
-        -12.64f * (object_.getVo() - freeMotionCtrl_.getDesObjectMotion().head(3)) - object_.getObjectMass() * gravity_;
-    desiredObjectWrench_.tail(3) = -25.00f * (object_.getWo() - freeMotionCtrl_.getDesObjectMotion().tail(3));
-
-    CooperativeCtrl.getAppliedWrenches(goHome_,
-                                       contactState_,
-                                       object_.getWHo(),
-                                       robot_.getWHEE(),
-                                       object_.getWHGp(),
-                                       desiredObjectWrench_,
-                                       object_.getObjectMass(),
-                                       qpWrenchGeneration_,
-                                       isForceDetected);
-
-    // Applied force in velocity space
-    for (int i = 0; i < NB_ROBOTS; i++) {
-      robot_.setFXC(1.0f / d1_[i] * CooperativeCtrl.getForceApplied(i).head(3), i);
-    }
+    graspingForceToVelSpace();
   }
 
   // Compute the velocity to avoid EE collision
@@ -890,6 +711,193 @@ void DualArmControlSim::computeCommands(Eigen::Vector3f eePose[], Eigen::Vector4
 
   // Extract linear velocity commands and desired axis angle command
   this->prepareCommands(robot_.getVelDesEE(), robot_.getQd(), object_.getVGpO());
+}
+
+void DualArmControlSim::asyncMotion() {
+  freeMotionCtrl_.computeAsyncMotion(robot_.getWHEE(),
+                                     robot_.getWHEEStandby(),
+                                     object_.getWHo(),
+                                     robot_.getVelDesEE(),
+                                     robot_.getQd(),
+                                     true);
+
+  objVelDes_ = dsThrowing_.apply(object_.getXo(), object_.getQo(), object_.getVo(), Eigen::Vector3f(0.0f, 0.0f, 0.0f));
+
+  for (int i = 0; i < NB_ROBOTS; i++) {
+    dirImp_[i] = this->getImpactDirection(objVelDes_.head(3), object_.getNormalVectSurfObjSpecific(i), frictionAngle_);
+    vdImpact_[i] = desiredVelImp_ * dirImp_[i];
+
+    // Orthogonal Basis of Modulated Dual-arm DS
+    basisQ_[i] = Utils<float>::create3dOrthonormalMatrixFromVector(dirImp_[i]);
+  }
+
+  // Reset some controller variables
+  this->reset();
+}
+
+void DualArmControlSim::releaseRetractMotion() {
+  freeMotionCtrl_.computeReleaseAndRetractMotion(robot_.getWHEE(),
+                                                 object_.getWHDgp(),
+                                                 object_.getWHo(),
+                                                 robot_.getVelDesEE(),
+                                                 robot_.getQd(),
+                                                 true);
+  isThrowing_ = false;
+  isPlacing_ = false;
+  isPickupSet_ = false;
+  isPlaceTossing_ = false;
+  nuWr0_ = nuWr1_ = 0.0f;
+  dsThrowing_.resetReleaseFlag();
+  isIntercepting_ = false;
+}
+
+void DualArmControlSim::constraintMotion(bool isPlacing, bool isPlaceTossing, bool isThrowing) {
+  bool placingDone = (releaseFlag_) || ((object_.getWHo().block<3, 1>(0, 3) - xPlacing_).norm() <= 0.08);
+  bool placeTossingDone = (releaseFlag_)
+      || (((object_.getWHo().block<3, 1>(0, 3) - tossVar_.releasePosition).norm() <= 0.07)
+          || ((object_.getWHo().block<2, 1>(0, 3) - xPlacing_.head(2)).norm() <= 0.05));
+  bool tossingDone =
+      (releaseFlag_) || (((object_.getWHo().block<3, 1>(0, 3) - tossVar_.releasePosition).norm() <= 0.035));
+
+  objVelDes_ = dsThrowing_.apply(object_.getXo(), object_.getQo(), object_.getVo(), Eigen::Vector3f(0.0f, 0.0f, 0.0f));
+
+  // Desired task position and orientation vectors
+  Eigen::Vector3f xDesTask = xLifting_;
+  Eigen::Vector4f qDesTask = qLifting_;
+  if (isPlacing) {
+    xDesTask = xPlacing_;
+    qDesTask = qPlacing_;
+  }
+  if (isPlaceTossing) {
+    xDesTask = xPlacing_;
+    qDesTask = qPlacing_;
+  }
+  if (isThrowing) {
+    xDesTask = tossVar_.releasePosition;
+    qDesTask = tossVar_.releaseOrientation;
+  }
+
+  // Target to object Orientation Adaptation
+  if (trackTargetRotation_) {
+    this->mirrorTargetToObjectOrientation(target_.getQt(), qDesTask, dualAngularLimit_);
+    dsThrowing_.setTossPose(tossVar_.releasePosition, qDesTask);
+  }
+
+  // Desired object pose
+  Eigen::Matrix4f desObjPosHomogTransfo = Utils<float>::pose2HomoMx(xDesTask, qDesTask);
+  object_.setWHDo(Utils<float>::pose2HomoMx(xDesTask, qDesTask));
+
+  // Desired pose of the grasping points
+  for (int k = 0; k < NB_ROBOTS; k++) {
+    object_.setWHDgp(object_.getWHDo() * oHEE_[k], k);
+    object_.getWHDgpSpecific(k).block(0, 0, 3, 3) = desObjPosHomogTransfo.block(0, 0, 3, 3)
+        * Utils<float>::pose2HomoMx(object_.getXGpO(k), object_.getQGpO(k)).block(0, 0, 3, 3);
+  }
+
+  // Motion generation
+  freeMotionCtrl_.dualArmMotion(robot_.getWHEE(),
+                                robot_.getVelEE(),
+                                object_.getWHDgp(),
+                                object_.getWHo(),
+                                object_.getWHDo(),
+                                objVelDes_,
+                                basisQ_,
+                                vdImpact_,
+                                false,
+                                dualTaskSelector_,
+                                robot_.getVelDesEE(),
+                                robot_.getQd(),
+                                releaseFlag_);
+
+  // Release and Retract condition
+  if ((isPlacing && placingDone) || (isPlaceTossing && placeTossingDone) || (isThrowing && tossingDone)) {
+    releaseAndretract_ = true;
+  }
+}
+
+void DualArmControlSim::unconstraintMotion() {
+  freeMotionCtrl_.setReachableP(
+      (robot_.getWHEESpecific(LEFT)(0, 3) >= 0.72f || robot_.getWHEESpecific(RIGHT)(0, 3) >= 0.72f) ? 0.0f : 1.0f);
+
+  if (false || oldDualMethod_) {
+
+    freeMotionCtrl_.computeCoordinatedMotion2(robot_.getWHEE(),
+                                              object_.getWHGp(),
+                                              object_.getWHo(),
+                                              robot_.getVelDesEE(),
+                                              robot_.getQd(),
+                                              false);
+
+    Eigen::Vector3f errPosAbs = object_.getWHo().block(0, 3, 3, 1) - Utils<float>::getAbs3D(robot_.getWHEE());
+    Eigen::Vector3f objErrPosAbs = object_.getWHo().block<3, 3>(0, 0).transpose() * errPosAbs;
+    Eigen::Vector3f objErrPosAbsParallel = Eigen::Vector3f(objErrPosAbs(0), 0.0f, objErrPosAbs(2));
+    float cpAp = Utils<float>::computeCouplingFactor(objErrPosAbsParallel, 50.0f, 0.17f, 1.0f, true);
+
+    // Create impact at grabbing
+    vDesEE_[LEFT].head(3) = vDesEE_[LEFT].head(3) + dirImp_[LEFT] * cpAp * desiredVelImp_;
+    vDesEE_[RIGHT].head(3) = vDesEE_[RIGHT].head(3) + dirImp_[RIGHT] * cpAp * desiredVelImp_;
+  } else {
+    freeMotionCtrl_.dualArmMotion(robot_.getWHEE(),
+                                  robot_.getVelEE(),
+                                  object_.getWHGp(),
+                                  object_.getWHo(),
+                                  object_.getWHDo(),
+                                  objVelDes_,
+                                  basisQ_,
+                                  vdImpact_,
+                                  false,
+                                  0,
+                                  robot_.getVelDesEE(),
+                                  robot_.getQd(),
+                                  releaseFlag_);
+  }
+
+  dsThrowing_.setRefVtoss(desiredVelImp_);
+
+  // for data logging
+  objVelDes_.setZero();
+
+  if (freeMotionCtrl_.getActivationProximity() >= 0.2f) { betaVelModUnfilt_ = 1.0; }
+}
+
+void DualArmControlSim::adaptToForce() {
+  // Force feedback to grab objects
+  float gainForce = 0.02f;
+  float absForceCorrection = nuWr0_ * gainForce * 0.5f
+      * ((robot_.getFilteredWrench(LEFT).segment(0, 3) - CooperativeCtrl.getForceApplied(LEFT).head(3))
+             .dot(object_.getNormalVectSurfObjSpecific(LEFT))
+         + (robot_.getFilteredWrench(RIGHT).segment(0, 3) - CooperativeCtrl.getForceApplied(RIGHT).head(3))
+               .dot(object_.getNormalVectSurfObjSpecific(RIGHT)));
+
+  if (fabs(absForceCorrection) > 0.2f) { absForceCorrection = absForceCorrection / fabs(absForceCorrection) * 0.2f; }
+
+  vDesEE_[LEFT].head(3) =
+      vDesEE_[LEFT].head(3) - 0.40 * absForceCorrection * object_.getNormalVectSurfObjSpecific(LEFT);
+  vDesEE_[RIGHT].head(3) =
+      vDesEE_[RIGHT].head(3) - 0.40 * absForceCorrection * object_.getNormalVectSurfObjSpecific(RIGHT);
+}
+
+void DualArmControlSim::graspingForceToVelSpace() {
+  bool isForceDetected =
+      (robot_.getNormalForceAverage(LEFT) > forceThreshold_ || robot_.getNormalForceAverage(RIGHT) > forceThreshold_);
+
+  // Desired object's task wrench
+  desiredObjectWrench_.head(3) =
+      -12.64f * (object_.getVo() - freeMotionCtrl_.getDesObjectMotion().head(3)) - object_.getObjectMass() * gravity_;
+  desiredObjectWrench_.tail(3) = -25.00f * (object_.getWo() - freeMotionCtrl_.getDesObjectMotion().tail(3));
+
+  CooperativeCtrl.getAppliedWrenches(goHome_,
+                                     contactState_,
+                                     object_.getWHo(),
+                                     robot_.getWHEE(),
+                                     object_.getWHGp(),
+                                     desiredObjectWrench_,
+                                     object_.getObjectMass(),
+                                     qpWrenchGeneration_,
+                                     isForceDetected);
+
+  // Applied force in velocity space
+  for (int i = 0; i < NB_ROBOTS; i++) { robot_.setFXC(1.0f / d1_[i] * CooperativeCtrl.getForceApplied(i).head(3), i); }
 }
 
 Eigen::Vector3f DualArmControlSim::computeInterceptWithTarget(const Eigen::Vector3f& xTarget,

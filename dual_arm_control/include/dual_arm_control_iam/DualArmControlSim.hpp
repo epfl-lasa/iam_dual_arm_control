@@ -200,6 +200,7 @@ private:
 
   // ---- Robot
   RobotVariable robot_;
+  Vector6f vDesEE_[NB_ROBOTS];
 
   // ---- Object
   ObjectToGrasp object_;
@@ -370,6 +371,13 @@ public:
   bool init();
 
   void reset();
+
+  void asyncMotion();
+  void releaseRetractMotion();
+  void constraintMotion(bool isPlacing, bool isPlaceTossing, bool isThrowing);
+  void adaptToForce();
+  void graspingForceToVelSpace();
+  void unconstraintMotion();
 
   bool loadParamFromFile(const std::string pathToYamlFile, const std::string pathLearnedModelfolder);
   bool updateSim(Eigen::Matrix<float, 6, 1> robotWrench[],
