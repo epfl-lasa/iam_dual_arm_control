@@ -139,6 +139,8 @@ private:
   float errorObjDim_;// Error to object dimension vector [m]
   float errorObjPos_;// Error to object center position [m]
 
+  Vector6f vDesEE_[NB_ROBOTS];
+
   Eigen::Matrix4f oHEE_[NB_ROBOTS];
 
   // Passive DS controller
@@ -312,6 +314,13 @@ public:
 
   void run();
   void computeCommands();
+
+  void asyncMotion();
+  void releaseRetractMotion();
+  void constraintMotion(bool isPlacing, bool isPlaceTossing, bool isThrowing);
+  void unconstraintMotion();
+  void adaptToForce();
+  void graspingForceToVelSpace();
 
   // ---- ROS Callbacks
   void objectPoseCallback(const geometry_msgs::Pose::ConstPtr& msg);
