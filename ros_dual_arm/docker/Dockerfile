@@ -71,7 +71,11 @@ RUN sudo make install
 
 USER ${USER}
 
-# Copy i_am_project folder inside docker
+# Needed if pip is needed inside docker
+RUN pip install --upgrade pip --no-cache-dir
+RUN pip install -U pip 
+
+# Copy ros_dual_arm folder inside docker
 WORKDIR /home/${USER}/ros_ws
 COPY --chown=${USER} ./ ./src/ros_dual_arm
 
