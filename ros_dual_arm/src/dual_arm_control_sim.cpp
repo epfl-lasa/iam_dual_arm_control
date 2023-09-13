@@ -4,6 +4,7 @@
 #include <ros/package.h>
 #include <sstream>
 #include <string>
+#include <vector>
 
 #include "DataLogging.hpp"
 #include "RosDualArmCommunication.hpp"
@@ -155,7 +156,6 @@ int main(int argc, char** argv) {
   StateMachine stateMachine;
 
   while (nh.ok()) {
-
     interactionVar.stateMachine = dualArmControlSim.getStateMachine();
     interactionVar.conveyorBeltState = rosDualArm.getConveyorBeltStatus();
     interactionVar = keyboardinteraction::getKeyboard(interactionVar);

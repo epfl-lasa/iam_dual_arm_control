@@ -404,20 +404,20 @@ bool DualArmControlSim::init() {
   return true;
 }
 
-bool DualArmControlSim::updateSim(Eigen::Matrix<float, 6, 1> robotWrench[],
-                                  Eigen::Vector3f eePose[],
-                                  Eigen::Vector4f eeOrientation[],
+bool DualArmControlSim::updateSim(std::vector<Eigen::Matrix<float, 6, 1>> robotWrench,
+                                  std::vector<Eigen::Vector3f> eePose,
+                                  std::vector<Eigen::Vector4f> eeOrientation,
                                   Eigen::Vector3f objectPose,
                                   Eigen::Vector4f objectOrientation,
                                   Eigen::Vector3f targetPose,
                                   Eigen::Vector4f targetOrientation,
-                                  Eigen::Vector3f eeVelLin[],
-                                  Eigen::Vector3f eeVelAng[],
-                                  Vector7f jointPosition[],
-                                  Vector7f jointVelocity[],
-                                  Vector7f jointTorques[],
-                                  Eigen::Vector3f robotBasePos[],
-                                  Eigen::Vector4f robotBaseOrientation[]) {
+                                  std::vector<Eigen::Vector3f> eeVelLin,
+                                  std::vector<Eigen::Vector3f> eeVelAng,
+                                  std::vector<Vector7f> jointPosition,
+                                  std::vector<Vector7f> jointVelocity,
+                                  std::vector<Vector7f> jointTorques,
+                                  std::vector<Eigen::Vector3f> robotBasePos,
+                                  std::vector<Eigen::Vector4f> robotBaseOrientation) {
 
   for (int k = 0; k < NB_ROBOTS; k++) {
     robot_.updateEndEffectorWrench(robotWrench[k],
@@ -523,21 +523,21 @@ void DualArmControlSim::updateContactState() {
       && (isContact_ == 1.0f);
 }
 
-CommandStruct DualArmControlSim::generateCommands(float firstEigenPassiveDamping[],
-                                                  Eigen::Matrix<float, 6, 1> robotWrench[],
-                                                  Eigen::Vector3f eePose[],
-                                                  Eigen::Vector4f eeOrientation[],
+CommandStruct DualArmControlSim::generateCommands(std::vector<float> firstEigenPassiveDamping,
+                                                  std::vector<Eigen::Matrix<float, 6, 1>> robotWrench,
+                                                  std::vector<Eigen::Vector3f> eePose,
+                                                  std::vector<Eigen::Vector4f> eeOrientation,
                                                   Eigen::Vector3f objectPose,
                                                   Eigen::Vector4f objectOrientation,
                                                   Eigen::Vector3f targetPose,
                                                   Eigen::Vector4f targetOrientation,
-                                                  Eigen::Vector3f eeVelLin[],
-                                                  Eigen::Vector3f eeVelAng[],
-                                                  Vector7f jointPosition[],
-                                                  Vector7f jointVelocity[],
-                                                  Vector7f jointTorques[],
-                                                  Eigen::Vector3f robotBasePos[],
-                                                  Eigen::Vector4f robotBaseOrientation[],
+                                                  std::vector<Eigen::Vector3f> eeVelLin,
+                                                  std::vector<Eigen::Vector3f> eeVelAng,
+                                                  std::vector<Vector7f> jointPosition,
+                                                  std::vector<Vector7f> jointVelocity,
+                                                  std::vector<Vector7f> jointTorques,
+                                                  std::vector<Eigen::Vector3f> robotBasePos,
+                                                  std::vector<Eigen::Vector4f> robotBaseOrientation,
                                                   int cycleCount) {
 
   d1_[LEFT] = firstEigenPassiveDamping[LEFT];
@@ -593,7 +593,9 @@ void DualArmControlSim::updateReleasePosition() {
   if (tossVar_.releasePosition(0) > 0.70) { tossVar_.releasePosition(0) = 0.70; }
 }
 
-void DualArmControlSim::computeCommands(Eigen::Vector3f eePose[], Eigen::Vector4f eeOrientation[], int cycleCount) {
+void DualArmControlSim::computeCommands(std::vector<Eigen::Vector3f> eePose,
+                                        std::vector<Eigen::Vector4f> eeOrientation,
+                                        int cycleCount) {
   // Update contact state
   updateContactState();
 

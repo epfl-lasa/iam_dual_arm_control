@@ -28,6 +28,7 @@
 #include "ros/ros.h"
 #include <iostream>
 #include <ros/package.h>
+#include <vector>
 
 #include "eigen3/Eigen/Core"
 #include "eigen3/Eigen/Dense"
@@ -108,12 +109,21 @@ private:
   int desSpeedConveyorBelt_;
 
   // For controllers
-  float firstEigenPassiveDamping_[NB_ROBOTS];
-  Eigen::Vector3f eePose_[NB_ROBOTS], objectPose_, targetPose_, eeVelLin_[NB_ROBOTS], eeVelAng_[NB_ROBOTS],
-      robotBasePos_[NB_ROBOTS];
-  Eigen::Vector4f eeOrientation_[NB_ROBOTS], objectOrientation_, targetOrientation_, robotBaseOrientation_[NB_ROBOTS];
-  Vector7f jointPosition_[NB_ROBOTS], jointVelocity_[NB_ROBOTS], jointTorques_[NB_ROBOTS];
-  Eigen::Matrix<float, 6, 1> robotWrench_[NB_ROBOTS];
+  std::vector<float> firstEigenPassiveDamping_ = std::vector<float>(2);
+
+  Eigen::Vector3f objectPose_, targetPose_;
+  Eigen::Vector4f objectOrientation_, targetOrientation_;
+
+  std::vector<Eigen::Vector3f> eePose_ = std::vector<Eigen::Vector3f> (2);
+  std::vector<Eigen::Vector3f> eeVelLin_ = std::vector<Eigen::Vector3f>(2);
+  std::vector<Eigen::Vector3f> eeVelAng_ = std::vector<Eigen::Vector3f>(2);
+  std::vector<Eigen::Vector3f> robotBasePos_ = std::vector<Eigen::Vector3f>(2);
+  std::vector<Eigen::Vector4f> eeOrientation_ = std::vector<Eigen::Vector4f>(2);
+  std::vector<Eigen::Vector4f> robotBaseOrientation_ = std::vector<Eigen::Vector4f>(2);
+  std::vector<Vector7f> jointPosition_  = std::vector<Vector7f> (2);
+  std::vector<Vector7f> jointVelocity_  = std::vector<Vector7f> (2);
+  std::vector<Vector7f> jointTorques_  = std::vector<Vector7f> (2);
+  std::vector<Eigen::Matrix<float, 6, 1>> robotWrench_ = std::vector<Eigen::Matrix<float, 6, 1>>(2);
 
 public:
   // Robot ID: left or right
@@ -149,7 +159,7 @@ public:
     initRosSubscribers();
     initRosPublisher();
     initConveyorBelt();
-
+    
     for (int k = 0; k < NB_ROBOTS; k++) { firstEigenPassiveDamping_[k] = 1.0f; }
 
     if (nh_.ok()) {
@@ -657,6 +667,7 @@ public:
 
   // ---- eigenvalue passive ds controller and its updated value
   void updatePassiveDSDamping() {
+
     std::vector<float> paramValues;
 
     ros::param::getCached(dsDampingTopicParams_[LEFT], paramValues);
@@ -716,19 +727,19 @@ public:
     }
   }
 
-  float* getFirstEigenPassiveDamping() { return firstEigenPassiveDamping_; }
+  std::vector<float> getFirstEigenPassiveDamping() { return firstEigenPassiveDamping_; }
   Eigen::Vector3f getObjectPose() { return objectPose_; }
   Eigen::Vector3f getTargetPose() { return targetPose_; }
-  Eigen::Vector3f* getEePose() { return eePose_; }
-  Eigen::Vector3f* getEeVelLin() { return eeVelLin_; }
-  Eigen::Vector3f* getEeVelAng() { return eeVelAng_; }
-  Eigen::Vector3f* getRobotBasePos() { return robotBasePos_; }
+  std::vector<Eigen::Vector3f> getEePose() { return eePose_; }
+  std::vector<Eigen::Vector3f> getEeVelLin() { return eeVelLin_; }
+  std::vector<Eigen::Vector3f> getEeVelAng() { return eeVelAng_; }
+  std::vector<Eigen::Vector3f> getRobotBasePos() { return robotBasePos_; }
   Eigen::Vector4f getObjectOrientation() { return objectOrientation_; }
   Eigen::Vector4f getTargetOrientation() { return targetOrientation_; }
-  Eigen::Vector4f* getEeOrientation() { return eeOrientation_; }
-  Eigen::Vector4f* getRobotBaseOrientation() { return robotBaseOrientation_; }
-  Eigen::Matrix<float, 6, 1>* getRobotWrench() { return robotWrench_; }
-  Vector7f* getJointPosition() { return jointPosition_; }
-  Vector7f* getJointVelocity() { return jointVelocity_; }
-  Vector7f* getJointTorques() { return jointTorques_; }
+  std::vector<Eigen::Vector4f> getEeOrientation() { return eeOrientation_; }
+  std::vector<Eigen::Vector4f> getRobotBaseOrientation() { return robotBaseOrientation_; }
+  std::vector<Eigen::Matrix<float, 6, 1>> getRobotWrench() { return robotWrench_; }
+  std::vector<Vector7f> getJointPosition() { return jointPosition_; }
+  std::vector<Vector7f> getJointVelocity() { return jointVelocity_; }
+  std::vector<Vector7f> getJointTorques() { return jointTorques_; }
 };

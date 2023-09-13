@@ -238,8 +238,8 @@ private:
 
   int initPoseCount_;// Counter of received initial poses measurements
 
-  Matrix6f gainAbs_;
-  Matrix6f gainRel_;
+  Matrix6f gainAbs_ = Eigen::ArrayXXf::Zero(6, 6);
+  Matrix6f gainRel_ = Eigen::ArrayXXf::Zero(6, 6);
 
   // ---- Task
   Eigen::Vector3f xLifting_;
@@ -380,39 +380,39 @@ public:
   void unconstraintMotion();
 
   bool loadParamFromFile(const std::string pathToYamlFile, const std::string pathLearnedModelfolder);
-  bool updateSim(Eigen::Matrix<float, 6, 1> robotWrench[],
-                 Eigen::Vector3f eePose[],
-                 Eigen::Vector4f eeOrientation[],
+  bool updateSim(std::vector<Eigen::Matrix<float, 6, 1>> robotWrench,
+                 std::vector<Eigen::Vector3f> eePose,
+                 std::vector<Eigen::Vector4f> eeOrientation,
                  Eigen::Vector3f objectPose,
                  Eigen::Vector4f objectOrientation,
                  Eigen::Vector3f targetPose,
                  Eigen::Vector4f targetOrientation,
-                 Eigen::Vector3f eeVelLin[],
-                 Eigen::Vector3f eeVelAng[],
-                 Vector7f jointPosition[],
-                 Vector7f jointVelocity[],
-                 Vector7f jointTorques[],
-                 Eigen::Vector3f robotBasePos[],
-                 Eigen::Vector4f robotBaseOrientation[]);
+                 std::vector<Eigen::Vector3f> eeVelLin,
+                 std::vector<Eigen::Vector3f> eeVelAng,
+                 std::vector<Vector7f> jointPosition,
+                 std::vector<Vector7f> jointVelocity,
+                 std::vector<Vector7f> jointTorques,
+                 std::vector<Eigen::Vector3f> robotBasePos,
+                 std::vector<Eigen::Vector4f> robotBaseOrientation);
 
-  CommandStruct generateCommands(float firstEigenPassiveDamping[],
-                                 Eigen::Matrix<float, 6, 1> robotWrench[],
-                                 Eigen::Vector3f eePose[],
-                                 Eigen::Vector4f eeOrientation[],
+  CommandStruct generateCommands(std::vector<float> firstEigenPassiveDamping,
+                                 std::vector<Eigen::Matrix<float, 6, 1>> robotWrench,
+                                 std::vector<Eigen::Vector3f> eePose,
+                                 std::vector<Eigen::Vector4f> eeOrientation,
                                  Eigen::Vector3f objectPose,
                                  Eigen::Vector4f objectOrientation,
                                  Eigen::Vector3f targetPose,
                                  Eigen::Vector4f targetOrientation,
-                                 Eigen::Vector3f eeVelLin[],
-                                 Eigen::Vector3f eeVelAng[],
-                                 Vector7f jointPosition[],
-                                 Vector7f jointVelocity[],
-                                 Vector7f jointTorques[],
-                                 Eigen::Vector3f robotBasePos[],
-                                 Eigen::Vector4f robotBaseOrientation[],
+                                 std::vector<Eigen::Vector3f> eeVelLin,
+                                 std::vector<Eigen::Vector3f> eeVelAng,
+                                 std::vector<Vector7f> jointPosition,
+                                 std::vector<Vector7f> jointVelocity,
+                                 std::vector<Vector7f> jointTorques,
+                                 std::vector<Eigen::Vector3f> robotBasePos,
+                                 std::vector<Eigen::Vector4f> robotBaseOrientation,
                                  int cycleCount);
   void updateContactState();
-  void computeCommands(Eigen::Vector3f eePose[], Eigen::Vector4f eeOrientation[], int cycleCount);
+  void computeCommands(std::vector<Eigen::Vector3f> eePose, std::vector<Eigen::Vector4f> eeOrientation, int cycleCount);
   void updatePoses();
 
   void updateReleasePosition();
