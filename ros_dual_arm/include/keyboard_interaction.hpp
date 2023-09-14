@@ -193,7 +193,7 @@ InteractionVar getKeyboard(InteractionVar interactionVar) {
         interactionVar.conveyorBeltState.isDisturbTarget = !interactionVar.conveyorBeltState.isDisturbTarget;
       } break;
 
-      // Placing hight
+      // Placing height
       case 'x': {
         if (interactionVar.stateMachine.dualTaskSelector == PICK_AND_TOSS) {
           interactionVar.stateMachine.releasePosY -= 0.01;
