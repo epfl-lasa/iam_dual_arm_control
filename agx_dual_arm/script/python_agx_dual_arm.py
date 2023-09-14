@@ -28,7 +28,7 @@ ROBOT_BASE_ORIENTATION = np.array([[1, 0, 0, 0.0], [1, 0, 0, 0.0]])
 DUAL_ROBOT_FRAME = 0.5*(ROBOT_BASE_POSE[0] + ROBOT_BASE_POSE[1])
 
 
-DELTA_TIME = 0.005
+DELTA_TIME = 0.001
 
 # -- passive controller
 URDF_PATH_LEFT = "/home/elise/Documents/IAM/michael/dual_arm_control_iam/agx_dual_arm/urdf/iiwa14.urdf"
@@ -225,7 +225,7 @@ if __name__ == '__main__':
     keyboard_waiting = True
     keyboard_waiting_cycle = 0
 
-    while cycle_count < 10000:
+    while True:
         if not keyboard_waiting and cycle_count - keyboard_waiting_cycle > 10:
             keyboard_waiting = True
 
@@ -248,11 +248,11 @@ if __name__ == '__main__':
                 robots_init_pos = True
 
         if robots_init_pos:
-            if cycle_count > 20 : #keyboard_waiting: #
+            if keyboard_waiting: #cycle_count > 20 : #keyboard_waiting: #
                 stateMachine = dual_arm_control_agx.getStateMachine()
-                # stateMachine, keyboard_waiting = keyboard_input(stateMachine, keyboard_waiting)
-                stateMachine.goHome = False # not stateMachine.goHome
-                stateMachine.goToAttractors = True
+                stateMachine, keyboard_waiting = keyboard_input(stateMachine, keyboard_waiting)
+                # stateMachine.goHome = False # not stateMachine.goHome
+                # stateMachine.goToAttractors = True
                 dual_arm_control_agx.updateStateMachine(stateMachine)
                 keyboard_waiting_cycle = cycle_count
                 # print("STATEMACHINE ", dual_arm_control_agx.getStateMachine().goHome, dual_arm_control_agx.getStateMachine().goToAttractors)
@@ -278,7 +278,7 @@ if __name__ == '__main__':
                 cycle_count
             )
 
-            print(f"controller_left - vdes {commandGenerated.vDes[ROBOT_LEFT-1]} - omega {commandGenerated.omegaDes[ROBOT_LEFT-1]}")
+            print(f"controller_left - torque des {-commandGenerated.nuWr0 * commandGenerated.appliedWrench[ROBOT_LEFT-1]} ")
             if np.linalg.norm(commandGenerated.vDes[ROBOT_LEFT-1]) < 3 and np.linalg.norm(commandGenerated.omegaDes[ROBOT_LEFT-1]) < 7.5:
                 controller_left.set_desired_twist(commandGenerated.vDes[ROBOT_LEFT-1], commandGenerated.omegaDes[ROBOT_LEFT-1])
             norm_force  = -commandGenerated.nuWr0 * commandGenerated.appliedWrench[ROBOT_LEFT-1][0:3]
@@ -288,7 +288,7 @@ if __name__ == '__main__':
             controller_left.set_force_normal(norm_force)
             controller_left.set_external_moment(moment)
 
-            print(f"controller_right - vdes {commandGenerated.vDes[ROBOT_RIGHT-1]} - omega {commandGenerated.omegaDes[ROBOT_RIGHT-1]}")
+            # print(f"controller_right - vdes {commandGenerated.vDes[ROBOT_RIGHT-1]} - omega {commandGenerated.omegaDes[ROBOT_RIGHT-1]}")
             if np.linalg.norm(commandGenerated.vDes[ROBOT_RIGHT-1]) < 3 and np.linalg.norm(commandGenerated.omegaDes[ROBOT_RIGHT-1]) < 7.5:
                 controller_right.set_desired_twist(commandGenerated.vDes[ROBOT_RIGHT-1], commandGenerated.omegaDes[ROBOT_RIGHT-1])
             norm_force  = -commandGenerated.nuWr0 * commandGenerated.appliedWrench[ROBOT_RIGHT-1][0:3]

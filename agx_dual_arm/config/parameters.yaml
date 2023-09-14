@@ -27,8 +27,8 @@ object:
   # Object type
   cubicBoxSim :       
     dimension:  [0.16, 0.16, 0.16]
-    graspOffset_L: [-0.02, 0.00, 0.0]
-    graspOffset_R: [-0.02, 0.00, -0.0]
+    graspOffset_L: [-0.02, 0.0, 0.0]
+    graspOffset_R: [-0.02, -0.0, -0.0]
     mass: 1.0
   cubicBoxSim2 :       
     dimension:  [0.20, 0.20, 0.20]
