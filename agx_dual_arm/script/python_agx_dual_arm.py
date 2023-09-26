@@ -83,11 +83,18 @@ class Robot:
 
 @dataclass
 class Object:
+    name = "obj"
     position = [0, 0, 0]
     orientation = [0, 0, 0, 0]
 
-def keyboard_input(state_machine, keyboard_waiting):
-    if keyboard.is_pressed('q'):
+def keyboard_input(state_machine, keyboard_waiting, change_box):
+
+    if keyboard.is_pressed('c'):
+        print(f"------------------------------- KEY C - CHANGE BOX ")
+        change_box = True
+        state_machine.goHome = True
+
+    elif keyboard.is_pressed('q'):
         print(f"------------------------------- KEY Q - Go Home {not state_machine.goHome} ")
         state_machine.goHome = not state_machine.goHome
         if state_machine.goHome:
@@ -183,7 +190,7 @@ def keyboard_input(state_machine, keyboard_waiting):
             state_machine.placingPosHeight = state_machine.placingPosHeight + 0.01
         keyboard_waiting = False
 
-    return state_machine, keyboard_waiting
+    return state_machine, keyboard_waiting, change_box
 
 def get_agx_sensors(robot_left, robot_right, box):
     message = MessageFactory.create_sensorrequestmessage()
@@ -219,10 +226,13 @@ def get_agx_sensors(robot_left, robot_right, box):
 
 
     # Box
-    box.position = np.array(response.objects['box'].objectSensors[0].position.arr)
-    box_ori = np.array(response.objects['box'].objectSensors[1].rpy.arr)
-    box_transfo = R.from_euler('xzy', [box_ori[0], box_ori[1], box_ori[2]], degrees=True)
-    box.orientation = np.array([box_transfo.as_quat()[3], box_transfo.as_quat()[0], box_transfo.as_quat()[1], box_transfo.as_quat()[2]])
+    if box.name in response.objects:
+        box.position = np.array(response.objects[box.name].objectSensors[0].position.arr)
+        box_ori = np.array(response.objects[box.name].objectSensors[1].rpy.arr)
+        box_transfo = R.from_euler('xzy', [box_ori[0], box_ori[1], box_ori[2]], degrees=True)
+        box.orientation = np.array([box_transfo.as_quat()[3], box_transfo.as_quat()[0], box_transfo.as_quat()[1], box_transfo.as_quat()[2]])
+    else: 
+        print("ERROR - BOX DOESNT EXIST IN SIM")
 
     # Target
     if 'target' in response.objects:
@@ -279,6 +289,26 @@ def init_dual_arm_controller():
     dual_arm_control_agx.init()
     return dual_arm_control_agx
 
+def get_boxes():
+
+    message = MessageFactory.create_sensorrequestmessage()
+    client.send(message)
+    response = client.recv()
+
+    boxes = []
+    for obj in response.objects: #sorted(response.objects):
+        if 'box' in obj:
+            new_box = Object()
+            new_box.name = obj
+            boxes.append(new_box)
+
+    if boxes[0].name == 'box1':
+        test = boxes[0]
+        boxes[0] = boxes[1]
+        boxes[1] = test
+    
+    return boxes
+
 if __name__ == '__main__':
 
     # Connect to AGX sim
@@ -288,97 +318,108 @@ if __name__ == '__main__':
     client.connect(addr)
     reset_sim_agx()
 
-    # Init robots and object
+    # Init robots and objects
     robot_left = Robot(URDF_PATH_LEFT)
     robot_right = Robot(URDF_PATH_RIGHT)
-    box = Object()
+    boxes = get_boxes()
     target = Object()
 
     # Init passive controller
-    get_agx_sensors(robot_left, robot_right, box)
+    get_agx_sensors(robot_left, robot_right, boxes[0])
     controller_left, controller_right = init_passive_controllers(robot_left, robot_right)
 
     # Init dual arm controller
     dual_arm_control_agx = init_dual_arm_controller()
 
     max_cycle_init_pos = 10
-    cycle_count = 0
     robots_init_pos = False
     cycle_init_pos = 0
     keyboard_waiting = True
     keyboard_waiting_cycle = 0
+    max_cycle_keyboard = 10
 
-    while True:
-        # Update controllers
-        get_agx_sensors(robot_left, robot_right, box)
-        controller_left.updateRobot(robot_left.joint_position,
-                                    robot_left.joint_velocity, robot_left.joint_effort)
-        controller_right.updateRobot(robot_right.joint_position,
-                                     robot_right.joint_velocity, robot_right.joint_effort)
+    for box in boxes:
 
-        if np.linalg.norm(DES_POS_ROBOT_LEFT - controller_left.getEEpos()) < 0.001 and \
-           np.linalg.norm(DES_POS_ROBOT_RIGHT - controller_right.getEEpos()) < 0.001 and \
-           (np.linalg.norm(DES_ORI_ROBOT_LEFT - controller_left.getEEquat()) < 0.01 or \
-            np.linalg.norm(DES_ORI_ROBOT_LEFT + controller_left.getEEquat()) < 0.01) and \
-           (np.linalg.norm(DES_ORI_ROBOT_RIGHT - controller_right.getEEquat()) < 0.01 or \
-            np.linalg.norm(DES_ORI_ROBOT_RIGHT + controller_right.getEEquat()) < 0.01):
-            cycle_init_pos = cycle_init_pos + 1
-            if cycle_init_pos >= max_cycle_init_pos:
-                robots_init_pos = True
+        cycle_count = 0
+        change_box = False
+        keyboard_waiting = False
+        keyboard_waiting_cycle = cycle_count
 
-        if robots_init_pos:
-            if not keyboard_waiting and cycle_count - keyboard_waiting_cycle > 10:
-                keyboard_waiting = True
+        print(f"BOX : {box.name}")
 
-            if keyboard_waiting:
-                state_machine = dual_arm_control_agx.getStateMachine()
-                state_machine, keyboard_waiting = keyboard_input(state_machine, keyboard_waiting)
-                dual_arm_control_agx.updateStateMachine(state_machine)
-                keyboard_waiting_cycle = cycle_count            
+        while not change_box:
+            # Update controllers
+            get_agx_sensors(robot_left, robot_right, box)
+            controller_left.updateRobot(robot_left.joint_position,
+                                        robot_left.joint_velocity, robot_left.joint_effort)
+            controller_right.updateRobot(robot_right.joint_position,
+                                        robot_right.joint_velocity, robot_right.joint_effort)
 
-            commandGenerated = dual_arm_control_agx.generateCommands(
-                passive_ds_controller,
-                [np.array(robot_left.ee_wrench), np.array(robot_right.ee_wrench)],
-                [controller_left.getEEpos() + ROBOT_BASE_POSE[0] - DUAL_ROBOT_FRAME,
-                 controller_right.getEEpos() + ROBOT_BASE_POSE[1] - DUAL_ROBOT_FRAME],
-                [controller_left.getEEquat(), controller_right.getEEquat()],
-                box.position - DUAL_ROBOT_FRAME,
-                box.orientation,
-                target.position - DUAL_ROBOT_FRAME,
-                target.orientation,
-                [robot_left.get_ee_vel()[0:3], robot_right.get_ee_vel()[0:3]],
-                [robot_left.get_ee_vel()[3:7], robot_right.get_ee_vel()[3:7]],
-                [robot_left.joint_position, robot_right.joint_position],
-                [robot_left.joint_velocity, robot_right.joint_velocity],
-                [robot_left.joint_effort, robot_right.joint_effort],
-                [np.array(ROBOT_BASE_POSE[0] - DUAL_ROBOT_FRAME), np.array(ROBOT_BASE_POSE[1] - DUAL_ROBOT_FRAME)],
-                [np.array(ROBOT_BASE_ORIENTATION[0]), np.array(ROBOT_BASE_ORIENTATION[1])],
-                cycle_count
-            )
+            if not robots_init_pos and \
+                np.linalg.norm(DES_POS_ROBOT_LEFT - controller_left.getEEpos()) < 0.001 and \
+                np.linalg.norm(DES_POS_ROBOT_RIGHT - controller_right.getEEpos()) < 0.001 and \
+                (np.linalg.norm(DES_ORI_ROBOT_LEFT - controller_left.getEEquat()) < 0.01 or \
+                np.linalg.norm(DES_ORI_ROBOT_LEFT + controller_left.getEEquat()) < 0.01) and \
+                (np.linalg.norm(DES_ORI_ROBOT_RIGHT - controller_right.getEEquat()) < 0.01 or \
+                np.linalg.norm(DES_ORI_ROBOT_RIGHT + controller_right.getEEquat()) < 0.01):
+                cycle_init_pos = cycle_init_pos + 1
+                if cycle_init_pos >= max_cycle_init_pos:
+                    robots_init_pos = True
 
-            if np.linalg.norm(commandGenerated.vDes[ROBOT_LEFT-1]) < 3 and np.linalg.norm(commandGenerated.omegaDes[ROBOT_LEFT-1]) < 7.5:
-                controller_left.set_desired_twist(commandGenerated.vDes[ROBOT_LEFT-1], commandGenerated.omegaDes[ROBOT_LEFT-1])
-            norm_force  = -commandGenerated.nuWr0 * commandGenerated.appliedWrench[ROBOT_LEFT-1][0:3]
-            moment = -commandGenerated.nuWr0 * commandGenerated.appliedWrench[ROBOT_LEFT-1][3:6]
-            if np.linalg.norm(norm_force) > 0:
-                norm_force = norm_force / np.linalg.norm(norm_force)
-            controller_left.set_force_normal(norm_force)
-            controller_left.set_external_moment(moment)
+            if robots_init_pos:
+                if not keyboard_waiting and cycle_count - keyboard_waiting_cycle > max_cycle_keyboard:
+                    keyboard_waiting = True
 
-            if np.linalg.norm(commandGenerated.vDes[ROBOT_RIGHT-1]) < 3 and np.linalg.norm(commandGenerated.omegaDes[ROBOT_RIGHT-1]) < 7.5:
-                controller_right.set_desired_twist(commandGenerated.vDes[ROBOT_RIGHT-1], commandGenerated.omegaDes[ROBOT_RIGHT-1])
-            norm_force  = -commandGenerated.nuWr0 * commandGenerated.appliedWrench[ROBOT_RIGHT-1][0:3]
-            moment = -commandGenerated.nuWr0 * commandGenerated.appliedWrench[ROBOT_RIGHT-1][3:6]
-            if np.linalg.norm(norm_force) > 0:
-                norm_force = norm_force / np.linalg.norm(norm_force)
-            controller_right.set_force_normal(norm_force)
-            controller_right.set_external_moment(moment)
+                if keyboard_waiting:
+                    state_machine = dual_arm_control_agx.getStateMachine()
+                    state_machine, keyboard_waiting, change_box = keyboard_input(state_machine, keyboard_waiting, change_box)
+                    dual_arm_control_agx.updateStateMachine(state_machine)
+                    keyboard_waiting_cycle = cycle_count
 
-            cycle_count = cycle_count + 1
+                commandGenerated = dual_arm_control_agx.generateCommands(
+                    passive_ds_controller,
+                    [np.array(robot_left.ee_wrench), np.array(robot_right.ee_wrench)],
+                    [controller_left.getEEpos() + ROBOT_BASE_POSE[0] - DUAL_ROBOT_FRAME,
+                    controller_right.getEEpos() + ROBOT_BASE_POSE[1] - DUAL_ROBOT_FRAME],
+                    [controller_left.getEEquat(), controller_right.getEEquat()],
+                    box.position - DUAL_ROBOT_FRAME,
+                    box.orientation,
+                    target.position - DUAL_ROBOT_FRAME,
+                    target.orientation,
+                    [robot_left.get_ee_vel()[0:3], robot_right.get_ee_vel()[0:3]],
+                    [robot_left.get_ee_vel()[3:7], robot_right.get_ee_vel()[3:7]],
+                    [robot_left.joint_position, robot_right.joint_position],
+                    [robot_left.joint_velocity, robot_right.joint_velocity],
+                    [robot_left.joint_effort, robot_right.joint_effort],
+                    [np.array(ROBOT_BASE_POSE[0] - DUAL_ROBOT_FRAME), np.array(ROBOT_BASE_POSE[1] - DUAL_ROBOT_FRAME)],
+                    [np.array(ROBOT_BASE_ORIENTATION[0]), np.array(ROBOT_BASE_ORIENTATION[1])],
+                    cycle_count
+                )
+
+                if np.linalg.norm(commandGenerated.vDes[ROBOT_LEFT-1]) < 3 and np.linalg.norm(commandGenerated.omegaDes[ROBOT_LEFT-1]) < 7.5:
+                    controller_left.set_desired_twist(commandGenerated.vDes[ROBOT_LEFT-1], commandGenerated.omegaDes[ROBOT_LEFT-1])
+                norm_force  = -commandGenerated.nuWr0 * commandGenerated.appliedWrench[ROBOT_LEFT-1][0:3]
+                moment = -commandGenerated.nuWr0 * commandGenerated.appliedWrench[ROBOT_LEFT-1][3:6]
+                if np.linalg.norm(norm_force) > 0:
+                    norm_force = norm_force / np.linalg.norm(norm_force)
+                controller_left.set_force_normal(norm_force)
+                controller_left.set_external_moment(moment)
+
+                if np.linalg.norm(commandGenerated.vDes[ROBOT_RIGHT-1]) < 3 and np.linalg.norm(commandGenerated.omegaDes[ROBOT_RIGHT-1]) < 7.5:
+                    controller_right.set_desired_twist(commandGenerated.vDes[ROBOT_RIGHT-1], commandGenerated.omegaDes[ROBOT_RIGHT-1])
+                norm_force  = -commandGenerated.nuWr0 * commandGenerated.appliedWrench[ROBOT_RIGHT-1][0:3]
+                moment = -commandGenerated.nuWr0 * commandGenerated.appliedWrench[ROBOT_RIGHT-1][3:6]
+                if np.linalg.norm(norm_force) > 0:
+                    norm_force = norm_force / np.linalg.norm(norm_force)
+                controller_right.set_force_normal(norm_force)
+                controller_right.set_external_moment(moment)
+
+                cycle_count = cycle_count + 1
 
 
-        # Get and send command
-        command_left = controller_left.getCmd()
-        command_right = controller_right.getCmd()
-        send_command_agx(command_left, command_right)
+            # Get and send command
+            command_left = controller_left.getCmd()
+            command_right = controller_right.getCmd()
+            send_command_agx(command_left, command_right)
+
 
