@@ -23,7 +23,7 @@ This repository contains codes to generate coordinated motion and forces to cont
 **Reference**   
 [1] M. Bombile, A. Billard, Dual-arm control for coordinated fast grabbing and tossing of an object: Proposing a new approach, IEEE Robotics Automation Magazine 29 (3) (2022) 127–138. doi:10.1109/ MRA.2022.3177355. [pdf-link](https://infoscience.epfl.ch/record/294383/files/Michael_Bombile_Dual-arm_fast_grabbing_and_tossing_of_an_object_RAM_final.pdf?ln=fr) 
 
-**Contact**: For questions on the methods and/or implementation contact [Michael Bombile](https://people.epfl.ch/michael.bombile?lang=en) (michael.bombile AT epfl dot ch)
+**Contact**: For questions on the methods and/or implementation contact [Michael Bombile](https://people.epfl.ch/michael.bombile?lang=en) (michael.bombile@epfl.ch)
 
 **Acknowledgments**
 This work was supported in part by the European Union’s Horizon 2020 research and innovation program under grant agreement No. 871899. [I.AM. project](https://i-am-project.eu/).
