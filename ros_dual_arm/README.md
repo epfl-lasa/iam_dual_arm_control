@@ -40,7 +40,7 @@ The file system is divided in several subfolders:
 
 Open a new terminal and launch the simulated robots by running the following commands:
 ```sh
-roslaunch dual_arm_control main_sim_pt3.launch
+roslaunch ros_dual_arm_control main_sim_pt3.launch
 ```
 Read and publish the poses of the simulated robots and object by running the command below:
 ```sh
@@ -48,7 +48,7 @@ roslaunch sim_models_poses sim_models_poses2.launch
 ```
 When sim_models_poses is running, you can now start the dual arm controller:
 ```sh
-roslaunch dual_arm_control dual_arm_control.launch
+roslaunch ros_dual_arm_control dual_arm_control.launch
 ```
 
 
@@ -139,5 +139,5 @@ Step 5: Launch the dual_arm_controller package
    - Open a new terminal and run 
 
 ```sh
-   roslaunch dual_arm_control dual_arm_control.launch
+   roslaunch ros_dual_arm_control dual_arm_control.launch
 ```

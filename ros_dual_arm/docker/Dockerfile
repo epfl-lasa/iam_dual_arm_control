@@ -63,9 +63,9 @@ RUN cd sg_differentiation && mkdir build && cd build && cmake .. && make && sudo
 
 #dual arm control
 WORKDIR /source
-RUN --mount=type=ssh git clone git@github.com:Elise-J/dual_arm_controller_iam.git
-RUN cd dual_arm_controller_iam/dual_arm_control && mkdir build 
-WORKDIR /source/dual_arm_controller_iam/dual_arm_control/build 
+RUN --mount=type=ssh git clone git@github.com:epfl-lasa/iam_dual_arm_control.git
+RUN cd iam_dual_arm_control/dual_arm_control && mkdir build 
+WORKDIR /source/iam_dual_arm_control/dual_arm_control/build 
 RUN cmake ..
 RUN sudo make install
 
