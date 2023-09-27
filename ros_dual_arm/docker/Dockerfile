@@ -83,6 +83,6 @@ ENV PYTHONPATH "${PYTHONPATH}:/opt/openrobots/lib/python3.8/site-packages/"
 RUN /bin/bash -c "source /opt/ros/$ROS_DISTRO/setup.bash; catkin_make"
 
 # ./docker/build-server.sh 
-# aica-docker interactive epfl-lasa/ros_dual_arm_control_iam:melodic -u ros --net host --no-hostname --privileged --gpus all -v /home/elise/Documents/IAM/michael/dual_arm_control_iam/ros_dual_arm:/home/ros/ros_ws/src/ros_dual_arm
+# aica-docker interactive epfl-lasa/ros_dual_arm_control_iam:melodic -u ros --net host --no-hostname --privileged --gpus all -v /path_to_folder/ros_dual_arm:/home/ros/ros_ws/src/ros_dual_arm
 
 

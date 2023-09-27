@@ -58,7 +58,7 @@ public:
   TossingTarget(){};
   ~TossingTarget(){};
 
-  void init(int sgfPos[], float dt) {//(int dim, int order, int winL, float dt) {
+  void init(int sgfPos[], float dt) {
     // Target
     xt_.setZero();
     qt_.setZero();

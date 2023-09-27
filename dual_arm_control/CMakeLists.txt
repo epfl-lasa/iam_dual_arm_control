@@ -63,8 +63,6 @@ set(BWC_SOURCES
     ${SOLVER_BWC}/bwc_solver.c
     ${SOLVER_BWC}/bwc_testsolver.c
     ${SOLVER_BWC}/bwc_util.c
-
-    #${SOLVER_BWC}/bwc_solver.h
 )
 
 include_directories(

@@ -114,28 +114,20 @@ private:
   Eigen::Vector3f objectPose_, targetPose_;
   Eigen::Vector4f objectOrientation_, targetOrientation_;
 
-  std::vector<Eigen::Vector3f> eePose_ = std::vector<Eigen::Vector3f> (2);
+  std::vector<Eigen::Vector3f> eePose_ = std::vector<Eigen::Vector3f>(2);
   std::vector<Eigen::Vector3f> eeVelLin_ = std::vector<Eigen::Vector3f>(2);
   std::vector<Eigen::Vector3f> eeVelAng_ = std::vector<Eigen::Vector3f>(2);
   std::vector<Eigen::Vector3f> robotBasePos_ = std::vector<Eigen::Vector3f>(2);
   std::vector<Eigen::Vector4f> eeOrientation_ = std::vector<Eigen::Vector4f>(2);
   std::vector<Eigen::Vector4f> robotBaseOrientation_ = std::vector<Eigen::Vector4f>(2);
-  std::vector<Vector7f> jointPosition_  = std::vector<Vector7f> (2);
-  std::vector<Vector7f> jointVelocity_  = std::vector<Vector7f> (2);
-  std::vector<Vector7f> jointTorques_  = std::vector<Vector7f> (2);
+  std::vector<Vector7f> jointPosition_ = std::vector<Vector7f>(2);
+  std::vector<Vector7f> jointVelocity_ = std::vector<Vector7f>(2);
+  std::vector<Vector7f> jointTorques_ = std::vector<Vector7f>(2);
   std::vector<Eigen::Matrix<float, 6, 1>> robotWrench_ = std::vector<Eigen::Matrix<float, 6, 1>>(2);
 
 public:
   // Robot ID: left or right
   enum Robot { LEFT = 0, RIGHT = 1 };
-
-  // // For controllers
-  // // float firstEigenPassiveDamping_[NB_ROBOTS];
-  // Eigen::Vector3f eePose_[NB_ROBOTS], objectPose_, targetPose_, eeVelLin_[NB_ROBOTS], eeVelAng_[NB_ROBOTS],
-  //     robotBasePos_[NB_ROBOTS];
-  // Eigen::Vector4f eeOrientation_[NB_ROBOTS], objectOrientation_, targetOrientation_, robotBaseOrientation_[NB_ROBOTS];
-  // Vector7f jointPosition_[NB_ROBOTS], jointVelocity_[NB_ROBOTS], jointTorques_[NB_ROBOTS];
-  // float toolOffsetFromEE_[NB_ROBOTS];
 
   RosDualArmCommunication(ros::NodeHandle& n, double frequency) : nh_(n), loopRate_(frequency), frequency_(frequency){};
 
@@ -159,7 +151,7 @@ public:
     initRosSubscribers();
     initRosPublisher();
     initConveyorBelt();
-    
+
     for (int k = 0; k < NB_ROBOTS; k++) { firstEigenPassiveDamping_[k] = 1.0f; }
 
     if (nh_.ok()) {

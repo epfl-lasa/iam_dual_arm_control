@@ -272,9 +272,6 @@ private:
   int dualTaskSelector_ = 1;
   bool oldDualMethod_ = false;
 
-  // create data logging object
-  // DataLogging dataLog_;
-
   Eigen::Matrix3f basisQ_[NB_ROBOTS];
   Eigen::Vector3f dirImp_[NB_ROBOTS];
   Eigen::Vector3f vdImpact_[NB_ROBOTS];

@@ -16,14 +16,14 @@ bool DualArmControlSim::initObjectParam(YAML::Node config) {
   Eigen::Matrix3f oRGraspPosRight;
   oRGraspPosLeft.setZero();
   oRGraspPosRight.setZero();
-  oRGraspPosLeft(0, 0) = 1.0f;//TODO YAML FILE ?
+  oRGraspPosLeft(0, 0) = 1.0f;
   oRGraspPosLeft(2, 1) = -1.0f;
   oRGraspPosLeft(1, 2) = 1.0f;
   oRGraspPosRight(0, 0) = 1.0f;
   oRGraspPosRight(2, 1) = 1.0f;
   oRGraspPosRight(1, 2) = -1.0f;
 
-  // Savitzky-Golay Filter params TODO YAML FILE?
+  // Savitzky-Golay Filter params
   int sgfP[3];
   int sgfO[3];
   sgfP[0] = 3;
@@ -56,7 +56,7 @@ bool DualArmControlSim::initObjectParam(YAML::Node config) {
 }
 
 bool DualArmControlSim::initTargetParam() {
-  // Savitzky-Golay Filter params // TODO IN PARAMS?
+  // Savitzky-Golay Filter params
   int sgfPos[3];
   sgfPos[0] = 3; // dim
   sgfPos[1] = 3; // order
@@ -111,7 +111,7 @@ bool DualArmControlSim::initRobotParam(YAML::Node config) {
   qrbStandby[RIGHT] =
       Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(qrbStandbyVect[RIGHT].data(), qrbStandbyVect[RIGHT].size());
 
-  // Savitzky-Golay Filter params // TODO IN PARAMS?
+  // Savitzky-Golay Filter params
   int sgfDq[3];
   sgfDq[0] = 7;// dim
   sgfDq[1] = 3;// order
@@ -233,7 +233,8 @@ bool DualArmControlSim::initDSThrowing() {
                    tossVar_.releaseAngularVelocity,
                    tossVar_.restPosition,
                    tossVar_.restOrientation);
-  // TODO  if statement?
+
+  // TODO  if statement
   // IF AUTOMATICALLY DETERMINED (USING RELEASE POSE GENERATOR)
   // dsThrowing_.init(dsThrowing_.getDsParam(),
   // 								tossParamEstimator_.getReleasePosition(),
@@ -242,7 +243,7 @@ bool DualArmControlSim::initDSThrowing() {
   // 								tossParamEstimator_.getReleaseAngularVelocity(),
   // 								tossVar_.restPosition, tossVar_.restOrientation);
   // desVtoss_ = tossParamEstimator_.getReleaseLinearVelocity().norm();
-  //
+
   tossVar_.releaseLinearVelocity = desVtoss_ * (tossVar_.releasePosition - object_.getXo()).normalized();
 
   dsThrowing_.setPickupObjectPose(object_.getXo(), object_.getQo());
@@ -386,7 +387,7 @@ bool DualArmControlSim::init() {
 
   adaptationActive_ = false;
 
-  feasibleAlgo_ = false;// TODO in yaml file?
+  feasibleAlgo_ = false;
   pickupBased_ = true;
   trackTargetRotation_ = true;
   isMotionTriggered_ = false;
@@ -442,6 +443,7 @@ bool DualArmControlSim::updateSim(std::vector<Eigen::Matrix<float, 6, 1>> robotW
 
   target_.setXt(targetPose);
   target_.setQt(targetOrientation);
+
   // filtered object position
   target_.computeFilteredState();
 
@@ -542,8 +544,6 @@ CommandStruct DualArmControlSim::generateCommands(std::vector<float> firstEigenP
 
   d1_[LEFT] = firstEigenPassiveDamping[LEFT];
   d1_[RIGHT] = firstEigenPassiveDamping[RIGHT];
-
-  // updateStatesMachines();
 
   updateSim(robotWrench,
             eePose,
@@ -856,7 +856,7 @@ void DualArmControlSim::unconstraintMotion() {
 
   dsThrowing_.setRefVtoss(desiredVelImp_);
 
-  // for data logging
+  // For data logging
   objVelDes_.setZero();
 
   if (freeMotionCtrl_.getActivationProximity() >= 0.2f) { betaVelModUnfilt_ = 1.0; }
@@ -1170,7 +1170,7 @@ void DualArmControlSim::prepareCommands(Vector6f vDesEE[], Eigen::Vector4f qd[],
 bool DualArmControlSim::getReleaseFlag() { return releaseAndretract_; }
 double DualArmControlSim::getPeriod() { return periodT_; }
 
-// control of object position through keyboad
+// Control of object position through keyboad
 void DualArmControlSim::keyboardVirtualObjectControl() {
   Eigen::Matrix4f wHo;
   wHo = object_.getWHo();
@@ -1186,7 +1186,7 @@ void DualArmControlSim::keyboardVirtualObjectControl() {
   object_.setWHo(wHo);
 }
 
-// control of attractor position through keyboad
+// Control of attractor position through keyboad
 void DualArmControlSim::keyboardReferenceObjectControl() {
   xLifting_(0) += deltaPos_(0);
   xLifting_(1) += deltaPos_(1);
