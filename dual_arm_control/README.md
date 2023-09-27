@@ -13,7 +13,6 @@ The main dependencies are the following ones:
 # File hierarchy
 
 The file system is divided in several subfolders:
- - `config`: contains _.yaml_ used by launch files
  - `include`: contains class header files
  - `LearnedModel`: contains parameters of learned inverse throwing model
  - `src`: contains class implentations and source files to instantiate them:
