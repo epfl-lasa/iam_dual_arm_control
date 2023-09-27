@@ -19,7 +19,7 @@ The file system is divided in several subfolders:
  - `src`: contains class implentations and source files to instantiate them:
     - DualArmFreeMotionController: A class used to generate the uncontrained coordinated motion of the dual arm robot
     - DualArmCooperativeControllwe: A class used to generate the grasp and manipulation wrench of the dual arm robot
-    - DualArmControlSim: A class that uses the two previous classes and generates both the coordinated motion and forces commands to be sent to the robot
+    - DualArmControl: A class that uses the two previous classes and generates both the coordinated motion and forces commands to be sent to the robot
 
 
 # Installation

@@ -8,7 +8,7 @@
 
 #include "DataLogging.hpp"
 #include "RosDualArmCommunication.hpp"
-#include "dual_arm_control_iam/DualArmControlSim.hpp"
+#include "dual_arm_control_iam/DualArmControl.hpp"
 #include "keyboard_interaction.hpp"
 
 enum Robot { LEFT = 0, RIGHT = 1 };
@@ -121,17 +121,17 @@ int main(int argc, char** argv) {
   // =================================================================
   // Instantiation of dual arm control object
   // =================================================================
-  DualArmControlSim dualArmControlSim(dt);
+  DualArmControl dualArmControl(dt);
 
   std::string pathYamlFile = ros::package::getPath(std::string("ros_dual_arm_control")) + "/config/parameters.yaml";
   std::string pathLearnedModelfolder =
       ros::package::getPath(std::string("ros_dual_arm_control")) + "/LearnedModel/model1";
-  if (!dualArmControlSim.loadParamFromFile(pathYamlFile, pathLearnedModelfolder)) {
+  if (!dualArmControl.loadParamFromFile(pathYamlFile, pathLearnedModelfolder)) {
     std::cerr << "Error loading config file (parameters.yaml)" << std::endl;
     return EXIT_FAILURE;
   }
 
-  dualArmControlSim.init();
+  dualArmControl.init();
 
   // =================================================================
   // Instantiation data recording
@@ -156,10 +156,10 @@ int main(int argc, char** argv) {
   StateMachine stateMachine;
 
   while (nh.ok()) {
-    interactionVar.stateMachine = dualArmControlSim.getStateMachine();
+    interactionVar.stateMachine = dualArmControl.getStateMachine();
     interactionVar.conveyorBeltState = rosDualArm.getConveyorBeltStatus();
     interactionVar = keyboardinteraction::getKeyboard(interactionVar);
-    dualArmControlSim.updateStateMachine(interactionVar.stateMachine);
+    dualArmControl.updateStateMachine(interactionVar.stateMachine);
     rosDualArm.updateConveyorBeltStatus(interactionVar.conveyorBeltState);
     if (interactionVar.resetLogging) {
       dataLog.reset(ros::package::getPath(std::string("ros_dual_arm_control")) + "/Data");
@@ -170,22 +170,22 @@ int main(int argc, char** argv) {
     rosDualArm.updatePassiveDSDamping();
 
     // Compute generated desired motion and forces
-    commandGenerated = dualArmControlSim.generateCommands(rosDualArm.getFirstEigenPassiveDamping(),
-                                                          rosDualArm.getRobotWrench(),
-                                                          rosDualArm.getEePose(),
-                                                          rosDualArm.getEeOrientation(),
-                                                          rosDualArm.getObjectPose(),
-                                                          rosDualArm.getObjectOrientation(),
-                                                          rosDualArm.getTargetPose(),
-                                                          rosDualArm.getTargetOrientation(),
-                                                          rosDualArm.getEeVelLin(),
-                                                          rosDualArm.getEeVelAng(),
-                                                          rosDualArm.getJointPosition(),
-                                                          rosDualArm.getJointVelocity(),
-                                                          rosDualArm.getJointTorques(),
-                                                          rosDualArm.getRobotBasePos(),
-                                                          rosDualArm.getRobotBaseOrientation(),
-                                                          cycleCount);
+    commandGenerated = dualArmControl.generateCommands(rosDualArm.getFirstEigenPassiveDamping(),
+                                                       rosDualArm.getRobotWrench(),
+                                                       rosDualArm.getEePose(),
+                                                       rosDualArm.getEeOrientation(),
+                                                       rosDualArm.getObjectPose(),
+                                                       rosDualArm.getObjectOrientation(),
+                                                       rosDualArm.getTargetPose(),
+                                                       rosDualArm.getTargetOrientation(),
+                                                       rosDualArm.getEeVelLin(),
+                                                       rosDualArm.getEeVelAng(),
+                                                       rosDualArm.getJointPosition(),
+                                                       rosDualArm.getJointVelocity(),
+                                                       rosDualArm.getJointTorques(),
+                                                       rosDualArm.getRobotBasePos(),
+                                                       rosDualArm.getRobotBaseOrientation(),
+                                                       cycleCount);
 
     // Publish the commands to be exectued
     rosDualArm.publishCommands(commandGenerated.axisAngleDes, commandGenerated.vDes, commandGenerated.qd);
@@ -203,7 +203,7 @@ int main(int argc, char** argv) {
     rosDualArm.sendConveyorBeltSpeed(cycleCount);
 
     // Log data
-    dataToSave = dualArmControlSim.getDataToSave();
+    dataToSave = dualArmControl.getDataToSave();
     if (interactionVar.startLogging) { saveData(dataLog, cycleCount, dt, dataToSave); }
 
     ros::spinOnce();

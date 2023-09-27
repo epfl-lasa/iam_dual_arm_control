@@ -3,21 +3,21 @@
 #include "../pybind11/include/pybind11/pybind11.h"
 #include "../pybind11/include/pybind11/stl.h"
 
-#include "../../include/dual_arm_control_iam/DualArmControlSim.hpp"
+#include "../../include/dual_arm_control_iam/DualArmControl.hpp"
 #include <iostream>
 #include <string>
 
 namespace py = pybind11;
 
 PYBIND11_MODULE(py_dual_arm_control, m) {
-  py::class_<DualArmControlSim>(m, "DualArmControlSim")
+  py::class_<DualArmControl>(m, "DualArmControl")
       .def(py::init<double>())// constructor
-      .def("loadParamFromFile", &DualArmControlSim::loadParamFromFile)
-      .def("init", &DualArmControlSim::init)
-      .def("getStateMachine", &DualArmControlSim::getStateMachine)
-      .def("updateStateMachine", &DualArmControlSim::updateStateMachine)
-      .def("generateCommands", &DualArmControlSim::generateCommands)
-      .def("getDataToSave", &DualArmControlSim::getDataToSave);
+      .def("loadParamFromFile", &DualArmControl::loadParamFromFile)
+      .def("init", &DualArmControl::init)
+      .def("getStateMachine", &DualArmControl::getStateMachine)
+      .def("updateStateMachine", &DualArmControl::updateStateMachine)
+      .def("generateCommands", &DualArmControl::generateCommands)
+      .def("getDataToSave", &DualArmControl::getDataToSave);
 
   py::class_<StateMachine>(m, "StateMachine")
       .def(py::init<>())

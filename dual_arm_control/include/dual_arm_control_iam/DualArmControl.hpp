@@ -193,7 +193,7 @@ struct DataToSave {
   float desVtoss;
 };
 
-class DualArmControlSim {
+class DualArmControl {
 
 private:
   double periodT_;
@@ -352,9 +352,9 @@ public:
     PAUSE_MOTION = 8
   };
 
-  DualArmControlSim(double dt);
+  DualArmControl(double dt);
 
-  ~DualArmControlSim();
+  ~DualArmControl();
 
   bool initObjectParam(YAML::Node config);
   bool initTargetParam();

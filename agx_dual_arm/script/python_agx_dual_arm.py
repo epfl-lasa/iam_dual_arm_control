@@ -15,7 +15,7 @@ from roboticstoolbox.robot.ERobot import ERobot
 sys.path.append("../dual_arm_control/python_binding/build")
 sys.path.append("../../dual_iiwa_toolkit/python_binding/build")
 from py_dual_passive_control import PassiveControl
-from py_dual_arm_control import DualArmControlSim
+from py_dual_arm_control import DualArmControl
 
 
 # ------------ VARIABLE TO MODIFY ------------
@@ -284,7 +284,7 @@ def init_passive_controllers(robot_left, robot_right):
     return controller_left, controller_right
 
 def init_dual_arm_controller():
-    dual_arm_control_agx = DualArmControlSim(DELTA_TIME)
+    dual_arm_control_agx = DualArmControl(DELTA_TIME)
     dual_arm_control_agx.loadParamFromFile(PATH_YAML_FILE, PATH_LEARNED_MODEL_FOLDER)
     dual_arm_control_agx.init()
     return dual_arm_control_agx
@@ -302,7 +302,7 @@ def get_boxes():
             new_box.name = obj
             boxes.append(new_box)
 
-    if boxes[0].name == 'box1':
+    if len(boxes) == 2 and boxes[0].name == 'box1':
         test = boxes[0]
         boxes[0] = boxes[1]
         boxes[1] = test

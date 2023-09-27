@@ -1,16 +1,16 @@
 
 
-#include "dual_arm_control_iam/DualArmControlSim.hpp"
+#include "dual_arm_control_iam/DualArmControl.hpp"
 
-DualArmControlSim::DualArmControlSim(double dt) {
+DualArmControl::DualArmControl(double dt) {
   deltaRelPos_.setZero();
   deltaPos_.setZero();
   periodT_ = dt;
 }
 
-DualArmControlSim::~DualArmControlSim() {}
+DualArmControl::~DualArmControl() {}
 
-bool DualArmControlSim::initObjectParam(YAML::Node config) {
+bool DualArmControl::initObjectParam(YAML::Node config) {
   // Object desired grasping points
   Eigen::Matrix3f oRGraspPosLeft;
   Eigen::Matrix3f oRGraspPosRight;
@@ -55,7 +55,7 @@ bool DualArmControlSim::initObjectParam(YAML::Node config) {
   return true;
 }
 
-bool DualArmControlSim::initTargetParam() {
+bool DualArmControl::initTargetParam() {
   // Savitzky-Golay Filter params
   int sgfPos[3];
   sgfPos[0] = 3; // dim
@@ -66,7 +66,7 @@ bool DualArmControlSim::initTargetParam() {
   return true;
 }
 
-bool DualArmControlSim::initRobotParam(YAML::Node config) {
+bool DualArmControl::initRobotParam(YAML::Node config) {
 
   // Param vector
   std::vector<float> toolComPositionFromSensorVect[NB_ROBOTS];
@@ -124,7 +124,7 @@ bool DualArmControlSim::initRobotParam(YAML::Node config) {
   return true;
 }
 
-bool DualArmControlSim::initFreeMotionCtrl(YAML::Node config) {
+bool DualArmControl::initFreeMotionCtrl(YAML::Node config) {
   bool modulatedReaching = config["dual_arm_task"]["modulated_reaching"].as<bool>();
   bool isNormImpactVel = config["dual_arm_task"]["isNorm_impact_vel"].as<bool>();
 
@@ -152,7 +152,7 @@ bool DualArmControlSim::initFreeMotionCtrl(YAML::Node config) {
   return true;
 }
 
-bool DualArmControlSim::initTossVar(YAML::Node config) {
+bool DualArmControl::initTossVar(YAML::Node config) {
   std::vector<float> releasePosVect = config["dual_arm_task"]["tossing"]["releasePos"].as<std::vector<float>>();
   std::vector<float> releaseOrientVect = config["dual_arm_task"]["tossing"]["releaseOrient"].as<std::vector<float>>();
   std::vector<float> releaseLinVelDirVect =
@@ -180,7 +180,7 @@ bool DualArmControlSim::initTossVar(YAML::Node config) {
   return true;
 }
 
-bool DualArmControlSim::initDesTasksPosAndLimits(YAML::Node config) {
+bool DualArmControl::initDesTasksPosAndLimits(YAML::Node config) {
   std::vector<float> paramXDoLifting = config["dual_arm_task"]["lifting"]["position"].as<std::vector<float>>();
   std::vector<float> paramQDoLifting = config["dual_arm_task"]["lifting"]["orientation"].as<std::vector<float>>();
   std::vector<float> paramXDoPlacing = config["dual_arm_task"]["placing"]["position"].as<std::vector<float>>();
@@ -201,7 +201,7 @@ bool DualArmControlSim::initDesTasksPosAndLimits(YAML::Node config) {
   return true;
 }
 
-bool DualArmControlSim::initTossParamEstimator(const std::string pathLearnedModelfolder) {
+bool DualArmControl::initTossParamEstimator(const std::string pathLearnedModelfolder) {
   std::string fileGMM[3];
   std::string dataType = "/throwingParam";
 
@@ -224,7 +224,7 @@ bool DualArmControlSim::initTossParamEstimator(const std::string pathLearnedMode
   return true;
 }
 
-bool DualArmControlSim::initDSThrowing() {
+bool DualArmControl::initDSThrowing() {
 
   dsThrowing_.init(dsThrowing_.getDsParam(),
                    tossVar_.releasePosition,
@@ -253,7 +253,7 @@ bool DualArmControlSim::initDSThrowing() {
   return true;
 }
 
-bool DualArmControlSim::loadParamFromFile(const std::string pathToYamlFile, const std::string pathLearnedModelfolder) {
+bool DualArmControl::loadParamFromFile(const std::string pathToYamlFile, const std::string pathLearnedModelfolder) {
   YAML::Node config = YAML::LoadFile(pathToYamlFile);
 
   qpWrenchGeneration_ = config["dual_arm_task"]["isQP_wrench_generation"].as<bool>();
@@ -299,7 +299,7 @@ bool DualArmControlSim::loadParamFromFile(const std::string pathToYamlFile, cons
   return true;
 }
 
-void DualArmControlSim::reset() {
+void DualArmControl::reset() {
   deltaRelPos_.setZero();
   deltaPos_.setZero();
 
@@ -331,7 +331,7 @@ void DualArmControlSim::reset() {
   }
 }
 
-bool DualArmControlSim::init() {
+bool DualArmControl::init() {
   gravity_ << 0.0f, 0.0f, -9.80665f;
 
   for (int k = 0; k < NB_ROBOTS; k++) {
@@ -405,20 +405,20 @@ bool DualArmControlSim::init() {
   return true;
 }
 
-bool DualArmControlSim::updateSim(std::vector<Eigen::Matrix<float, 6, 1>> robotWrench,
-                                  std::vector<Eigen::Vector3f> eePose,
-                                  std::vector<Eigen::Vector4f> eeOrientation,
-                                  Eigen::Vector3f objectPose,
-                                  Eigen::Vector4f objectOrientation,
-                                  Eigen::Vector3f targetPose,
-                                  Eigen::Vector4f targetOrientation,
-                                  std::vector<Eigen::Vector3f> eeVelLin,
-                                  std::vector<Eigen::Vector3f> eeVelAng,
-                                  std::vector<Vector7f> jointPosition,
-                                  std::vector<Vector7f> jointVelocity,
-                                  std::vector<Vector7f> jointTorques,
-                                  std::vector<Eigen::Vector3f> robotBasePos,
-                                  std::vector<Eigen::Vector4f> robotBaseOrientation) {
+bool DualArmControl::updateSim(std::vector<Eigen::Matrix<float, 6, 1>> robotWrench,
+                               std::vector<Eigen::Vector3f> eePose,
+                               std::vector<Eigen::Vector4f> eeOrientation,
+                               Eigen::Vector3f objectPose,
+                               Eigen::Vector4f objectOrientation,
+                               Eigen::Vector3f targetPose,
+                               Eigen::Vector4f targetOrientation,
+                               std::vector<Eigen::Vector3f> eeVelLin,
+                               std::vector<Eigen::Vector3f> eeVelAng,
+                               std::vector<Vector7f> jointPosition,
+                               std::vector<Vector7f> jointVelocity,
+                               std::vector<Vector7f> jointTorques,
+                               std::vector<Eigen::Vector3f> robotBasePos,
+                               std::vector<Eigen::Vector4f> robotBaseOrientation) {
 
   for (int k = 0; k < NB_ROBOTS; k++) {
     robot_.updateEndEffectorWrench(robotWrench[k],
@@ -450,7 +450,7 @@ bool DualArmControlSim::updateSim(std::vector<Eigen::Matrix<float, 6, 1>> robotW
   return true;
 }
 
-void DualArmControlSim::updatePoses() {
+void DualArmControl::updatePoses() {
   if (initPoseCount_ < 100) {
     // Get stanby transformation of the EEs wrt. the world frame
     robot_.getStandbyHmgTransformInWorld();
@@ -495,7 +495,7 @@ void DualArmControlSim::updatePoses() {
   }
 }
 
-void DualArmControlSim::updateContactState() {
+void DualArmControl::updateContactState() {
   robot_.getEstimatedAverageNormalForce();
 
   // Compute errors to object center position and dimension vector
@@ -525,22 +525,22 @@ void DualArmControlSim::updateContactState() {
       && (isContact_ == 1.0f);
 }
 
-CommandStruct DualArmControlSim::generateCommands(std::vector<float> firstEigenPassiveDamping,
-                                                  std::vector<Eigen::Matrix<float, 6, 1>> robotWrench,
-                                                  std::vector<Eigen::Vector3f> eePose,
-                                                  std::vector<Eigen::Vector4f> eeOrientation,
-                                                  Eigen::Vector3f objectPose,
-                                                  Eigen::Vector4f objectOrientation,
-                                                  Eigen::Vector3f targetPose,
-                                                  Eigen::Vector4f targetOrientation,
-                                                  std::vector<Eigen::Vector3f> eeVelLin,
-                                                  std::vector<Eigen::Vector3f> eeVelAng,
-                                                  std::vector<Vector7f> jointPosition,
-                                                  std::vector<Vector7f> jointVelocity,
-                                                  std::vector<Vector7f> jointTorques,
-                                                  std::vector<Eigen::Vector3f> robotBasePos,
-                                                  std::vector<Eigen::Vector4f> robotBaseOrientation,
-                                                  int cycleCount) {
+CommandStruct DualArmControl::generateCommands(std::vector<float> firstEigenPassiveDamping,
+                                               std::vector<Eigen::Matrix<float, 6, 1>> robotWrench,
+                                               std::vector<Eigen::Vector3f> eePose,
+                                               std::vector<Eigen::Vector4f> eeOrientation,
+                                               Eigen::Vector3f objectPose,
+                                               Eigen::Vector4f objectOrientation,
+                                               Eigen::Vector3f targetPose,
+                                               Eigen::Vector4f targetOrientation,
+                                               std::vector<Eigen::Vector3f> eeVelLin,
+                                               std::vector<Eigen::Vector3f> eeVelAng,
+                                               std::vector<Vector7f> jointPosition,
+                                               std::vector<Vector7f> jointVelocity,
+                                               std::vector<Vector7f> jointTorques,
+                                               std::vector<Eigen::Vector3f> robotBasePos,
+                                               std::vector<Eigen::Vector4f> robotBaseOrientation,
+                                               int cycleCount) {
 
   d1_[LEFT] = firstEigenPassiveDamping[LEFT];
   d1_[RIGHT] = firstEigenPassiveDamping[RIGHT];
@@ -580,7 +580,7 @@ CommandStruct DualArmControlSim::generateCommands(std::vector<float> firstEigenP
   return commandGenerated_;
 }
 
-void DualArmControlSim::updateReleasePosition() {
+void DualArmControl::updateReleasePosition() {
   releasePos_.r += deltaRelPos_(0);
   releasePos_.theta += M_PI / 180.0f * deltaRelPos_(1);
   releasePos_.phi += M_PI / 180.0f * deltaRelPos_(2);
@@ -593,9 +593,9 @@ void DualArmControlSim::updateReleasePosition() {
   if (tossVar_.releasePosition(0) > 0.70) { tossVar_.releasePosition(0) = 0.70; }
 }
 
-void DualArmControlSim::computeCommands(std::vector<Eigen::Vector3f> eePose,
-                                        std::vector<Eigen::Vector4f> eeOrientation,
-                                        int cycleCount) {
+void DualArmControl::computeCommands(std::vector<Eigen::Vector3f> eePose,
+                                     std::vector<Eigen::Vector4f> eeOrientation,
+                                     int cycleCount) {
   // Update contact state
   updateContactState();
 
@@ -715,7 +715,7 @@ void DualArmControlSim::computeCommands(std::vector<Eigen::Vector3f> eePose,
   this->prepareCommands(robot_.getVelDesEE(), robot_.getQd(), object_.getVGpO());
 }
 
-void DualArmControlSim::asyncMotion() {
+void DualArmControl::asyncMotion() {
   freeMotionCtrl_.computeAsyncMotion(robot_.getWHEE(),
                                      robot_.getWHEEStandby(),
                                      object_.getWHo(),
@@ -737,7 +737,7 @@ void DualArmControlSim::asyncMotion() {
   this->reset();
 }
 
-void DualArmControlSim::releaseRetractMotion() {
+void DualArmControl::releaseRetractMotion() {
   freeMotionCtrl_.computeReleaseAndRetractMotion(robot_.getWHEE(),
                                                  object_.getWHDgp(),
                                                  object_.getWHo(),
@@ -753,7 +753,7 @@ void DualArmControlSim::releaseRetractMotion() {
   isIntercepting_ = false;
 }
 
-void DualArmControlSim::constraintMotion(bool isPlacing, bool isPlaceTossing, bool isThrowing) {
+void DualArmControl::constraintMotion(bool isPlacing, bool isPlaceTossing, bool isThrowing) {
   bool placingDone = (releaseFlag_) || ((object_.getWHo().block<3, 1>(0, 3) - xPlacing_).norm() <= 0.08);
   bool placeTossingDone = (releaseFlag_)
       || (((object_.getWHo().block<3, 1>(0, 3) - tossVar_.releasePosition).norm() <= 0.07)
@@ -817,7 +817,7 @@ void DualArmControlSim::constraintMotion(bool isPlacing, bool isPlaceTossing, bo
   }
 }
 
-void DualArmControlSim::unconstraintMotion() {
+void DualArmControl::unconstraintMotion() {
   freeMotionCtrl_.setReachableP(
       (robot_.getWHEESpecific(LEFT)(0, 3) >= 0.72f || robot_.getWHEESpecific(RIGHT)(0, 3) >= 0.72f) ? 0.0f : 1.0f);
 
@@ -862,7 +862,7 @@ void DualArmControlSim::unconstraintMotion() {
   if (freeMotionCtrl_.getActivationProximity() >= 0.2f) { betaVelModUnfilt_ = 1.0; }
 }
 
-void DualArmControlSim::adaptToForce() {
+void DualArmControl::adaptToForce() {
   // Force feedback to grab objects
   float gainForce = 0.02f;
   float absForceCorrection = nuWr0_ * gainForce * 0.5f
@@ -879,7 +879,7 @@ void DualArmControlSim::adaptToForce() {
       vDesEE_[RIGHT].head(3) - 0.40 * absForceCorrection * object_.getNormalVectSurfObjSpecific(RIGHT);
 }
 
-void DualArmControlSim::graspingForceToVelSpace() {
+void DualArmControl::graspingForceToVelSpace() {
   bool isForceDetected =
       (robot_.getNormalForceAverage(LEFT) > forceThreshold_ || robot_.getNormalForceAverage(RIGHT) > forceThreshold_);
 
@@ -902,9 +902,9 @@ void DualArmControlSim::graspingForceToVelSpace() {
   for (int i = 0; i < NB_ROBOTS; i++) { robot_.setFXC(1.0f / d1_[i] * CooperativeCtrl.getForceApplied(i).head(3), i); }
 }
 
-Eigen::Vector3f DualArmControlSim::computeInterceptWithTarget(const Eigen::Vector3f& xTarget,
-                                                              const Eigen::Vector3f& vTarget,
-                                                              float phiInit) {
+Eigen::Vector3f DualArmControl::computeInterceptWithTarget(const Eigen::Vector3f& xTarget,
+                                                           const Eigen::Vector3f& vTarget,
+                                                           float phiInit) {
 
   Eigen::Vector3f xIntercept = xTarget;
 
@@ -927,7 +927,7 @@ Eigen::Vector3f DualArmControlSim::computeInterceptWithTarget(const Eigen::Vecto
   return xIntercept;
 }
 
-void DualArmControlSim::findDesiredLandingPosition(bool isPlacing, bool isPlaceTossing, bool isThrowing) {
+void DualArmControl::findDesiredLandingPosition(bool isPlacing, bool isPlaceTossing, bool isThrowing) {
   Eigen::Vector3f xDesiredLand = target_.getXt();
   float phiThrowing = 0.0;
 
@@ -949,7 +949,7 @@ void DualArmControlSim::findDesiredLandingPosition(bool isPlacing, bool isPlaceT
   }
 }
 
-float DualArmControlSim::getDesiredYawAngleTarget(const Eigen::Vector4f& qt, const Eigen::Vector3f& angLimit) {
+float DualArmControl::getDesiredYawAngleTarget(const Eigen::Vector4f& qt, const Eigen::Vector3f& angLimit) {
   Eigen::Vector3f eulerAngTarget =
       Utils<float>::getEulerAnglesXYZFixedFrame(Utils<float>::quaternionToRotationMatrix(qt));
 
@@ -964,9 +964,9 @@ float DualArmControlSim::getDesiredYawAngleTarget(const Eigen::Vector4f& qt, con
   return phiTargetRot;
 }
 
-void DualArmControlSim::estimateTargetStateToGo(Eigen::Vector2f lengthPathAvgSpeedRobot,
-                                                Eigen::Vector2f lengthPathAvgSpeedTarget,
-                                                float flyTimeObj) {
+void DualArmControl::estimateTargetStateToGo(Eigen::Vector2f lengthPathAvgSpeedRobot,
+                                             Eigen::Vector2f lengthPathAvgSpeedTarget,
+                                             float flyTimeObj) {
   // Estimation of the target state-to-go
   target_.setXtStateToGo(tossParamEstimator_.estimateTargetStateToGo(target_.getVt(),
                                                                      target_.getXdLanding(),
@@ -981,7 +981,7 @@ void DualArmControlSim::estimateTargetStateToGo(Eigen::Vector2f lengthPathAvgSpe
       (-xtBar.dot(target_.getVt()) > 0) && ((initPoseCount_ > 50) && ((xtBar - xtToGoBar).norm() < 0.04f));
 }
 
-void DualArmControlSim::updateInterceptPosition(float flyTimeObj, float intercepLimits[]) {
+void DualArmControl::updateInterceptPosition(float flyTimeObj, float intercepLimits[]) {
 
   Eigen::Vector3f xTargetIntercept = target_.getXt() + target_.getVt() * (timeToInterceptBot_ + flyTimeObj);
 
@@ -998,7 +998,7 @@ void DualArmControlSim::updateInterceptPosition(float flyTimeObj, float intercep
   }
 }
 
-void DualArmControlSim::findReleaseConfiguration() {
+void DualArmControl::findReleaseConfiguration() {
   // Basic release configuration
   if (feasibleAlgo_) {
     // Generate using feasibilty algorithm
@@ -1017,23 +1017,23 @@ void DualArmControlSim::findReleaseConfiguration() {
   }
 }
 
-void DualArmControlSim::setReleaseState() {
+void DualArmControl::setReleaseState() {
   // Set the release state and the object pickup position
   dsThrowing_.setTossPose(tossVar_.releasePosition, tossVar_.releaseOrientation);
   dsThrowing_.setTossLinearVelocity(tossVar_.releaseLinearVelocity);
   dsThrowing_.setPickupObjectPose(object_.getXPickup(), object_.getQo());
 }
 
-void DualArmControlSim::set2DPositionBoxConstraints(Eigen::Vector3f& positionVect, float limits[]) {
+void DualArmControl::set2DPositionBoxConstraints(Eigen::Vector3f& positionVect, float limits[]) {
   if (positionVect(0) < limits[0]) positionVect(0) = limits[0];// x_min
   if (positionVect(0) > limits[1]) positionVect(0) = limits[1];// x_max
   if (positionVect(1) < limits[2]) positionVect(1) = limits[2];// y_min
   if (positionVect(1) > limits[3]) positionVect(1) = limits[3];// y_max
 }
 
-void DualArmControlSim::computeAdaptationFactors(Eigen::Vector2f lengthPathAvgSpeedRobot,
-                                                 Eigen::Vector2f lengthPathAvgSpeedTarget,
-                                                 float flyTimeObj) {
+void DualArmControl::computeAdaptationFactors(Eigen::Vector2f lengthPathAvgSpeedRobot,
+                                              Eigen::Vector2f lengthPathAvgSpeedTarget,
+                                              float flyTimeObj) {
   if (isMotionTriggered_) { isIntercepting_ = true; }
 
   float betaVelModMax = min(2.0f,
@@ -1072,9 +1072,8 @@ void DualArmControlSim::computeAdaptationFactors(Eigen::Vector2f lengthPathAvgSp
   }
 }
 
-Eigen::Vector3f DualArmControlSim::getImpactDirection(Eigen::Vector3f objectDesiredForce,
-                                                      Eigen::Vector3f objNormal,
-                                                      float coeffFriction) {
+Eigen::Vector3f
+DualArmControl::getImpactDirection(Eigen::Vector3f objectDesiredForce, Eigen::Vector3f objNormal, float coeffFriction) {
   float theta = 0.0f;
   Eigen::Matrix3f R1;
   Eigen::Matrix3f R0;
@@ -1097,9 +1096,9 @@ Eigen::Vector3f DualArmControlSim::getImpactDirection(Eigen::Vector3f objectDesi
   return impactDir.normalized();
 }
 
-void DualArmControlSim::mirrorTargetToObjectOrientation(Eigen::Vector4f qt,
-                                                        Eigen::Vector4f& qo,
-                                                        Eigen::Vector3f angleLimit) {
+void DualArmControl::mirrorTargetToObjectOrientation(Eigen::Vector4f qt,
+                                                     Eigen::Vector4f& qo,
+                                                     Eigen::Vector3f angleLimit) {
   Eigen::Vector3f eulerAngleTarget =
       Utils<float>::getEulerAnglesXYZFixedFrame(Utils<float>::quaternionToRotationMatrix(qt));
   Eigen::Vector3f eulerAngleDesired =
@@ -1125,7 +1124,7 @@ void DualArmControlSim::mirrorTargetToObjectOrientation(Eigen::Vector4f qt,
       Utils<float>::eulerAnglesToRotationMatrix(eulerAngleDesired(0), eulerAngleDesired(1), eulerAngleTarget(2)));
 }
 
-void DualArmControlSim::prepareCommands(Vector6f vDesEE[], Eigen::Vector4f qd[], Vector6f velGraspPos[]) {
+void DualArmControl::prepareCommands(Vector6f vDesEE[], Eigen::Vector4f qd[], Vector6f velGraspPos[]) {
   Eigen::Matrix<float, 3, 1> axisDes[NB_ROBOTS];
   float angleDes[NB_ROBOTS];
 
@@ -1167,11 +1166,11 @@ void DualArmControlSim::prepareCommands(Vector6f vDesEE[], Eigen::Vector4f qd[],
   robot_.getDesiredLinTaskVelocity(applyVelo_, nuWr0_);
 }
 
-bool DualArmControlSim::getReleaseFlag() { return releaseAndretract_; }
-double DualArmControlSim::getPeriod() { return periodT_; }
+bool DualArmControl::getReleaseFlag() { return releaseAndretract_; }
+double DualArmControl::getPeriod() { return periodT_; }
 
 // Control of object position through keyboad
-void DualArmControlSim::keyboardVirtualObjectControl() {
+void DualArmControl::keyboardVirtualObjectControl() {
   Eigen::Matrix4f wHo;
   wHo = object_.getWHo();
   wHo(0, 3) += deltaPos_(0);
@@ -1187,14 +1186,14 @@ void DualArmControlSim::keyboardVirtualObjectControl() {
 }
 
 // Control of attractor position through keyboad
-void DualArmControlSim::keyboardReferenceObjectControl() {
+void DualArmControl::keyboardReferenceObjectControl() {
   xLifting_(0) += deltaPos_(0);
   xLifting_(1) += deltaPos_(1);
   xLifting_(2) += deltaPos_(2);
   deltaPos_.setZero();
 }
 
-StateMachine DualArmControlSim::getStateMachine() {
+StateMachine DualArmControl::getStateMachine() {
   StateMachine stateMachine;
   stateMachine.goHome = goHome_;
   stateMachine.goToAttractors = goToAttractors_;
@@ -1217,7 +1216,7 @@ StateMachine DualArmControlSim::getStateMachine() {
   return stateMachine;
 }
 
-void DualArmControlSim::updateStateMachine(StateMachine stateMachine) {
+void DualArmControl::updateStateMachine(StateMachine stateMachine) {
 
   goHome_ = stateMachine.goHome;
   goToAttractors_ = stateMachine.goToAttractors;
@@ -1242,7 +1241,7 @@ void DualArmControlSim::updateStateMachine(StateMachine stateMachine) {
   }
 }
 
-DataToSave DualArmControlSim::getDataToSave() {
+DataToSave DualArmControl::getDataToSave() {
   DataToSave dataToSave;
 
   // Robot

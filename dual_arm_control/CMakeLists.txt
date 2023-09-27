@@ -27,7 +27,7 @@ set(HEADERS_FOLDER  "${CMAKE_CURRENT_SOURCE_DIR}/include/${PROJECT_NAME}")
 set(SRC_FOLDER      "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
 set(H_FILES
-    ${HEADERS_FOLDER}/DualArmControlSim.hpp
+    ${HEADERS_FOLDER}/DualArmControl.hpp
     ${HEADERS_FOLDER}/DualArmFreeMotionController.hpp
     ${HEADERS_FOLDER}/DualArmCooperativeController.hpp
     ${HEADERS_FOLDER}/ThrowingDS.hpp
@@ -50,7 +50,7 @@ set(TOOLS_FILE
 )
     
 set(SRCS
-    ${SRC_FOLDER}/DualArmControlSim.cpp
+    ${SRC_FOLDER}/DualArmControl.cpp
     ${SRC_FOLDER}/DualArmFreeMotionController.cpp
     ${SRC_FOLDER}/DualArmCooperativeController.cpp
     ${SRC_FOLDER}/ThrowingDS.cpp

@@ -1,0 +1,4 @@
+[submodule "dual_arm_control/python_binding/pybind11"]
+	path = dual_arm_control/python_binding/pybind11
+	url = ../../pybind/pybind11
+	branch = stable
