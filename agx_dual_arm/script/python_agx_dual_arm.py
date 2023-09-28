@@ -1,4 +1,5 @@
 
+import os
 import sys
 import numpy as np
 import keyboard
@@ -30,9 +31,10 @@ DUAL_ROBOT_FRAME = 0.5*(ROBOT_BASE_POSE[0] + ROBOT_BASE_POSE[1])
 DELTA_TIME = 0.005
 
 # -- passive controller
-URDF_PATH_LEFT = "/home/elise/Documents/IAM/michael/dual_arm_control_iam/agx_dual_arm/urdf/iiwa14.urdf"
+file_dir = os.path.dirname(os.path.realpath('__file__'))
+URDF_PATH_LEFT = file_dir + "/urdf/iiwa14.urdf"
 END_EFFECTOR_LEFT = "iiwa_link_ee"
-URDF_PATH_RIGHT = "/home/elise/Documents/IAM/michael/dual_arm_control_iam/agx_dual_arm/urdf/iiwa14.urdf"
+URDF_PATH_RIGHT = file_dir + "/urdf/iiwa14.urdf"
 END_EFFECTOR_RIGHT = "iiwa_link_ee"
 
 DES_POS_ROBOT_LEFT = np.array([0.35,  0.20, 0.80])
