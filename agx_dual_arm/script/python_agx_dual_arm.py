@@ -14,7 +14,7 @@ from roboticstoolbox.robot.ERobot import ERobot
 
 # Python wrapper lib
 sys.path.append("../dual_arm_control/python_binding/build")
-sys.path.append("../../dual_iiwa_toolkit/python_binding/build")
+sys.path.append("./builded_libs")
 from py_dual_passive_control import PassiveControl
 from py_dual_arm_control import DualArmControl
 
@@ -32,7 +32,7 @@ DELTA_TIME = 0.005
 
 # -- passive controller
 file_dir = os.path.dirname(os.path.realpath('__file__'))
-URDF_PATH_LEFT = file_dir + "/urdf/iiwa14.urdf"
+URDF_PATH_LEFT = file_dir + "/urdf/iiwa7.urdf"
 END_EFFECTOR_LEFT = "iiwa_link_ee"
 URDF_PATH_RIGHT = file_dir + "/urdf/iiwa14.urdf"
 END_EFFECTOR_RIGHT = "iiwa_link_ee"
