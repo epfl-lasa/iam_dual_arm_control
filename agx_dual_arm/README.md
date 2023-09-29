@@ -6,7 +6,7 @@ Control the dual arm in AGX simulation
 The main dependencies are the following ones:
 
  - **AGX simulator**: Working AGX urdf-application environnement is required 
- - **AGX custom project scene for IIWA**: Custom AGX scene (https://github.com/Elise-J/iam_sim_agx.git)
+ - **AGX custom project scene for IIWA**: Custom AGX scene (https://github.com/epfl-lasa/agx_scene)
  - **dual_iiwa_toolkit**: Optional, if the build of the passive controller is needed: The python binding of dual_iiwa_toolkit (https://github.com/epfl-lasa/dual_iiwa_toolkit)
 
 
@@ -43,6 +43,11 @@ cd python_binding && mkdir build && cd build && cmake .. && make -j
 # Run simulation
 
 1. Launch AGX simulator with the custom project scene for the double iiwa
+
+```bash
+sudo python3 ../run-in-docker.py python3 click_application.py --model models/Projects/agx_scene/Scenes/DualIiwaClickSceneTable.yml:IiwaTorqueClick --timeStep 0.001 --agxOnly --rcs --portRange 5656 5658  --disableClickSync
+```
+
 2. Run the controller:
 
 ```
