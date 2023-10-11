@@ -13,8 +13,9 @@ from scipy.spatial.transform import Rotation as R
 from roboticstoolbox.robot.ERobot import ERobot
 
 # Python wrapper lib
-sys.path.append("../dual_arm_control/python_binding/build")
-sys.path.append("./builded_libs")
+sys.path.append(os.path.dirname((os.path.dirname(os.path.dirname(os.path.abspath(__file__))))) + '/dual_arm_control/python_binding/build')
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + '/builded_libs')
+
 from py_dual_passive_control import PassiveControl
 from py_dual_arm_control import DualArmControl
 
@@ -28,7 +29,7 @@ ROBOT_BASE_POSE = np.array([[0, -0.51, 0.75], [0, 0.51, 0.75]])
 ROBOT_BASE_ORIENTATION = np.array([[1, 0, 0, 0.0], [1, 0, 0, 0.0]])
 
 DUAL_ROBOT_FRAME = 0.5*(ROBOT_BASE_POSE[0] + ROBOT_BASE_POSE[1])
-DELTA_TIME = 0.005
+DELTA_TIME = 0.001
 
 # -- passive controller
 file_dir = os.path.dirname(os.path.realpath('__file__'))

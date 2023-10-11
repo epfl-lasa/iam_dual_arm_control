@@ -140,7 +140,7 @@ dual_arm_task:
   # tossing task parameters (user defined)
   tossing:
     increment_release_pos: false
-    releasePos:         [0.68, -0.0, 0.37] #[0.70, 0.00, 0.60] [0.70, 0.00, 0.40]
+    releasePos:         [0.68, -0.0, 0.37] #[0.70, -0.0, 0.45] (hit+grab AGX) #[0.70, 0.00, 0.60] [0.70, 0.00, 0.40]
     releaseOrient:      [1.00, 0.00, 0.00, 0.00] # [0.9436, 0, 0, 0.3310] #[0.9820, 0, 0, 0.1891] #
     releaseLinVel_dir:  [1.00, -0.0, 0.50] # [1.00, 0.00, 1.00]
     releaseAngVel:      [0.00, 0.00, 0.00]

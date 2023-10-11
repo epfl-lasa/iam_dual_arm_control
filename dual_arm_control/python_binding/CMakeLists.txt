@@ -25,6 +25,6 @@ endif()
 add_subdirectory(pybind11)
 
 pybind11_add_module(${PY_PROJECT} pythonApi/py_dual_arm_control.cpp)
-target_link_libraries(${PY_PROJECT} PUBLIC ${CPP_LIBRARY} pybind11::module)
-set_target_properties(${PY_PROJECT} PROPERTIES PREFIX "${PYTHON_MODULE_PREFIX}" SUFFIX "${PYTHON_MODULE_EXTENSION}")
+target_link_libraries(${PY_PROJECT} PUBLIC ${CPP_LIBRARY} pybind11::module Eigen3::Eigen)
+# set_target_properties(${PY_PROJECT} PROPERTIES PREFIX "${PYTHON_MODULE_PREFIX}" SUFFIX "${PYTHON_MODULE_EXTENSION}")
 set_target_properties(${PY_PROJECT} PROPERTIES OUTPUT_NAME ${PY_PROJECT})

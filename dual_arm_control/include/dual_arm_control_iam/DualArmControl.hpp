@@ -369,7 +369,7 @@ public:
 
   void reset();
 
-  void asyncMotion();
+  void asyncMotion(Eigen::Vector3f targetPose);
   void releaseRetractMotion();
   void constraintMotion(bool isPlacing, bool isPlaceTossing, bool isThrowing);
   void adaptToForce();
@@ -409,7 +409,7 @@ public:
                                  std::vector<Eigen::Vector4f> robotBaseOrientation,
                                  int cycleCount);
   void updateContactState();
-  void computeCommands(std::vector<Eigen::Vector3f> eePose, std::vector<Eigen::Vector4f> eeOrientation, int cycleCount);
+  void computeCommands(std::vector<Eigen::Vector3f> eePose, std::vector<Eigen::Vector4f> eeOrientation, Eigen::Vector3f targetPose, int cycleCount);
   void updatePoses();
 
   void updateReleasePosition();

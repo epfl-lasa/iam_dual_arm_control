@@ -376,7 +376,7 @@ bool DualArmControl::init() {
   isPlaceTossing_ = false;
   releaseFlag_ = false;
   isPickupSet_ = false;
-  dualTaskSelector_ = 1;
+  // dualTaskSelector_ = 1;
 
   dualPathLenAvgSpeed_.setZero();
 
@@ -561,7 +561,7 @@ CommandStruct DualArmControl::generateCommands(std::vector<float> firstEigenPass
             robotBaseOrientation);
 
   updatePoses();
-  computeCommands(eePose, eeOrientation, cycleCount);
+  computeCommands(eePose, eeOrientation, targetPose, cycleCount);
 
   for (int k = 0; k < NB_ROBOTS; k++) {
     commandGenerated_.axisAngleDes[k] = robot_.getAxisAngleDes(k);
@@ -595,6 +595,7 @@ void DualArmControl::updateReleasePosition() {
 
 void DualArmControl::computeCommands(std::vector<Eigen::Vector3f> eePose,
                                      std::vector<Eigen::Vector4f> eeOrientation,
+                                     Eigen::Vector3f targetPose,
                                      int cycleCount) {
   // Update contact state
   updateContactState();
@@ -669,7 +670,7 @@ void DualArmControl::computeCommands(std::vector<Eigen::Vector3f> eePose,
   this->computeAdaptationFactors(lengthPathAvgSpeedRobot, lengthPathAvgSpeedTarget, flyTimeObj);
 
   if (goHome_) {
-    asyncMotion();
+    asyncMotion(targetPose);
   } else {//  release_and_retract || release
 
     if (releaseAndretract_) {
@@ -715,7 +716,11 @@ void DualArmControl::computeCommands(std::vector<Eigen::Vector3f> eePose,
   this->prepareCommands(robot_.getVelDesEE(), robot_.getQd(), object_.getVGpO());
 }
 
-void DualArmControl::asyncMotion() {
+void DualArmControl::asyncMotion(Eigen::Vector3f targetPose) {
+
+
+	// float yToGo = target_.getXdLanding()(1) - target_.getVt()(1) * (target_.getXdLanding()(0) - object_.getXPickup()(0))/(0.25f*desVtoss_); // 0.28f
+
   freeMotionCtrl_.computeAsyncMotion(robot_.getWHEE(),
                                      robot_.getWHEEStandby(),
                                      object_.getWHo(),
@@ -735,6 +740,12 @@ void DualArmControl::asyncMotion() {
 
   // Reset some controller variables
   this->reset();
+
+  // std::cout << " yToGo " << yToGo << "  target pos " << targetPose(1) << std::endl;
+  // Detect when to start grabbing // 0.80   // tossing 
+  // if((initPoseCount_ > 50) && (fabs(targetPose(1) - yToGo) < 0.02f)) {
+	// 		goHome_ = false;
+	// 	}
 }
 
 void DualArmControl::releaseRetractMotion() {
