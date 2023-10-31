@@ -112,7 +112,7 @@ bool dualArmFreeMotionController::init(Eigen::Matrix4f w_H_eeStandby[], Matrix6f
   // _w_max       = 2.0f;
   // _v_max = 2.0f;     // velocity limits
   // _w_max = 4.0f;     // velocity limits
-  _v_max      = 1.25f; //0.1
+  _v_max      = 1.4f; //0.1
   _w_max      = 3.0f;
 
   gain_p_abs = gain_abs_.topLeftCorner(3,3);
@@ -1258,7 +1258,7 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
         //
         activation = 1.0f;
         //
-        this->constrained_ang_vel_correction(w_H_ee, w_H_gp, w_H_o, w_H_Do, Vd_ee_nom, true);
+        this->constrained_ang_vel_correction(w_H_ee, w_H_gp, w_H_o, w_H_Do, Vd_ee_nom, true);    ///////////
         // ========================================================================================
 
         // A.block<3,3>(0,0) = -4.0f * this->gain_p_abs;
@@ -1462,8 +1462,8 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
     float speed_ee[2];
  
     Eigen::Vector3f o_error_pos_abs_paral = this->getAbsoluteTangentError(w_H_o, w_H_ee, w_H_gp);
-    // float cp_ap = Utils<float>::computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.05f, 1.5f, true);  // 50.0f, 0.05f, 2.8f /  50.0f, 0.15f, 1.0f
-    float cp_ap = Utils<float>::computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.03f, 1.2f, true);  // 50.0f, 0.05f, 2.8f /  50.0f, 0.15f, 1.0f
+    float cp_ap = Utils<float>::computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.05f, 1.5f, true);  // 50.0f, 0.05f, 2.8f /  50.0f, 0.15f, 1.0f
+    // float cp_ap = Utils<float>::computeCouplingFactor(o_error_pos_abs_paral, 50.0f, 0.03f, 1.2f, true);  // 50.0f, 0.05f, 2.8f /  50.0f, 0.15f, 1.0f
     float cp_ap2 = 0.0f;
     float  alp  = 1.0f; //0.05f;
     

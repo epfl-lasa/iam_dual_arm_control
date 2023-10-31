@@ -777,7 +777,7 @@ void dual_arm_control::update_states_machines(){
 					break;   
 				case 'u': 
 						_desVimp  +=0.05f;  
-						if(_desVimp > 0.6f) _desVimp = 0.6f;
+						if(_desVimp > 0.7f) _desVimp = 0.7f;
 					break; 
 
 				// reset the data logging 
@@ -943,10 +943,10 @@ void dual_arm_control::updatePoses()
 	_eoC = t_o_absEE.norm(); //(_xoC-_xC).norm();
   	//
 	// // printing for analysis
-	// std::cout << "[dual_arm_control]: _w_H_ee[LEFT]: \n" <<  _w_H_ee[0] << std::endl;
-	// std::cout << "[dual_arm_control]: _w_H_gp[LEFT]: \n" << _w_H_gp[0] << std::endl;
-	// std::cout << "[dual_arm_control]: _w_H_ee[RIGHT]: \n" << _w_H_ee[1] << std::endl;
-	// std::cout << "[dual_arm_control]: _w_H_gp[RIGHT]: \n" << _w_H_gp[1] << std::endl;
+	std::cout << "[dual_arm_control]: _w_H_ee[LEFT]: \n" <<  _w_H_ee[0] << std::endl;
+	std::cout << "[dual_arm_control]: _w_H_gp[LEFT]: \n" << _w_H_gp[0] << std::endl;
+	std::cout << "[dual_arm_control]: _w_H_ee[RIGHT]: \n" << _w_H_ee[1] << std::endl;
+	std::cout << "[dual_arm_control]: _w_H_gp[RIGHT]: \n" << _w_H_gp[1] << std::endl;
 
 	// std::cout << "[dual_arm_control]: _w_H_o:  \n" <<  _w_H_o << std::endl;
 	// std::cout << "[dual_arm_control]: _w_H_Do: \n" <<  _w_H_Do << std::endl;
@@ -1565,7 +1565,7 @@ void dual_arm_control::computeCommands()
 		// compute the object's grasp points velocity
 		getGraspPointsVelocity();
 	  	//
-	  	_desired_object_wrench.head(3) = -40.0f * (_w_H_o.block(0,3,3,1) - _w_H_Do.block(0,3,3,1)) - _objectMass * _gravity;
+	  	_desired_object_wrench.head(3) = _nu_Wr0 * (-40.0f * (_w_H_o.block(0,3,3,1) - _w_H_Do.block(0,3,3,1)) - _objectMass * _gravity);
 		// _desired_object_wrench.head(3) = 0.5f*(_d1[LEFT]+_d1[RIGHT])* 0.0f* (0.5f*(_Vd_ee[LEFT].head(3) + _Vd_ee[RIGHT].head(3)))// - 0.5f*(_Vee[LEFT].head(3) + _Vee[RIGHT].head(3))) 
 		// 							   - 0.f*std::sqrt(0.5f*(_d1[LEFT]+_d1[RIGHT]) * 1.0f*_gain_abs(0)) * 0.5f*(_Vee[LEFT].head(3) + _Vee[RIGHT].head(3))
 		// 							   - _objectMass * _gravity;
@@ -2174,12 +2174,12 @@ void dual_arm_control::publishData()
 
 		// applied wrench
 		geometry_msgs::Wrench msgAppliedWrench;
-		msgAppliedWrench.force.x  	= -CooperativeCtrl._f_applied[k](0);
-	    msgAppliedWrench.force.y  = -CooperativeCtrl._f_applied[k](1);
-	    msgAppliedWrench.force.z  = -CooperativeCtrl._f_applied[k](2);
-	    msgAppliedWrench.torque.x = -CooperativeCtrl._f_applied[k](3);
-	    msgAppliedWrench.torque.y = -CooperativeCtrl._f_applied[k](4);
-	    msgAppliedWrench.torque.z = -CooperativeCtrl._f_applied[k](5);
+		msgAppliedWrench.force.x  	= -_nu_Wr0 * CooperativeCtrl._f_applied[k](0);
+	    msgAppliedWrench.force.y  = -_nu_Wr0 * CooperativeCtrl._f_applied[k](1);
+	    msgAppliedWrench.force.z  = -_nu_Wr0 * CooperativeCtrl._f_applied[k](2);
+	    msgAppliedWrench.torque.x = -_nu_Wr0 * CooperativeCtrl._f_applied[k](3);
+	    msgAppliedWrench.torque.y = -_nu_Wr0 * CooperativeCtrl._f_applied[k](4);
+	    msgAppliedWrench.torque.z = -_nu_Wr0 * CooperativeCtrl._f_applied[k](5);
 		_pubAppliedWrench[k].publish(msgAppliedWrench);
 
 		// contact normal and applied moment
