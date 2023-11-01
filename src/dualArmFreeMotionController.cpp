@@ -1258,7 +1258,7 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],  Vec
         //
         activation = 1.0f;
         //
-        this->constrained_ang_vel_correction(w_H_ee, w_H_gp, w_H_o, w_H_Do, Vd_ee_nom, true);    ///////////
+        this->constrained_ang_vel_correction(w_H_ee, w_H_gp, w_H_o, w_H_Do, Vd_ee_nom, false);    ///////////
         // ========================================================================================
 
         // A.block<3,3>(0,0) = -4.0f * this->gain_p_abs;
@@ -2044,8 +2044,6 @@ Eigen::Vector2f dualArmFreeMotionController::predictRobotTranslation(Eigen::Matr
 
   // robot path length and 
   Eigen::Vector2f Lp_dx_avg = {1e-4, 1e-4};
-
-
 
   while((!isReleasePositionReached) && (pred_count<max_horizon))
   {
