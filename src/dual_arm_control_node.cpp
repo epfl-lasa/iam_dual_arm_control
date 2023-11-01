@@ -47,11 +47,11 @@ int main(int argc, char **argv)
 
 	// creating the streamer
 	dual_arm_control dualArmCtrl(nh, frequency, //DataID,
-																											topic_pose_object, 	
-																											topic_pose_robot_base,
-																											topic_pose_robot_ee,
-																											topic_ee_commands,
-																											topic_sub_ForceTorque_Sensor);
+																topic_pose_object, 	
+																topic_pose_robot_base,
+																topic_pose_robot_ee,
+																topic_ee_commands,
+																topic_sub_ForceTorque_Sensor);
 
 	if (!dualArmCtrl.init()) 
 	{
