@@ -18,8 +18,8 @@ bool dualArmCooperativeController::init()
 	_min_nF 						= 40.0f; //30.0 20.0;  // 40.0f;
 	_max_nF 						= 50.0f; // 45.0f; //  60.0f;
 	//
-	_mu_ee							= 0.9f; //0.4f;
-	_gamma_ee						= 0.9f; //0.4f;
+	_mu_ee							= 0.7f; //0.4f;
+	_gamma_ee						= 0.7f; //0.4f;
 	_deltaX_ee					= 0.5f;
 	_deltaY_ee					= 0.5f;
 	_contactOccured    	= false;
@@ -47,9 +47,9 @@ bool dualArmCooperativeController::init()
 
 	_weight_EEs_wrench.setOnes();
 	_weight_EEs_wrench.segment(0, 3) *= 50.0e-2; 	//1.0e-02  Forces
-	_weight_EEs_wrench.segment(3, 3) *= 500.0e-2; 	//1.0e-02 	Moments
+	_weight_EEs_wrench.segment(3, 3) *= 2000.0e-2; 	//1.0e-02 	Moments
 	_weight_EEs_wrench.segment(6, 3) *= 50.0e-2; 	//1.0e-02 	Forces
-	_weight_EEs_wrench.segment(9, 3) *= 500.0e-2; 	//1.0e-02	Moments	
+	_weight_EEs_wrench.segment(9, 3) *= 2000.0e-2; 	//1.0e-02	Moments	
 	//
 	_weight_EEs_slack.setZero();
 	_weight_EEs_slack << 100.0, 100.0, 100.0, 200.0, 200.0, 200.0;
