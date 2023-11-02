@@ -68,8 +68,8 @@ target_link_libraries(dual_arm_control_node dual_arm_control ${catkin_LIBRARIES}
 add_library(dual_arm_box_control ${SOURCES_DS} ${BWC_SOURCES} )
 target_link_libraries(dual_arm_box_control ${catkin_LIBRARIES})
 
-add_executable(dual_arm_box_control_node ${SRC_FOLDER}/dual_arm_box_control_node.cpp )              
-target_link_libraries(dual_arm_box_control_node dual_arm_box_control ${catkin_LIBRARIES})
+# add_executable(dual_arm_box_control_node ${SRC_FOLDER}/dual_arm_box_control_node.cpp )              
+# target_link_libraries(dual_arm_box_control_node dual_arm_box_control ${catkin_LIBRARIES})
 
 
 

@@ -16,22 +16,26 @@ int main(int argc, char **argv)
 	//
 	std::string DataID;
 
-
+	std::string topic_pose_object[NB_OBJECTS];
 	std::string topic_pose_robot_base[NB_ROBOTS];
 	std::string topic_pose_robot_ee[NB_ROBOTS];
 	std::string topic_ee_commands[NB_ROBOTS];
 	std::string topic_sub_ForceTorque_Sensor[NB_ROBOTS];
 
 	// Parameters
-	std::string topic_pose_object	= "/simo_track/object_pose";
+	// std::string topic_pose_object	= "/simo_track/object_pose2";
 	// 
-	topic_pose_robot_base[0]			= "/simo_track/robot_left/pose";
-	topic_pose_robot_ee[0]				= "/simo_track/robot_left/ee_pose";
-	topic_ee_commands[0]					= "/iiwa1/CustomControllers/command";
+	topic_pose_object[0]		 = "/simo_track/object_pose0";
+	topic_pose_object[1]		 = "/simo_track/object_pose1";
+	topic_pose_object[2]		 = "/simo_track/object_pose2";
+
+	topic_pose_robot_base[0] = "/simo_track/robot_left/pose";
+	topic_pose_robot_ee[0]	 = "/simo_track/robot_left/ee_pose";
+	topic_ee_commands[0]		 = "/iiwa1/CustomControllers/command";
 	//
-	topic_pose_robot_base[1]			= "/simo_track/robot_right/pose";
-	topic_pose_robot_ee[1]				= "/simo_track/robot_right/ee_pose";
-	topic_ee_commands[1]					= "/iiwa_blue/CustomControllers/command";
+	topic_pose_robot_base[1] = "/simo_track/robot_right/pose";
+	topic_pose_robot_ee[1]	 = "/simo_track/robot_right/ee_pose";
+	topic_ee_commands[1]		 = "/iiwa_blue/CustomControllers/command";
 	
 	
 

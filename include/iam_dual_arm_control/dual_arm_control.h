@@ -79,6 +79,159 @@ struct spherical_position{
 };
 
 
+class object_to_grasp{
+
+	public:
+
+		// object
+		float 					_objectMass;
+		Eigen::Vector3f _objectDim;                  			// Object dimensions [m] (3x1)
+		Eigen::Vector3f _xo;
+		Eigen::Vector4f _qo;
+		Eigen::Vector3f _xDo; 
+		Eigen::Vector4f _qDo;
+		Eigen::Matrix4f _w_H_o;
+		Eigen::Matrix4f _w_H_Do;
+		Eigen::Vector3f _xoC;                             // Measured object center position [m] (3x1)
+		Eigen::Vector3f _xoD;                             // Measured object dimension vector [m] (3x1)
+		Eigen::Vector3f _xgp_o[NB_ROBOTS];
+		Eigen::Vector4f _qgp_o[NB_ROBOTS];
+		Eigen::Matrix4f _w_H_gp[NB_ROBOTS];
+		Eigen::Matrix4f _w_H_Dgp[NB_ROBOTS];
+		Eigen::Vector3f _vo;
+		Eigen::Vector3f _wo;
+		Eigen::Vector3f _x_pickup;
+		// Vector6f 		_Vo;
+		// Vector6f 		_Vd_o;   													// desired object velocity (toss)
+		// Vector6f  		_desired_object_wrench; 
+		Eigen::Vector3f _n[NB_ROBOTS];               			// Normal vector to surface object for each robot (3x1)
+		Vector6f        _V_gpo[NB_ROBOTS];
+
+		std::unique_ptr<SGF::SavitzkyGolayFilter> _xo_filtered;
+		std::unique_ptr<SGF::SavitzkyGolayFilter> _qo_filtered;
+		// KF_3DVeloFromPosEstimator 								_xo_KF_filtered; //
+		// KF_3DVeloFromPosEstimator 								_wo_KF_filtered; //
+
+		object_to_grasp(){};
+		~object_to_grasp(){}; 
+
+		void init_object(int sgf_p[], int sgf_o[], float dt, Eigen::Matrix3f o_R_gpl, Eigen::Matrix3f o_R_gpr){
+			// object
+			_vo.setZero();
+			_wo.setZero();
+			_xo.setZero(); 
+			_xDo.setZero(); 
+			// _Vd_o.setZero();
+			_xoC.setZero();
+			_xoD.setZero();
+			_x_pickup.setZero();
+
+			_qo  << 1.0f, 0.0f, 0.0f, 0.0f;
+			_qDo << 1.0f, 0.0f, 0.0f, 0.0f;
+			_w_H_o  = Utils<float>::pose2HomoMx(_xo, _qo);	
+			_w_H_Do = Utils<float>::pose2HomoMx(_xDo, _qDo);	
+			_qgp_o[0] = Utils<float>::rotationMatrixToQuaternion(o_R_gpl); //
+			_qgp_o[1] = Utils<float>::rotationMatrixToQuaternion(o_R_gpr); //
+
+			// normal to contact surfaces
+			_n[0] = o_R_gpl.col(2);
+			_n[1] = o_R_gpr.col(2);
+			_V_gpo[0].setZero();
+			_V_gpo[1].setZero();
+
+			//
+			_xo_filtered = std::make_unique<SGF::SavitzkyGolayFilter>(sgf_p[0], sgf_p[1], sgf_p[2], dt); //(3,3,6,_dt);
+			_qo_filtered = std::make_unique<SGF::SavitzkyGolayFilter>(sgf_o[0], sgf_o[1], sgf_o[2], dt); //(4,3,10,_dt); dim, order, win_l, dt
+
+			// //
+			// _xo_KF_filtered.init(_dt, Eigen::Vector2f(0.004, 0.1), 0.004, _xo);
+			// _xo_KF_filtered.update(_xo);
+
+			this->get_desiredHmgTransform();
+		}
+
+		void get_HmgTransform(){
+				_w_H_o = Utils<float>::pose2HomoMx(_xo, _qo);
+		}
+
+		void get_desiredHmgTransform(){
+				_w_H_Do = Utils<float>::pose2HomoMx(_xDo, _qDo);
+		}
+
+		void get_estimated_state(){
+			// filtered object position
+			SGF::Vec temp(3), temp_o(4);
+			_xo_filtered->AddData(_xo);
+			_xo_filtered->GetOutput(0,temp);
+			_xo = temp;
+			_xo_filtered->GetOutput(1,temp);
+			_vo = temp;	
+			//
+			_qo_filtered->AddData(_qo);
+			_qo_filtered->GetOutput(0,temp_o);
+			// _qo = temp_o;
+
+			// // normalizing the quaternion
+			// _qo.normalize();
+			// //
+			// if(_qo.norm() <= 1e-8){
+			// 	_qo = Eigen::Vector4f(1.0, 0.0, 0.0, 0.0);
+			// }
+			// //
+			// // ===========================================================
+			_qo_filtered->GetOutput(1,temp_o);
+			Eigen::Vector4f qo_dot = temp_o;
+			//
+			Eigen::MatrixXf wQ_map(3,4);
+			wQ_map << -_qo(1), -_qo(0), -_qo(3),  _qo(2),
+								-_qo(2),  _qo(3),  _qo(0), -_qo(1),
+								-_qo(3), -_qo(2),  _qo(1),  _qo(0);
+			_wo = 0.0*wQ_map*qo_dot;
+
+		}
+
+		void get_grasp_point_HTransform(){
+			_w_H_gp[0]  = _w_H_o * Utils<float>::pose2HomoMx(_xgp_o[0],  _qgp_o[0]);
+			_w_H_gp[1]  = _w_H_o * Utils<float>::pose2HomoMx(_xgp_o[1],  _qgp_o[1]);
+		}
+
+		void get_grasp_point_desiredHTransform(){
+			_w_H_Dgp[0] = _w_H_Do * Utils<float>::pose2HomoMx(_xgp_o[0],  _qgp_o[0]);
+			_w_H_Dgp[1] = _w_H_Do * Utils<float>::pose2HomoMx(_xgp_o[1],  _qgp_o[1]);
+		}
+
+		void get_grasp_point_desiredRotation(){
+			_w_H_Dgp[0].block(0,0,3,3) = _w_H_Do.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[0],  _qgp_o[0]).block(0,0,3,3);
+			_w_H_Dgp[1].block(0,0,3,3) = _w_H_Do.block(0,0,3,3) * Utils<float>::pose2HomoMx(_xgp_o[1],  _qgp_o[1]).block(0,0,3,3);
+		}
+
+		void update_grasp_normals(){
+			_n[0]       = _w_H_gp[0].block(0,0,3,3).col(2);
+			_n[1]       = _w_H_gp[1].block(0,0,3,3).col(2);
+		}
+
+		void get_grasp_point_velocity(){
+			//velocity of grasp points on the object
+		  for(int i=0; i<NB_ROBOTS; i++)
+		  {
+		    Eigen::Vector3f t = _w_H_o.block<3,3>(0,0) * _xgp_o[i];
+		    Eigen::Matrix3f skew_Mx_gpo;
+		    skew_Mx_gpo <<   0.0f,  -t(2),     t(1),
+		                     t(2),   0.0f,    -t(0),
+		                    -t(1),   t(0),     0.0f;             
+		    // velocity
+		    _V_gpo[i].head(3) = _vo - 0*skew_Mx_gpo * _wo;
+		    _V_gpo[i].tail(3) = 0*_wo;
+		    //
+		    _V_gpo[i].head(3) *= 0.0f;
+		    _V_gpo[i].tail(3) *= 0.0f;
+		  }
+		  
+		}
+
+};
+
+
 class dual_arm_control
 {
 
@@ -117,7 +270,7 @@ class dual_arm_control
 		//////////////////////////////
 		// Subscribers declarations //
 		//////////////////////////////
-		ros::Subscriber _sub_object_pose;
+		ros::Subscriber _sub_object_pose[NB_OBJECTS];
 		ros::Subscriber _sub_target_pose;
 		ros::Subscriber _sub_base_pose[NB_ROBOTS];				// subscribe to the base pose of the robots
 		ros::Subscriber _sub_ee_pose[NB_ROBOTS];					// subscribe to the end effectors poses
@@ -147,7 +300,7 @@ class dual_arm_control
 		//////////////////////////////
 		// List of the topics
 		//////////////////////////////
-		std::string _topic_pose_object;
+		std::string _topic_pose_object[NB_OBJECTS];
 		std::string _topic_pose_robot_base[NB_ROBOTS];
 		std::string _topic_pose_robot_ee[NB_ROBOTS];
 		std::string _topic_ee_commands[NB_ROBOTS];
@@ -220,8 +373,8 @@ class dual_arm_control
 
 		
 
-		Eigen::Vector3f _n[NB_ROBOTS];               			// Normal vector to surface object for each robot (3x1)
-		Vector6f        _V_gpo[NB_ROBOTS];
+		// Eigen::Vector3f _n[NB_ROBOTS];               			// Normal vector to surface object for each robot (3x1)
+		// Vector6f        _V_gpo[NB_ROBOTS];
 
 		Eigen::Vector3f _delta_pos; 											// variation of object position
 		Eigen::Vector3f _delta_ang; 											// variation of object orientation euler angles
@@ -229,22 +382,26 @@ class dual_arm_control
 
 		//---------------------------------------------------------------------------------
 		// object
-		float 					_objectMass;
-		Eigen::Vector3f _objectDim;                  			// Object dimensions [m] (3x1)
-		Eigen::Vector3f _xo;
-		Eigen::Vector4f _qo;
-		Eigen::Vector3f _xDo; 
-		Eigen::Vector4f _qDo;
-		Eigen::Matrix4f _w_H_o;
-		Eigen::Matrix4f _w_H_Do;
-		Eigen::Vector3f _xoC;                             // Measured object center position [m] (3x1)
-		Eigen::Vector3f _xoD;                             // Measured object dimension vector [m] (3x1)
-		Eigen::Vector3f _xgp_o[NB_ROBOTS];
-		Eigen::Vector4f _qgp_o[NB_ROBOTS];
-		Eigen::Matrix4f _w_H_gp[NB_ROBOTS];
-		Eigen::Matrix4f _w_H_Dgp[NB_ROBOTS];
-		Eigen::Vector3f _vo;
-		Eigen::Vector3f _wo;
+		// object to grasp
+		object_to_grasp object_[NB_OBJECTS];
+		int activeObjectID_;
+
+		// float 					_objectMass;
+		// Eigen::Vector3f _objectDim;                  			// Object dimensions [m] (3x1)
+		// Eigen::Vector3f _xo;
+		// Eigen::Vector4f _qo;
+		// Eigen::Vector3f _xDo; 
+		// Eigen::Vector4f _qDo;
+		// Eigen::Matrix4f _w_H_o;
+		// Eigen::Matrix4f _w_H_Do;
+		// Eigen::Vector3f _xoC;                             // Measured object center position [m] (3x1)
+		// Eigen::Vector3f _xoD;                             // Measured object dimension vector [m] (3x1)
+		// Eigen::Vector3f _xgp_o[NB_ROBOTS];
+		// Eigen::Vector4f _qgp_o[NB_ROBOTS];
+		// Eigen::Matrix4f _w_H_gp[NB_ROBOTS];
+		// Eigen::Matrix4f _w_H_Dgp[NB_ROBOTS];
+		// Eigen::Vector3f _vo;
+		// Eigen::Vector3f _wo;
 		Vector6f 		_Vo;
 		Vector6f 				_Vd_o;   													// desired object velocity (toss)
 		Vector6f  			_desired_object_wrench; 
@@ -257,7 +414,7 @@ class dual_arm_control
 		Eigen::Vector3f _wt;
 
 		Eigen::Vector3f _xd_landing;
-		Eigen::Vector3f _x_pickup;
+		// Eigen::Vector3f _x_pickup;
 		Eigen::Vector3f _x_intercept;   // intercept point of the moving object
 		Eigen::Vector3f _xt_state2go;
 
@@ -392,7 +549,7 @@ class dual_arm_control
 
 
 		// Callbacks
-		void objectPoseCallback(const geometry_msgs::Pose::ConstPtr& msg);
+		void objectPoseCallback(const geometry_msgs::Pose::ConstPtr& msg, int k);
 		void targetPoseCallback(const geometry_msgs::Pose::ConstPtr& msg);
 		void updateBasePoseCallback(const geometry_msgs::Pose::ConstPtr& msg , int k);
 		void updateEEPoseCallback(const geometry_msgs::Pose::ConstPtr& msg , int k);
@@ -427,11 +584,11 @@ class dual_arm_control
 	public :
 		//
 		dual_arm_control(	ros::NodeHandle &n, double frequency, 	//std::string dataID,
-							std::string topic_pose_object_,
-							std::string topic_pose_robot_base[],
-							std::string topic_pose_robot_ee[],
-							std::string topic_ee_commands[],
-							std::string topic_sub_ForceTorque_Sensor[]);
+											std::string topic_pose_object[],
+											std::string topic_pose_robot_base[],
+											std::string topic_pose_robot_ee[],
+											std::string topic_ee_commands[],
+											std::string topic_sub_ForceTorque_Sensor[]);
 		~dual_arm_control();
 
 		bool init();
