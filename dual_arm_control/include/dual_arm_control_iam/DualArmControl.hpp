@@ -136,6 +136,7 @@ struct DataToSave {
   Eigen::Vector3f robotVDes[NB_ROBOTS];
   Eigen::Vector3f robotOmegaDes[NB_ROBOTS];
   Vector6f robotFilteredWrench[NB_ROBOTS];
+  Vector6f robotWrench[NB_ROBOTS];
   Vector7f robotJointsPositions[NB_ROBOTS];
   Vector7f robotJointsVelocities[NB_ROBOTS];
   Vector7f robotJointsAccelerations[NB_ROBOTS];
@@ -409,7 +410,10 @@ public:
                                  std::vector<Eigen::Vector4f> robotBaseOrientation,
                                  int cycleCount);
   void updateContactState();
-  void computeCommands(std::vector<Eigen::Vector3f> eePose, std::vector<Eigen::Vector4f> eeOrientation, Eigen::Vector3f targetPose, int cycleCount);
+  void computeCommands(std::vector<Eigen::Vector3f> eePose,
+                       std::vector<Eigen::Vector4f> eeOrientation,
+                       Eigen::Vector3f targetPose,
+                       int cycleCount);
   void updatePoses();
 
   void updateReleasePosition();

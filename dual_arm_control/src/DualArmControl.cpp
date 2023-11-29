@@ -718,8 +718,7 @@ void DualArmControl::computeCommands(std::vector<Eigen::Vector3f> eePose,
 
 void DualArmControl::asyncMotion(Eigen::Vector3f targetPose) {
 
-
-	// float yToGo = target_.getXdLanding()(1) - target_.getVt()(1) * (target_.getXdLanding()(0) - object_.getXPickup()(0))/(0.25f*desVtoss_); // 0.28f
+  // float yToGo = target_.getXdLanding()(1) - target_.getVt()(1) * (target_.getXdLanding()(0) - object_.getXPickup()(0))/(0.25f*desVtoss_); // 0.28f
 
   freeMotionCtrl_.computeAsyncMotion(robot_.getWHEE(),
                                      robot_.getWHEEStandby(),
@@ -742,10 +741,10 @@ void DualArmControl::asyncMotion(Eigen::Vector3f targetPose) {
   this->reset();
 
   // std::cout << " yToGo " << yToGo << "  target pos " << targetPose(1) << std::endl;
-  // Detect when to start grabbing // 0.80   // tossing 
+  // Detect when to start grabbing // 0.80   // tossing
   // if((initPoseCount_ > 50) && (fabs(targetPose(1) - yToGo) < 0.02f)) {
-	// 		goHome_ = false;
-	// 	}
+  // 		goHome_ = false;
+  // 	}
 }
 
 void DualArmControl::releaseRetractMotion() {
@@ -1270,6 +1269,9 @@ DataToSave DualArmControl::getDataToSave() {
   dataToSave.robotOmegaDes[RIGHT] = robot_.getOmegaDes(RIGHT);
   dataToSave.robotFilteredWrench[LEFT] = robot_.getFilteredWrench(LEFT);
   dataToSave.robotFilteredWrench[RIGHT] = robot_.getFilteredWrench(RIGHT);
+  dataToSave.robotWrench[LEFT] = robot_.getWrench(LEFT);
+  dataToSave.robotWrench[RIGHT] = robot_.getWrench(RIGHT);
+
   dataToSave.robotJointsPositions[LEFT] = robot_.getJointsPositions(LEFT);
   dataToSave.robotJointsPositions[RIGHT] = robot_.getJointsPositions(RIGHT);
   dataToSave.robotJointsVelocities[LEFT] = robot_.getJointsVelocities(LEFT);

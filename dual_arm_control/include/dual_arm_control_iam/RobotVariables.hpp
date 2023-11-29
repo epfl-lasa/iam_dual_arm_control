@@ -300,6 +300,7 @@ public:
   Vector6f getVEEObstacleAvoidance(int robotID) { return vEEObstacleAvoidance_[robotID]; }
   Eigen::Vector3f getFXC(int robotID) { return fxc_[robotID]; }
   Vector6f getFilteredWrench(int robotID) { return filteredWrench_[robotID]; }
+  Vector6f getWrench(int robotID) { return wrench_[robotID]; }
   Eigen::Matrix4f* getWHEE() { return wHEE_; }
   Eigen::Matrix4f getWHEESpecific(int robotID) { return wHEE_[robotID]; }
   Eigen::Matrix4f* getWHEEStandby() { return wHEEStandby_; }

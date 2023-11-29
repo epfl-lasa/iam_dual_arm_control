@@ -73,7 +73,9 @@ void saveData(DataLogging& dataLog, int cycleCount, double dt, DataToSave dataTo
   dataLog.outRecordEfforts << dataToSave.robotFilteredWrench[LEFT].transpose().format(CSVFormat) << " , ";
   dataLog.outRecordEfforts << dataToSave.robotFilteredWrench[RIGHT].transpose().format(CSVFormat) << " , ";
   dataLog.outRecordEfforts << dataToSave.cooperativeCtrlForceApplied[LEFT].transpose().format(CSVFormat) << " , ";
-  dataLog.outRecordEfforts << dataToSave.cooperativeCtrlForceApplied[RIGHT].transpose().format(CSVFormat) << std::endl;
+  dataLog.outRecordEfforts << dataToSave.cooperativeCtrlForceApplied[RIGHT].transpose().format(CSVFormat) << " , ";
+  dataLog.outRecordEfforts << dataToSave.robotWrench[LEFT].transpose().format(CSVFormat) << " , ";
+  dataLog.outRecordEfforts << dataToSave.robotWrench[RIGHT].transpose().format(CSVFormat) << std::endl;
 
   dataLog.outRecordTasks << (float) (cycleCount * dt) << ", ";
   dataLog.outRecordTasks << dataToSave.desiredVelImp << " , " << dataToSave.desVtoss << " , ";
