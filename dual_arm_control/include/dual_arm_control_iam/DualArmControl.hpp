@@ -443,4 +443,6 @@ public:
 
   // ---- Get data for log
   DataToSave getDataToSave();
+
+  float getContactConfidenceCooperativeCtrl();
 };

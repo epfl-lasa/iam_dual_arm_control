@@ -520,9 +520,9 @@ void DualArmControl::updateContactState() {
   }
 
   // Check contact
-  sensedContact_ = ((fabs(robot_.getNormalForce(LEFT)) >= forceThreshold_)
-                    || (fabs(robot_.getNormalForce(RIGHT)) >= forceThreshold_))
-      && (isContact_ == 1.0f);
+  sensedContact_ = true; //((fabs(robot_.getNormalForce(LEFT)) >= forceThreshold_)
+      //               || (fabs(robot_.getNormalForce(RIGHT)) >= forceThreshold_))
+      // && (isContact_ == 1.0f);
 }
 
 CommandStruct DualArmControl::generateCommands(std::vector<float> firstEigenPassiveDamping,
@@ -606,6 +606,18 @@ void DualArmControl::computeCommands(std::vector<Eigen::Vector3f> eePose,
   bool isPlacing = isPlacing_ || (dualTaskSelector_ == PICK_AND_PLACE);
   bool isThrowing = isThrowing_ || (dualTaskSelector_ == TOSSING) || (dualTaskSelector_ == PICK_AND_TOSS);
   bool isPlaceTossing = isPlaceTossing_ || (dualTaskSelector_ == PLACE_TOSSING);
+
+
+  std::cout << "CooperativeCtrl.getContactConfidence() " << CooperativeCtrl.getContactConfidence() << std::endl;
+
+  std::cout << "[CooperativeCtrl] robot_.getX(LEFT) " << robot_.getX(LEFT).transpose() << std::endl;
+  std::cout << "[CooperativeCtrl] object_.getXGpO(LEFT) " << object_.getXGpO(LEFT).transpose() << std::endl;
+  // std::cout << "[CooperativeCtrl] distToContact_ RIGHT \n " << object_.getWHGpSpecific(LEFT) << std::endl;
+  std::cout << "[CooperativeCtrl] robot_.getX(RIGHT) " << robot_.getX(RIGHT).transpose() << std::endl;
+  std::cout << "[CooperativeCtrl] object_.getXGpO(RIGHT) " << object_.getXGpO(RIGHT).transpose() << std::endl;
+  // std::cout << "[CooperativeCtrl] distToContact_ RIGHT \n " << object_.getWHGpSpecific(RIGHT) << std::endl;
+  std::cout << "[CooperativeCtrl] object_.getXo() " << object_.getXo().transpose() << std::endl;
+  
 
   // ---------- Intercept/ landing location ----------
   // Compute intercept position with yaw angle limits for throwing object
@@ -1335,3 +1347,8 @@ DataToSave DualArmControl::getDataToSave() {
 
   return dataToSave;
 }
+
+float DualArmControl::getContactConfidenceCooperativeCtrl() {
+  return CooperativeCtrl.getContactConfidence();
+}
+
