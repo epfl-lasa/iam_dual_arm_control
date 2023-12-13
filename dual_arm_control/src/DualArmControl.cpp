@@ -254,6 +254,9 @@ bool DualArmControl::initDSThrowing() {
 }
 
 bool DualArmControl::loadParamFromFile(const std::string pathToYamlFile, const std::string pathLearnedModelfolder) {
+
+  gravity_ << 0.0f, 0.0f, -9.80665f;
+
   YAML::Node config = YAML::LoadFile(pathToYamlFile);
 
   qpWrenchGeneration_ = config["dual_arm_task"]["isQP_wrench_generation"].as<bool>();
