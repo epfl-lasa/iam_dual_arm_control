@@ -447,4 +447,6 @@ public:
 
   // ---- Get data for log
   DataToSave getDataToSave();
+
+  float getContactConfidenceDual() {return CooperativeCtrl.getContactConfidence();}
 };
