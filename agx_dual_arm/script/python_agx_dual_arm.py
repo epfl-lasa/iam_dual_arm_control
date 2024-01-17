@@ -48,7 +48,7 @@ DS_GAIN_ORI = 3.0
 LAMBDA_POS = [70.0, 70.0]
 LAMBDA_ORI = [6.0, 6.0]
 
-passive_ds_controller = [180.0, 180.0]
+passive_ds_controller = [50.0, 50.0]
 
 # -- tossing and throwing controller
 PATH_YAML_FILE = "config/parameters.yaml"
@@ -378,6 +378,7 @@ if __name__ == '__main__':
                     state_machine, keyboard_waiting, change_box = keyboard_input(state_machine, keyboard_waiting, change_box)
                     dual_arm_control_agx.updateStateMachine(state_machine)
                     keyboard_waiting_cycle = cycle_count
+                # print("BOX ORI ", box.orientation)
 
                 commandGenerated = dual_arm_control_agx.generateCommands(
                     passive_ds_controller,
@@ -403,6 +404,15 @@ if __name__ == '__main__':
                     controller_left.set_desired_twist(commandGenerated.vDes[ROBOT_LEFT-1], commandGenerated.omegaDes[ROBOT_LEFT-1])
                 norm_force  = -commandGenerated.nuWr0 * commandGenerated.appliedWrench[ROBOT_LEFT-1][0:3]
                 moment = -commandGenerated.nuWr0 * commandGenerated.appliedWrench[ROBOT_LEFT-1][3:6]
+                print("LEFT getEEpos() ", controller_left.getEEpos() + ROBOT_BASE_POSE[0] - DUAL_ROBOT_FRAME)
+                print("RIGHT getEEpos() ", controller_right.getEEpos() + ROBOT_BASE_POSE[1] - DUAL_ROBOT_FRAME)
+                print("LEFT getEEquat() ", controller_left.getEEquat())
+                print("RIGHT getEEquat() ", controller_right.getEEquat())
+                print("vDes ROBOT_LEFT ", commandGenerated.vDes[ROBOT_LEFT-1])
+                print("vDes ROBOT_RIGHT ", commandGenerated.vDes[ROBOT_RIGHT-1])
+                print("omegaDes ROBOT_LEFT ", commandGenerated.omegaDes[ROBOT_LEFT-1])
+                print("omegaDes ROBOT_RIGHT ", commandGenerated.omegaDes[ROBOT_RIGHT-1])
+                print("np.linalg.norm(norm_force) ", np.linalg.norm(norm_force))
                 if np.linalg.norm(norm_force) > 0:
                     norm_force = norm_force / np.linalg.norm(norm_force)
                 controller_left.set_force_normal(norm_force)
