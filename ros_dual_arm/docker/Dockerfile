@@ -14,6 +14,7 @@ USER ${USER}
 # Add ros packages
 RUN sudo apt-get update && sudo apt-get install -y \
     ros-melodic-tf-conversions \
+    ros-melodic-vrpn-client-ros \
     && sudo apt-get upgrade -y && sudo apt-get clean
 
 # # Pinocchio
