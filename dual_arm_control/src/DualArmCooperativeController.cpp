@@ -22,7 +22,7 @@ bool DualArmCooperativeController::init() {
   deltaXEE_ = 0.05f;
   deltaYEE_ = 0.05f;
   contactOccured_ = false;
-  targetForce_ = 45.0f;
+  targetForce_ = 0.0f;
 
   graspMatrixEEs_.setZero();
   optimalContactWrenchEE_.setZero();
@@ -409,3 +409,8 @@ void DualArmCooperativeController::getAppliedWrenches(bool goHome,
 float DualArmCooperativeController::getContactConfidence() { return contactConfidence_; }
 
 Vector6f DualArmCooperativeController::getForceApplied(int robotID) { return forceApplied_[robotID]; }
+
+bool DualArmCooperativeController::setContactConfidence(){
+  contactConfidence_ = 1.f;
+  return true;
+}

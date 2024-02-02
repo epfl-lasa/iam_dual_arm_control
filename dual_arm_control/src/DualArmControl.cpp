@@ -523,9 +523,9 @@ void DualArmControl::updateContactState() {
   }
 
   // Check contact
-  sensedContact_ = ((fabs(robot_.getNormalForce(LEFT)) >= forceThreshold_)
-                    || (fabs(robot_.getNormalForce(RIGHT)) >= forceThreshold_))
-      && (isContact_ == 1.0f);
+  // sensedContact_ = ((fabs(robot_.getNormalForce(LEFT)) >= forceThreshold_)
+  //                   || (fabs(robot_.getNormalForce(RIGHT)) >= forceThreshold_))
+  //     && (isContact_ == 1.0f);
 }
 
 CommandStruct DualArmControl::generateCommands(std::vector<float> firstEigenPassiveDamping,
@@ -1340,3 +1340,4 @@ DataToSave DualArmControl::getDataToSave() {
 
   return dataToSave;
 }
+

@@ -150,5 +150,7 @@ public:
                                         bool isForceDetected);
   float getContactConfidence();
 
+  bool setContactConfidence();
+
   Vector6f getForceApplied(int robotID);
 };

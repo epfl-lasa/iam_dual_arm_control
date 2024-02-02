@@ -1396,7 +1396,7 @@ Vector6f DualArmFreeMotionController::computeDesiredTaskTwist(const Eigen::Matri
   // ---------------------------------
   float gainTheta = 0.5f * (std::tanh(30 * (0.25 - errorEE.tail(3).norm())) + 1.0);
   float gnAdapt = (1 + 2.f * gainTheta);
-  desTwistEE.head(3) = -4.0f * gainPosAbs_ * errorEE.head(3);
+  desTwistEE.head(3) = -2.0f * gainPosAbs_ * errorEE.head(3);
   desTwistEE.tail(3) = -1.0f * gainOriAbs_ * gnAdapt * errorEE.tail(3);
   desTwistEE = Utils<float>::saturationTwist(vMax_, wMax_, desTwistEE);
 

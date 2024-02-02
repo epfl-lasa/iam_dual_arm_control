@@ -438,6 +438,7 @@ public:
 
   bool getReleaseFlag();
   double getPeriod();
+  
 
   // ---- Keyboard commands
   void keyboardVirtualObjectControl();
@@ -449,4 +450,10 @@ public:
   DataToSave getDataToSave();
 
   float getContactConfidenceDual() {return CooperativeCtrl.getContactConfidence();}
+
+  bool setContactStatus(bool status){
+    sensedContact_ = status;
+    return true;
+  }
+
 };
