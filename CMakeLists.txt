@@ -1,4 +1,5 @@
-cmake_minimum_required(VERSION 2.8.3)
+# cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.5)
 
 project(dual_arm_control)
 
@@ -18,10 +19,18 @@ find_package(catkin REQUIRED COMPONENTS
   tf_conversions
   roslib
   sg_differentiation
+  dual_pre_grabbing
 )
+
+find_package(yaml-cpp REQUIRED)
+
+find_library(libqpOASES NAMES libqpOASES.so PATHS "/home/michael/packages/src/qpOASES-3.2.1/bin/") 
+set(qpOASES_DIR "/home/michael/packages/src/qpOASES-3.2.1") 
+include_directories(${qpOASES_DIR}/include)
 
 # find_package(YARP)
 find_package(Eigen3 REQUIRED)
+include_directories(${YAML_CPP_INCLUDE_DIRS})
 
 catkin_package(
   INCLUDE_DIRS include
@@ -33,11 +42,13 @@ catkin_package(
     tf_conversions 
     roslib 
     sg_differentiation
+    dual_pre_grabbing
 )
 
 set(SRC_FOLDER      "${CMAKE_CURRENT_SOURCE_DIR}/src")
 set(HEADERS_FOLDER  "${CMAKE_CURRENT_SOURCE_DIR}/include/")
 set(SOLVER_BWC      "${CMAKE_CURRENT_SOURCE_DIR}/bwc_cvxgen")
+
 
 include_directories(
   include
@@ -56,11 +67,11 @@ set(SOURCES_DS  ${SRC_FOLDER}/dual_arm_control.cpp
 
 file(GLOB BWC_SOURCES   "${SOLVER_BWC}/*.c")
 
-add_library(dual_arm_control ${SOURCES_DS} ${BWC_SOURCES} )
-target_link_libraries(dual_arm_control ${catkin_LIBRARIES})
+add_library(dual_arm_control ${SOURCES_DS} ${BWC_SOURCES})
+target_link_libraries(dual_arm_control ${catkin_LIBRARIES} dual_pre_grabbing)
 
 add_executable(dual_arm_control_node ${SRC_FOLDER}/dual_arm_control_node.cpp)              
-target_link_libraries(dual_arm_control_node dual_arm_control ${catkin_LIBRARIES})
+target_link_libraries(dual_arm_control_node dual_arm_control ${catkin_LIBRARIES} dual_pre_grabbing )
 # target_link_libraries(dual_arm_control_node ${catkin_LIBRARIES})
 
 
@@ -77,5 +88,6 @@ target_link_libraries(dual_arm_control_node dual_arm_control ${catkin_LIBRARIES}
 add_dependencies(dual_arm_control_node 
   ${${PROJECT_NAME}_EXPORTED_TARGETS} 
   ${catkin_EXPORTED_TARGETS}
-${PROJECT_NAME}_gencfg)
+# ${PROJECT_NAME}_gencfg
+)
 
