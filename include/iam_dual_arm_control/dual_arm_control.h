@@ -817,6 +817,7 @@ protected:
   Eigen::Vector3f _xEE_dual;
   Eigen::Vector3f _xEE_dual_0;
   // ------------------------------------------------------------------------
+  Vector6f preGrabWrencEEDes[NB_ROBOTS];
 
   // target
   std::deque<Eigen::Vector3f> _windowVelTarget;

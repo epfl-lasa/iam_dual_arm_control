@@ -53,6 +53,7 @@ dual_arm_control::dual_arm_control(ros::NodeHandle& n, double frequency,// std::
     _dirImp[k].setZero();
     _VdImpact[k].setZero();
     //
+    preGrabWrencEEDes[k].setZero();//
   }
   //
   _Vo.setZero();
@@ -1232,6 +1233,8 @@ void dual_arm_control::computeCommands() {
       Eigen::Matrix4f wHEEDes[NB_ROBOTS];
       wHEEDes[LEFT] = dualPreGrab.getDesiredTransformEE(LEFT).cast<float>();
       wHEEDes[RIGHT] = dualPreGrab.getDesiredTransformEE(RIGHT).cast<float>();
+      preGrabWrencEEDes[LEFT] = dualPreGrab.getEEDesiredWrench(LEFT).cast<float>();
+      preGrabWrencEEDes[RIGHT] = dualPreGrab.getEEDesiredWrench(RIGHT).cast<float>();
       // Get the desired output commands
       robot_._Vd_ee[0] = dualPreGrab.getEEDesiredVelocityTwist(0).cast<float>();
       robot_._Vd_ee[1] = dualPreGrab.getEEDesiredVelocityTwist(1).cast<float>();
@@ -1324,7 +1327,7 @@ void dual_arm_control::computeCommands() {
           robot_._Vd_ee[RIGHT].head(3) - 0.40 * abs_force_correction * object_._n[RIGHT];// 0.6 (heavy objects)
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // Adaptation
     // ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //
@@ -1360,6 +1363,11 @@ void dual_arm_control::computeCommands() {
     // applied force in velocity space
     for (int i = 0; i < NB_ROBOTS; i++) {
       robot_._fxc[i] = 1.0f / _d1[i] * CooperativeCtrl._f_applied[i].head(3);
+    }
+    //
+    if (isPreGrabbing_) {
+      robot_._fxc[LEFT] = 1.0f / _d1[LEFT] * preGrabWrencEEDes[LEFT].head(3);
+      robot_._fxc[RIGHT] = 1.0f / _d1[RIGHT] * preGrabWrencEEDes[RIGHT].head(3);
     }
   }
   // compute the velocity to avoid EE collision
@@ -1466,6 +1474,13 @@ void dual_arm_control::computeCommands() {
   // robot_._w_H_eeStandby[1] << std::endl;  // robot_._w_H_eeStandby
   std::cout << "[dual_arm_control]: _desired_object_wrench:  WWWWWWWW  \t" << _desired_object_wrench.transpose()
             << std::endl;//
+  std::cout << " PGPGPGPGPGPG isPreGrabbing_ PGPGPGPGPGPG  is  -----------> : \t " << isPreGrabbing_ << std::endl;
+  std::cout << " ---- preGrabWrencEEDes[0] ----  is  -----> : \t " << preGrabWrencEEDes[0].transpose() << std::endl;
+  std::cout << " ---- preGrabWrencEEDes[1] ----  is  -----> : \t " << preGrabWrencEEDes[1].transpose() << std::endl;
+  std::cout << ".. isObjectTopAttractor_ ---------> is  \t" << dualPreGrab.isObjectTopAttractor_ << std::endl;
+  std::cout << ".. isObjectBackwardTilting_ ------> is  \t" << dualPreGrab.isObjectBackwardTilting_ << std::endl;
+  std::cout << ".. isObjectReleasingAndCatching_ -> is  \t" << dualPreGrab.isObjectReleasingAndCatching_ << std::endl;
+  std::cout << ".. preGrabbingFlag_ ---------> is  \t" << dualPreGrab.preGrabbingFlag_ << std::endl;
   //---------------------------------------------------------------------------------------------------------------------------------------------
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1483,7 +1498,8 @@ void dual_arm_control::prepareCommands(Vector6f Vd_ee[], Eigen::Vector4f qd[], V
   }
 
   // --------------------------------------------------------
-  if (_goToAttractors && _sensedContact && CooperativeCtrl._ContactConfidence == 1.0f) {
+  // if (_goToAttractors && _sensedContact && CooperativeCtrl._ContactConfidence == 1.0f) {
+  if (_goToAttractors && (isPreGrabbing_ || (_sensedContact && CooperativeCtrl._ContactConfidence == 1.0f))) {
     _nu_Wr0 = 0.80f * _nu_Wr0 + 0.20f;
     _nu_Wr1 = 0.92f * _nu_Wr1 + 0.08f;
   } else {

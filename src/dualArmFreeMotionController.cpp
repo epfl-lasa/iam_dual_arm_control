@@ -67,7 +67,7 @@ dualArmFreeMotionController::dualArmFreeMotionController() {
 
   //
   _sw_EE_obsAv = 100.0f;
-  _min_dist_EE = 0.09f;
+  _min_dist_EE = 0.05f;
   //
   Eigen::Vector2f P1 = Eigen::Vector2f(0.f, 0.05f); //(0.f, 0.085f);
   Eigen::Vector2f P2 = Eigen::Vector2f(0.f, -0.05f);//(0.f,-0.085f);
