@@ -1241,6 +1241,12 @@ void dual_arm_control::computeCommands() {
       // Eigen::Vector4f qDes[NB_ROBOTS];
       // FreeMotionCtrl.computeCoordinatedMotion2(robot_._w_H_ee, wHEEDes, object_._w_H_o, robot_._Vd_ee, qDes, true);
 
+      if ((robot_._filteredWrench[LEFT].tail(3).norm() + robot_._filteredWrench[RIGHT].tail(3).norm()) >= 0.5) {
+        dualPreGrab.isObjectEEContactTilt = true;
+      } else {
+        dualPreGrab.isObjectEEContactTilt = false;
+      }
+
       std::cout << " ================= IN PRE GRABBING MANEUVERS ================= \t " << 0 << std::endl;
     }
     // ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1365,10 +1371,10 @@ void dual_arm_control::computeCommands() {
       robot_._fxc[i] = 1.0f / _d1[i] * CooperativeCtrl._f_applied[i].head(3);
     }
     //
-    if (isPreGrabbing_) {
-      robot_._fxc[LEFT] = 1.0f / _d1[LEFT] * preGrabWrencEEDes[LEFT].head(3);
-      robot_._fxc[RIGHT] = 1.0f / _d1[RIGHT] * preGrabWrencEEDes[RIGHT].head(3);
-    }
+    // if (isPreGrabbing_) {
+    //   robot_._fxc[LEFT] = 1.0f / _d1[LEFT] * preGrabWrencEEDes[LEFT].head(3);
+    //   robot_._fxc[RIGHT] = 1.0f / _d1[RIGHT] * preGrabWrencEEDes[RIGHT].head(3);
+    // }
   }
   // compute the velocity to avoid EE collision
   FreeMotionCtrl.compute_EE_avoidance_velocity(robot_._w_H_ee, robot_._VEE_oa);
@@ -1498,8 +1504,8 @@ void dual_arm_control::prepareCommands(Vector6f Vd_ee[], Eigen::Vector4f qd[], V
   }
 
   // --------------------------------------------------------
-  // if (_goToAttractors && _sensedContact && CooperativeCtrl._ContactConfidence == 1.0f) {
-  if (_goToAttractors && (isPreGrabbing_ || (_sensedContact && CooperativeCtrl._ContactConfidence == 1.0f))) {
+  if (_goToAttractors && _sensedContact && CooperativeCtrl._ContactConfidence == 1.0f) {
+    // if (_goToAttractors && (isPreGrabbing_ || (_sensedContact && CooperativeCtrl._ContactConfidence == 1.0f))) {
     _nu_Wr0 = 0.80f * _nu_Wr0 + 0.20f;
     _nu_Wr1 = 0.92f * _nu_Wr1 + 0.08f;
   } else {
@@ -1661,6 +1667,8 @@ void dual_arm_control::reset_variables() {
   //
   _dxEE_dual_avg = 0.0f;
   _Del_xEE_dual_avg = 0.0f;
+  //
+  dualPreGrab.resetPhaseStates();
 }
 
 Eigen::Vector3f dual_arm_control::get_object_desired_direction(int task_type, Eigen::Vector3f object_pos) {
@@ -2190,12 +2198,23 @@ void dual_arm_control::publishData() {
 
     // applied wrench
     geometry_msgs::Wrench msgAppliedWrench;
-    msgAppliedWrench.force.x = -_nu_Wr0 * CooperativeCtrl._f_applied[k](0);
-    msgAppliedWrench.force.y = -_nu_Wr0 * CooperativeCtrl._f_applied[k](1);
-    msgAppliedWrench.force.z = -_nu_Wr0 * CooperativeCtrl._f_applied[k](2);
-    msgAppliedWrench.torque.x = -_nu_Wr0 * CooperativeCtrl._f_applied[k](3);
-    msgAppliedWrench.torque.y = -_nu_Wr0 * CooperativeCtrl._f_applied[k](4);
-    msgAppliedWrench.torque.z = -_nu_Wr0 * CooperativeCtrl._f_applied[k](5);
+
+    if (isPreGrabbing_) {
+      msgAppliedWrench.force.x = preGrabWrencEEDes[k](0);
+      msgAppliedWrench.force.y = preGrabWrencEEDes[k](1);
+      msgAppliedWrench.force.z = preGrabWrencEEDes[k](2);
+      msgAppliedWrench.torque.x = preGrabWrencEEDes[k](3);
+      msgAppliedWrench.torque.y = preGrabWrencEEDes[k](4);
+      msgAppliedWrench.torque.z = preGrabWrencEEDes[k](5);
+
+    } else {
+      msgAppliedWrench.force.x = -_nu_Wr0 * CooperativeCtrl._f_applied[k](0);
+      msgAppliedWrench.force.y = -_nu_Wr0 * CooperativeCtrl._f_applied[k](1);
+      msgAppliedWrench.force.z = -_nu_Wr0 * CooperativeCtrl._f_applied[k](2);
+      msgAppliedWrench.torque.x = -_nu_Wr0 * CooperativeCtrl._f_applied[k](3);
+      msgAppliedWrench.torque.y = -_nu_Wr0 * CooperativeCtrl._f_applied[k](4);
+      msgAppliedWrench.torque.z = -_nu_Wr0 * CooperativeCtrl._f_applied[k](5);
+    }
     _pubAppliedWrench[k].publish(msgAppliedWrench);
 
     // contact normal and applied moment
