@@ -16,8 +16,8 @@ dual_system:
       left: [0.0, 0.0, 0.035]
       right: [0.0, 0.0, 0.035]
     mass:
-      left:  0.2
-      right: 0.2
+      left:  0.3
+      right: 0.3
   # DS Damping gains
   passiveDS:
     dampingTopic:

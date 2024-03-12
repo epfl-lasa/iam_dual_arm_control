@@ -2199,13 +2199,21 @@ void dual_arm_control::publishData() {
     // applied wrench
     geometry_msgs::Wrench msgAppliedWrench;
 
+    float gainFT = 0.0f;
+
     if (isPreGrabbing_) {
-      msgAppliedWrench.force.x = preGrabWrencEEDes[k](0);
-      msgAppliedWrench.force.y = preGrabWrencEEDes[k](1);
-      msgAppliedWrench.force.z = preGrabWrencEEDes[k](2);
-      msgAppliedWrench.torque.x = preGrabWrencEEDes[k](3);
-      msgAppliedWrench.torque.y = preGrabWrencEEDes[k](4);
-      msgAppliedWrench.torque.z = preGrabWrencEEDes[k](5);
+      msgAppliedWrench.force.x =
+          2.f * preGrabWrencEEDes[k](0) + gainFT * (preGrabWrencEEDes[k](0) + robot_._filteredWrench[k](0));
+      msgAppliedWrench.force.y =
+          2.f * preGrabWrencEEDes[k](1) + gainFT * (preGrabWrencEEDes[k](1) + robot_._filteredWrench[k](1));
+      msgAppliedWrench.force.z =
+          2.f * preGrabWrencEEDes[k](2) + gainFT * (preGrabWrencEEDes[k](2) + robot_._filteredWrench[k](2));
+      msgAppliedWrench.torque.x =
+          2.f * preGrabWrencEEDes[k](3) + gainFT * (preGrabWrencEEDes[k](3) + robot_._filteredWrench[k](3));
+      msgAppliedWrench.torque.y =
+          2.f * preGrabWrencEEDes[k](4) + gainFT * (preGrabWrencEEDes[k](4) + robot_._filteredWrench[k](4));
+      msgAppliedWrench.torque.z =
+          2.f * preGrabWrencEEDes[k](5) + gainFT * (preGrabWrencEEDes[k](5) + robot_._filteredWrench[k](5));
 
     } else {
       msgAppliedWrench.force.x = -_nu_Wr0 * CooperativeCtrl._f_applied[k](0);
