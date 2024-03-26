@@ -1365,6 +1365,16 @@ void dual_arm_control::computeCommands() {
     CooperativeCtrl.getAppliedWrenches(_goHome, _contactState, object_._w_H_o, robot_._w_H_ee, object_._w_H_gp,
                                        _desired_object_wrench, object_._objectMass, _qp_wrench_generation,
                                        isForceDetected);
+    if (isPreGrabbing_) {
+      float gainFT = 0.5f;
+
+      // CooperativeCtrl._f_applied[0] = -preGrabWrencEEDes[0];
+      // CooperativeCtrl._f_applied[1] = -preGrabWrencEEDes[1];
+      CooperativeCtrl._f_applied[0] =
+          -(2.0f * preGrabWrencEEDes[0] + gainFT * (preGrabWrencEEDes[0] - robot_._filteredWrench[0]));
+      CooperativeCtrl._f_applied[1] =
+          -(2.0f * preGrabWrencEEDes[1] + gainFT * (preGrabWrencEEDes[1] - robot_._filteredWrench[1]));
+    }
 
     // applied force in velocity space
     for (int i = 0; i < NB_ROBOTS; i++) {
@@ -1487,6 +1497,7 @@ void dual_arm_control::computeCommands() {
   std::cout << ".. isObjectBackwardTilting_ ------> is  \t" << dualPreGrab.isObjectBackwardTilting_ << std::endl;
   std::cout << ".. isObjectReleasingAndCatching_ -> is  \t" << dualPreGrab.isObjectReleasingAndCatching_ << std::endl;
   std::cout << ".. preGrabbingFlag_ ---------> is  \t" << dualPreGrab.preGrabbingFlag_ << std::endl;
+  std::cout << ".. .... _nu_Wr0 ---------> is  \t" << _nu_Wr0 << std::endl;
   //---------------------------------------------------------------------------------------------------------------------------------------------
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1509,6 +1520,10 @@ void dual_arm_control::prepareCommands(Vector6f Vd_ee[], Eigen::Vector4f qd[], V
     _nu_Wr0 = 0.80f * _nu_Wr0 + 0.20f;
     _nu_Wr1 = 0.92f * _nu_Wr1 + 0.08f;
   } else {
+    _nu_Wr0 = 0.0f;
+    _nu_Wr1 = 0.0f;
+  }
+  if (isPreGrabbing_) {
     _nu_Wr0 = 0.0f;
     _nu_Wr1 = 0.0f;
   }
@@ -2126,7 +2141,8 @@ void dual_arm_control::publish_commands() {
     _pubVelo[k].data.push_back(robot_._vd[k](0)); // linear velocity v_x
     _pubVelo[k].data.push_back(robot_._vd[k](1)); // linear velocity v_y
     _pubVelo[k].data.push_back(robot_._vd[k](2)); // linear velocity v_z
-                                                  // desired velocity
+
+    // desired velocity
     vel_quat[k].position.x = robot_._vd[k](0);
     vel_quat[k].position.y = robot_._vd[k](1);
     vel_quat[k].position.z = robot_._vd[k](2);
@@ -2199,30 +2215,40 @@ void dual_arm_control::publishData() {
     // applied wrench
     geometry_msgs::Wrench msgAppliedWrench;
 
-    float gainFT = 0.0f;
+    // float gainFT = 0.2f;
 
-    if (isPreGrabbing_) {
-      msgAppliedWrench.force.x =
-          2.f * preGrabWrencEEDes[k](0) + gainFT * (preGrabWrencEEDes[k](0) + robot_._filteredWrench[k](0));
-      msgAppliedWrench.force.y =
-          2.f * preGrabWrencEEDes[k](1) + gainFT * (preGrabWrencEEDes[k](1) + robot_._filteredWrench[k](1));
-      msgAppliedWrench.force.z =
-          2.f * preGrabWrencEEDes[k](2) + gainFT * (preGrabWrencEEDes[k](2) + robot_._filteredWrench[k](2));
-      msgAppliedWrench.torque.x =
-          2.f * preGrabWrencEEDes[k](3) + gainFT * (preGrabWrencEEDes[k](3) + robot_._filteredWrench[k](3));
-      msgAppliedWrench.torque.y =
-          2.f * preGrabWrencEEDes[k](4) + gainFT * (preGrabWrencEEDes[k](4) + robot_._filteredWrench[k](4));
-      msgAppliedWrench.torque.z =
-          2.f * preGrabWrencEEDes[k](5) + gainFT * (preGrabWrencEEDes[k](5) + robot_._filteredWrench[k](5));
+    // if (isPreGrabbing_) {
+    //   msgAppliedWrench.force.x =
+    //       2.0f * preGrabWrencEEDes[k](0) + gainFT * (preGrabWrencEEDes[k](0) - robot_._filteredWrench[k](0));
+    //   msgAppliedWrench.force.y =
+    //       2.0f * preGrabWrencEEDes[k](1) + gainFT * (preGrabWrencEEDes[k](1) - robot_._filteredWrench[k](1));
+    //   msgAppliedWrench.force.z =
+    //       2.0f * preGrabWrencEEDes[k](2) + gainFT * (preGrabWrencEEDes[k](2) - robot_._filteredWrench[k](2));
+    //   msgAppliedWrench.torque.x =
+    //       2.0f * preGrabWrencEEDes[k](3) + gainFT * (preGrabWrencEEDes[k](3) - robot_._filteredWrench[k](3));
+    //   msgAppliedWrench.torque.y =
+    //       2.0f * preGrabWrencEEDes[k](4) + gainFT * (preGrabWrencEEDes[k](4) - robot_._filteredWrench[k](4));
+    //   msgAppliedWrench.torque.z =
+    //       2.0f * preGrabWrencEEDes[k](5) + gainFT * (preGrabWrencEEDes[k](5) - robot_._filteredWrench[k](5));
 
-    } else {
-      msgAppliedWrench.force.x = -_nu_Wr0 * CooperativeCtrl._f_applied[k](0);
-      msgAppliedWrench.force.y = -_nu_Wr0 * CooperativeCtrl._f_applied[k](1);
-      msgAppliedWrench.force.z = -_nu_Wr0 * CooperativeCtrl._f_applied[k](2);
-      msgAppliedWrench.torque.x = -_nu_Wr0 * CooperativeCtrl._f_applied[k](3);
-      msgAppliedWrench.torque.y = -_nu_Wr0 * CooperativeCtrl._f_applied[k](4);
-      msgAppliedWrench.torque.z = -_nu_Wr0 * CooperativeCtrl._f_applied[k](5);
-    }
+    // } else {
+    //   msgAppliedWrench.force.x = -_nu_Wr0 * CooperativeCtrl._f_applied[k](0);
+    //   msgAppliedWrench.force.y = -_nu_Wr0 * CooperativeCtrl._f_applied[k](1);
+    //   msgAppliedWrench.force.z = -_nu_Wr0 * CooperativeCtrl._f_applied[k](2);
+    //   msgAppliedWrench.torque.x = -_nu_Wr0 * CooperativeCtrl._f_applied[k](3);
+    //   msgAppliedWrench.torque.y = -_nu_Wr0 * CooperativeCtrl._f_applied[k](4);
+    //   msgAppliedWrench.torque.z = -_nu_Wr0 * CooperativeCtrl._f_applied[k](5);
+    // }
+
+    float activW = (isPreGrabbing_) ? 1.0 : _nu_Wr0;
+
+    msgAppliedWrench.force.x = -activW * CooperativeCtrl._f_applied[k](0);
+    msgAppliedWrench.force.y = -activW * CooperativeCtrl._f_applied[k](1);
+    msgAppliedWrench.force.z = -activW * CooperativeCtrl._f_applied[k](2);
+    msgAppliedWrench.torque.x = -activW * CooperativeCtrl._f_applied[k](3);
+    msgAppliedWrench.torque.y = -activW * CooperativeCtrl._f_applied[k](4);
+    msgAppliedWrench.torque.z = -activW * CooperativeCtrl._f_applied[k](5);
+
     _pubAppliedWrench[k].publish(msgAppliedWrench);
 
     // contact normal and applied moment
