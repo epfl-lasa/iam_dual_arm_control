@@ -1217,7 +1217,7 @@ void dual_arm_control::computeCommands() {
       _isIntercepting = false;
     }
     // ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    else if (isPreGrabbing_)
+    else if (isPreGrabbing_ && !dualPreGrab.preGrabbingFlag_)
     // ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     {
       //
@@ -1365,8 +1365,8 @@ void dual_arm_control::computeCommands() {
     CooperativeCtrl.getAppliedWrenches(_goHome, _contactState, object_._w_H_o, robot_._w_H_ee, object_._w_H_gp,
                                        _desired_object_wrench, object_._objectMass, _qp_wrench_generation,
                                        isForceDetected);
-    if (isPreGrabbing_) {
-      float gainFT = 0.5f;
+    if (isPreGrabbing_ && !dualPreGrab.preGrabbingFlag_) {
+      float gainFT = 0.95f;
 
       // CooperativeCtrl._f_applied[0] = -preGrabWrencEEDes[0];
       // CooperativeCtrl._f_applied[1] = -preGrabWrencEEDes[1];
@@ -1523,7 +1523,7 @@ void dual_arm_control::prepareCommands(Vector6f Vd_ee[], Eigen::Vector4f qd[], V
     _nu_Wr0 = 0.0f;
     _nu_Wr1 = 0.0f;
   }
-  if (isPreGrabbing_) {
+  if (isPreGrabbing_ && !dualPreGrab.preGrabbingFlag_) {
     _nu_Wr0 = 0.0f;
     _nu_Wr1 = 0.0f;
   }
@@ -2240,7 +2240,7 @@ void dual_arm_control::publishData() {
     //   msgAppliedWrench.torque.z = -_nu_Wr0 * CooperativeCtrl._f_applied[k](5);
     // }
 
-    float activW = (isPreGrabbing_) ? 1.0 : _nu_Wr0;
+    float activW = (isPreGrabbing_ && !dualPreGrab.preGrabbingFlag_) ? 1.0 : _nu_Wr0;
 
     msgAppliedWrench.force.x = -activW * CooperativeCtrl._f_applied[k](0);
     msgAppliedWrench.force.y = -activW * CooperativeCtrl._f_applied[k](1);
