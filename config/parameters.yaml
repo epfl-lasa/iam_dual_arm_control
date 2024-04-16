@@ -101,6 +101,7 @@ dual_arm_task:
   objCtrlKey: true
   isTargetFixed: false
   userSelect: false
+  isPreGrabbing: true
   # coordination
   coordination:
     # Bimanual DS gains

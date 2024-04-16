@@ -367,6 +367,10 @@ bool dual_arm_control::init() {
     ROS_INFO("Waitinng for param:  userSelect");
   }
 
+  while (!nh_.getParam("dual_arm_task/isPreGrabbing", isPreGrabbing_)) {
+    ROS_INFO("Waitinng for param:  isPreGrabbing");
+  }
+
   while (!nh_.getParam("conveyor_belt/control_mode", _ctrl_mode_conveyor_belt)) {
     ROS_INFO("Waitinng for param: conveyor_belt/control_mode ");
   }
@@ -1368,14 +1372,14 @@ void dual_arm_control::computeCommands() {
     if (isPreGrabbing_ && !dualPreGrab.preGrabbingFlag_) {
       float gainFT = 0.5f;
       Vector6f gainFTVec = Eigen::VectorXf::Zero(6);
-      gainFTVec << 0.93f, 0.93f, 0.93f, 0.2f, 0.2f, 0.2f;
+      gainFTVec << 0.95f, 0.95f, 0.95f, 0.2f, 0.2f, 0.2f;
 
       // CooperativeCtrl._f_applied[0] = -preGrabWrencEEDes[0];
       // CooperativeCtrl._f_applied[1] = -preGrabWrencEEDes[1];
       CooperativeCtrl._f_applied[0] =
-          (2.0f * preGrabWrencEEDes[0] + gainFTVec.asDiagonal() * (preGrabWrencEEDes[0] - robot_._filteredWrench[0]));
+          (1.0f * preGrabWrencEEDes[0] + gainFTVec.asDiagonal() * (preGrabWrencEEDes[0] - robot_._filteredWrench[0]));
       CooperativeCtrl._f_applied[1] =
-          (2.0f * preGrabWrencEEDes[1] + gainFTVec.asDiagonal() * (preGrabWrencEEDes[1] - robot_._filteredWrench[1]));
+          (1.0f * preGrabWrencEEDes[1] + gainFTVec.asDiagonal() * (preGrabWrencEEDes[1] - robot_._filteredWrench[1]));
     }
 
     // applied force in velocity space
@@ -2333,8 +2337,8 @@ void dual_arm_control::saveData() {
   datalog._OutRecord_tasks << (float) (_cycle_count * _dt) << ", ";
   datalog._OutRecord_tasks << _desVimp << " , " << _desVtoss << " , ";
   datalog._OutRecord_tasks << _goHome << " , " << _goToAttractors << " , " << _releaseAndretract << " , " << _isThrowing
-                           << " , " << _isPlacing << " , " << _c
-                           << " , ";// CooperativeCtrl._ContactConfidence << " , ";
+                           << " , " << _isPlacing << " , " << _sensedContact
+                           << " , ";// _c //CooperativeCtrl._ContactConfidence << " , ";
   datalog._OutRecord_tasks << FreeMotionCtrl.a_proximity_ << " , " << FreeMotionCtrl.a_normal_ << " , "
                            << FreeMotionCtrl.a_tangent_ << " , " << FreeMotionCtrl.a_release_ << " , "
                            << FreeMotionCtrl.a_retract_ << " , ";
@@ -2342,7 +2346,14 @@ void dual_arm_control::saveData() {
   // dsThrowing.a_tangent_<< " , " << dsThrowing.a_toss_  << std::endl;
   datalog._OutRecord_tasks << dsThrowing.a_proximity_ << " , " << dsThrowing.a_normal_ << " , " << dsThrowing.a_tangent_
                            << " , " << dsThrowing.a_toss_ << " , ";
-  datalog._OutRecord_tasks << _beta_vel_mod << " , " << _dual_PathLen_AvgSpeed.transpose() << std::endl;
+  datalog._OutRecord_tasks << _beta_vel_mod << " , " << _dual_PathLen_AvgSpeed.transpose() << " , ";
+
+  datalog._OutRecord_tasks << isPreGrabbing_ << " , " << dualPreGrab.isObjectEEContactTilt << " , ";
+  datalog._OutRecord_tasks << dualPreGrab.isObjectTopAttractor_ << " , " << dualPreGrab.isObjectBackwardTilting_
+                           << " , ";
+  datalog._OutRecord_tasks << dualPreGrab.isObjectReleasingAndCatching_ << " , " << dualPreGrab.preGrabbingFlag_
+                           << std::endl;
+
   //
   datalog._OutRecord_jts_states << (float) (_cycle_count * _dt) << ", ";
   datalog._OutRecord_jts_states << robot_._joints_positions[LEFT].transpose().format(CSVFormat) << " , "
