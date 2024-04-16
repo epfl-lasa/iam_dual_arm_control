@@ -1366,14 +1366,16 @@ void dual_arm_control::computeCommands() {
                                        _desired_object_wrench, object_._objectMass, _qp_wrench_generation,
                                        isForceDetected);
     if (isPreGrabbing_ && !dualPreGrab.preGrabbingFlag_) {
-      float gainFT = 0.95f;
+      float gainFT = 0.5f;
+      Vector6f gainFTVec = Eigen::VectorXf::Zero(6);
+      gainFTVec << 0.93f, 0.93f, 0.93f, 0.2f, 0.2f, 0.2f;
 
       // CooperativeCtrl._f_applied[0] = -preGrabWrencEEDes[0];
       // CooperativeCtrl._f_applied[1] = -preGrabWrencEEDes[1];
       CooperativeCtrl._f_applied[0] =
-          -(2.0f * preGrabWrencEEDes[0] + gainFT * (preGrabWrencEEDes[0] - robot_._filteredWrench[0]));
+          (2.0f * preGrabWrencEEDes[0] + gainFTVec.asDiagonal() * (preGrabWrencEEDes[0] - robot_._filteredWrench[0]));
       CooperativeCtrl._f_applied[1] =
-          -(2.0f * preGrabWrencEEDes[1] + gainFT * (preGrabWrencEEDes[1] - robot_._filteredWrench[1]));
+          (2.0f * preGrabWrencEEDes[1] + gainFTVec.asDiagonal() * (preGrabWrencEEDes[1] - robot_._filteredWrench[1]));
     }
 
     // applied force in velocity space
@@ -2240,14 +2242,14 @@ void dual_arm_control::publishData() {
     //   msgAppliedWrench.torque.z = -_nu_Wr0 * CooperativeCtrl._f_applied[k](5);
     // }
 
-    float activW = (isPreGrabbing_ && !dualPreGrab.preGrabbingFlag_) ? 1.0 : _nu_Wr0;
+    float activW = (isPreGrabbing_ && !dualPreGrab.preGrabbingFlag_) ? 1.0 : 0.0;//_nu_Wr0;
 
-    msgAppliedWrench.force.x = -activW * CooperativeCtrl._f_applied[k](0);
-    msgAppliedWrench.force.y = -activW * CooperativeCtrl._f_applied[k](1);
-    msgAppliedWrench.force.z = -activW * CooperativeCtrl._f_applied[k](2);
-    msgAppliedWrench.torque.x = -activW * CooperativeCtrl._f_applied[k](3);
-    msgAppliedWrench.torque.y = -activW * CooperativeCtrl._f_applied[k](4);
-    msgAppliedWrench.torque.z = -activW * CooperativeCtrl._f_applied[k](5);
+    msgAppliedWrench.force.x = activW * CooperativeCtrl._f_applied[k](0);
+    msgAppliedWrench.force.y = activW * CooperativeCtrl._f_applied[k](1);
+    msgAppliedWrench.force.z = activW * CooperativeCtrl._f_applied[k](2);
+    msgAppliedWrench.torque.x = activW * CooperativeCtrl._f_applied[k](3);
+    msgAppliedWrench.torque.y = activW * CooperativeCtrl._f_applied[k](4);
+    msgAppliedWrench.torque.z = activW * CooperativeCtrl._f_applied[k](5);
 
     _pubAppliedWrench[k].publish(msgAppliedWrench);
 

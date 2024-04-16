@@ -93,7 +93,7 @@ object:
 
 # dual arm task
 dual_arm_task:
-  dualTaskSelector: 3
+  dualTaskSelector: 1
   old_dual_method: false
   modulated_reaching: false
   isNorm_impact_vel: false
@@ -126,7 +126,7 @@ dual_arm_task:
       orientation: [0.3827, 0.9239, 0.0, 0.0] #[1.0, 0.0, 0.0, 0.0] #
   # lifting task parameters (user defined)
   lifting: 
-    position: [0.45, -0.00, 0.45] #[0.45, 0.00, 0.70]
+    position: [0.60, -0.00, 0.60] #[0.45, 0.00, 0.70]
     orientation: [1.00, 0.00, 0.00, 0.00] #[0.9436, 0, 0, 0.3310] #[0.9820, 0, 0, 0.1891] #
     increment_lift_pos: false
   # placing task parameters (user defined)
