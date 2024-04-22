@@ -1276,6 +1276,9 @@ void dual_arm_control::computeCommands() {
       // ------------------------------------------------------------------
       // Desired object pose
       //--------------------
+      if (isPreGrabbing_) {
+        _xDo_lifting(1) = object_._x_pickup(1);
+      }
       Eigen::Vector3f xDesTask = _xDo_lifting;
       Eigen::Vector4f qDesTask = _qDo_lifting;
 
