@@ -235,7 +235,7 @@ dual_arm_control::dual_arm_control(	ros::NodeHandle &n, double frequency, 	//std
 	_isSimulation = true;
 	_adaptationActive = false;
 
-	activeObjectID_ = 2;
+	activeObjectID_ = 0;
 }
 //
 dual_arm_control::~dual_arm_control(){}
@@ -844,7 +844,7 @@ void dual_arm_control::update_states_machines(){
 					break;   
 				case 'u': 
 						_desVimp  +=0.05f;  
-						if(_desVimp > 0.7f) _desVimp = 0.7f;
+						if(_desVimp > 0.8f) _desVimp = 0.8f;
 					break; 
 
 				// reset the data logging 
@@ -2120,7 +2120,9 @@ void dual_arm_control::saveData()
 		datalog._OutRecord_efforts	<< _filteredWrench[LEFT].transpose().format(CSVFormat)  << " , ";
 		datalog._OutRecord_efforts	<< _filteredWrench[RIGHT].transpose().format(CSVFormat) << " , ";
 		datalog._OutRecord_efforts  << CooperativeCtrl._f_applied[LEFT].transpose().format(CSVFormat) << " , ";
-		datalog._OutRecord_efforts  << CooperativeCtrl._f_applied[RIGHT].transpose().format(CSVFormat) << std::endl;
+		datalog._OutRecord_efforts  << CooperativeCtrl._f_applied[RIGHT].transpose().format(CSVFormat)  << " , ";
+		datalog._OutRecord_efforts  << _wrench[LEFT].transpose().format(CSVFormat) << " , ";
+		datalog._OutRecord_efforts  << _wrench[RIGHT].transpose().format(CSVFormat) << std::endl;
 	
 		datalog._OutRecord_tasks		<< (float)(_cycle_count * _dt) << ", ";
 		datalog._OutRecord_tasks   	<< _desVimp << " , " << _desVtoss << " , "; 

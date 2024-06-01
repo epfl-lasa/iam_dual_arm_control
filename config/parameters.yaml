@@ -48,14 +48,14 @@ object:
 
   cubicBoxReal :       
     dimension:  [0.26, 0.26, 0.26]
-    graspOffset_L: [0.0, 0.00,  0.0]
-    graspOffset_R: [0.0, 0.00,  0.0]
+    graspOffset_L: [0.0, 0.00,  -0.0]
+    graspOffset_R: [0.0, 0.00,  -0.0]
     mass: 3
     #graspOffset: [-0.04, 0.00, 0.03]
   smallCubicBox :       
     dimension:  [0.18, 0.19, 0.18]
-    graspOffset_L: [0.01, 0.00, 0.02]
-    graspOffset_R: [0.0, 0.00,  0.0]
+    graspOffset_L: [0.0, 0.00, -0.06]
+    graspOffset_R: [0.0, 0.00,  -0.06]
     mass: 1
     #graspOffset: [-0.02, 0.00, 0.01]
   coronaBottePack: 
@@ -86,21 +86,21 @@ object:
     mass: 3.5
   optitrackBox:    
     dimension:  [0.18, 0.19, 0.18]
-    graspOffset_L: [0.0, 0.00,  0.0]
-    graspOffset_R: [0.0, 0.00,  0.0]
+    graspOffset_L: [0.0, 0.00,  -0.02]
+    graspOffset_R: [0.0, 0.00,  -0.02]
     mass: 1.0
   mikeBigBox:    
     dimension:  [0.265, 0.365, 0.25]
-    graspOffset_L: [-0.02, 0.00, -0.01]
-    graspOffset_R: [-0.02, 0.00, -0.01]
+    graspOffset_L: [-0.02, 0.0, -0.01]
+    graspOffset_R: [-0.02, 0.0, -0.01]
     mass: 2.5
 
 
 # End-effector tool
 tool:
   offset2end_effector:
-    left:  0.135 #0.175 #  0.115   #
-    right: 0.145 #0.200 #  0.115   #
+    left:  0.175 #  0.115   #0.135 #
+    right: 0.200 #  0.115   #0.145 #
 
 #
 desVimp:   0.5
@@ -139,7 +139,7 @@ impact_direction:
 dual_arm_task:
   dualTaskSelector: 3
   old_dual_method: false
-  modulated_reaching: false
+  modulated_reaching: true
   isNorm_impact_vel: false
   isQP_wrench_generation: true
   lifting: 
