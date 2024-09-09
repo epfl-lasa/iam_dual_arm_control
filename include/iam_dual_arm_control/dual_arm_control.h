@@ -196,9 +196,13 @@ public:
       _VEE_oa[k].setZero();
     }
     // Filtered variable (SG)
-    _sgf_ddq_filtered_l = std::make_unique<SGF::SavitzkyGolayFilter>(sgf_q[0], sgf_q[1], sgf_q[2],
+    _sgf_ddq_filtered_l = std::make_unique<SGF::SavitzkyGolayFilter>(sgf_q[0],
+                                                                     sgf_q[1],
+                                                                     sgf_q[2],
                                                                      dt);//(7,3,6,_dt); // dim, order. window lenght
-    _sgf_ddq_filtered_r = std::make_unique<SGF::SavitzkyGolayFilter>(sgf_q[0], sgf_q[1], sgf_q[2],
+    _sgf_ddq_filtered_r = std::make_unique<SGF::SavitzkyGolayFilter>(sgf_q[0],
+                                                                     sgf_q[1],
+                                                                     sgf_q[2],
                                                                      dt);//(7,3,6,_dt); // dim, order. window lenght
   }
 
@@ -251,8 +255,11 @@ public:
     _Vee[k] = _tcp_W_EE[k] * _Vee[k];
   }
 
-  void update_EndEffectorWrench(Eigen::Matrix<float, 6, 1> raw, Eigen::Vector3f normalObj[], float filteredForceGain,
-                                bool wrenchBiasOK[], int k) {
+  void update_EndEffectorWrench(Eigen::Matrix<float, 6, 1> raw,
+                                Eigen::Vector3f normalObj[],
+                                float filteredForceGain,
+                                bool wrenchBiasOK[],
+                                int k) {
     //
     if (!wrenchBiasOK[k]) {
       Eigen::Vector3f loadForce = _wRb[k].transpose() * _toolMass[k] * _gravity;
@@ -264,13 +271,16 @@ public:
       if (_wrenchCount[k] == NB_FT_SENSOR_SAMPLES) {
         _wrenchBias[k] /= NB_FT_SENSOR_SAMPLES;
         wrenchBiasOK[k] = true;
-        // std::cerr << "[robot]: Bias " << k << ": " <<_wrenchBias[k].transpose() << std::endl;
       }
     }
+
+    // std::cout << "\033[1;45mbold [robot]: Bias \033[0m " << k << ": " <<_wrenchBias[k].transpose() << std::endl;
+    // std::cout << "\033[1;45mbold[robot]: raw \033[0m " <<raw.transpose() << std::endl;
 
     if (wrenchBiasOK[k]) {
       _wrench[k] = raw - _wrenchBias[k];
       Eigen::Vector3f loadForce = _wRb[k].transpose() * _toolMass[k] * _gravity;
+      // std::cout << "\033[1;45mbold[robot]: loadForce \033[0m " <<loadForce.transpose() << std::endl;
       _wrench[k].segment(0, 3) -= loadForce;
       _wrench[k].segment(3, 3) -= _toolComPositionFromSensor[k].cross(loadForce);
       _wrench[k].head(3) = _wRb[k] * _wrench[k].head(3);
@@ -304,21 +314,22 @@ public:
         _normalForceWindow[k].pop_front();
         _normalForceWindow[k].push_back(_normalForce[k]);
         _normalForceAverage[k] = 0.0f;
-        for (int m = 0; m < MOVING_FORCE_WINDOW_SIZE; m++) {
-          _normalForceAverage[k] += _normalForceWindow[k][m];
-        }
+        for (int m = 0; m < MOVING_FORCE_WINDOW_SIZE; m++) { _normalForceAverage[k] += _normalForceWindow[k][m]; }
         _normalForceAverage[k] /= MOVING_FORCE_WINDOW_SIZE;
       }
     }
   }
 
-  void set_init_parameters(float toolMass_param[], float toolOffsetFromEE_param[],
-                           Eigen::Vector3f toolComPositionFromSensor_param[], Eigen::Vector3f xrbStandby_param[],
+  void set_init_parameters(float toolMass_param[],
+                           float toolOffsetFromEE_param[],
+                           Eigen::Vector3f toolComPositionFromSensor_param[],
+                           Eigen::Vector3f xrbStandby_param[],
                            Eigen::Vector4f qrbStandby_param[]) {
     //
     memcpy(_toolMass, &toolMass_param[0], NB_ROBOTS * sizeof *toolMass_param);
     memcpy(_toolOffsetFromEE, &toolOffsetFromEE_param[0], NB_ROBOTS * sizeof *toolOffsetFromEE_param);
-    memcpy(_toolComPositionFromSensor, &toolComPositionFromSensor_param[0],
+    memcpy(_toolComPositionFromSensor,
+           &toolComPositionFromSensor_param[0],
            NB_ROBOTS * sizeof *toolComPositionFromSensor_param);
     memcpy(_xrbStandby, &xrbStandby_param[0], NB_ROBOTS * sizeof *xrbStandby_param);
     memcpy(_qrbStandby, &qrbStandby_param[0], NB_ROBOTS * sizeof *qrbStandby_param);
@@ -389,7 +400,9 @@ public:
 
     //
     _xo_filtered = std::make_unique<SGF::SavitzkyGolayFilter>(sgf_p[0], sgf_p[1], sgf_p[2], dt);//(3,3,6,_dt);
-    _qo_filtered = std::make_unique<SGF::SavitzkyGolayFilter>(sgf_o[0], sgf_o[1], sgf_o[2],
+    _qo_filtered = std::make_unique<SGF::SavitzkyGolayFilter>(sgf_o[0],
+                                                              sgf_o[1],
+                                                              sgf_o[2],
                                                               dt);//(4,3,10,_dt); dim, order, win_l, dt
 
     // //
@@ -399,13 +412,9 @@ public:
     this->get_desiredHmgTransform();
   }
 
-  void get_HmgTransform() {
-    _w_H_o = Utils<float>::pose2HomoMx(_xo, _qo);
-  }
+  void get_HmgTransform() { _w_H_o = Utils<float>::pose2HomoMx(_xo, _qo); }
 
-  void get_desiredHmgTransform() {
-    _w_H_Do = Utils<float>::pose2HomoMx(_xDo, _qDo);
-  }
+  void get_desiredHmgTransform() { _w_H_Do = Utils<float>::pose2HomoMx(_xDo, _qDo); }
 
   void get_estimated_state() {
     // filtered object position
@@ -423,9 +432,7 @@ public:
     // normalizing the quaternion
     _qo.normalize();
     //
-    if (_qo.norm() <= 1e-8) {
-      _qo = Eigen::Vector4f(1.0, 0.0, 0.0, 0.0);
-    }
+    if (_qo.norm() <= 1e-8) { _qo = Eigen::Vector4f(1.0, 0.0, 0.0, 0.0); }
     //
     // ===========================================================
     _qo_filtered->GetOutput(1, temp_o);
@@ -877,9 +884,12 @@ private:
   //  static dual_arm_control* me; // Pointer on the instance of the class
 public:
   //
-  dual_arm_control(ros::NodeHandle& n, double frequency,// std::string dataID,
-                   std::string topic_pose_object_, std::string topic_pose_robot_base[],
-                   std::string topic_pose_robot_ee[], std::string topic_ee_commands[],
+  dual_arm_control(ros::NodeHandle& n,
+                   double frequency,// std::string dataID,
+                   std::string topic_pose_object_,
+                   std::string topic_pose_robot_base[],
+                   std::string topic_pose_robot_ee[],
+                   std::string topic_ee_commands[],
                    std::string topic_sub_ForceTorque_Sensor[]);
   ~dual_arm_control();
 
@@ -905,8 +915,10 @@ public:
   void constrain_placing_position(float x_t_min, float x_t_max, float y_t_min, float y_t_max);
   void set_2d_position_box_constraints(Eigen::Vector3f& position_vec, float limits[]);
   void mirror_target2object_orientation(Eigen::Vector4f qt, Eigen::Vector4f& qo, Eigen::Vector3f ang_lim);
-  Eigen::Vector3f compute_intercept_with_target(const Eigen::Vector3f& x_pick, const Eigen::Vector3f& x_target,
-                                                const Eigen::Vector3f& v_target, float phi_i);
+  Eigen::Vector3f compute_intercept_with_target(const Eigen::Vector3f& x_pick,
+                                                const Eigen::Vector3f& x_target,
+                                                const Eigen::Vector3f& v_target,
+                                                float phi_i);
   float get_desired_yaw_angle_target(const Eigen::Vector4f& qt, const Eigen::Vector3f& ang_lim);
   void estimate_moving_average_ee_speed();
   void estimate_moving_average_target_velocity();

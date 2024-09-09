@@ -281,7 +281,7 @@ Vector6f throwingDS::generate_throwing_motion(Eigen::Matrix4f w_H_ce,  Vector6f 
 		Eigen::Vector3f Amodul_ee_tang = Kp_[TOSS]*(X - Xstar); 				// this->computeModulatedAcceleration(Km, Dm, X, Xdot, Xstar);
 		Eigen::Vector3f Aretrac_ee     = Kp_[RETRACT]*(X - Xretr); 			// DS for retracting after the tossing position
 
-		std::cout << "[throwingDS]:  -------------XXXXXXXXXXXXXXXXXXXXX ------ Amodul_ee_tang   : \t" <<  Amodul_ee_tang.transpose() << std::endl;
+		// std::cout << "[throwingDS]:  -------------XXXXXXXXXXXXXXXXXXXXX ------ Amodul_ee_tang   : \t" <<  Amodul_ee_tang.transpose() << std::endl;
 		
 		// get the modulated motion (out_motion: Velocity)
 		Out_motion.head(3) = (1.0-a_retract_)*this->compute_modulated_motion(activation, BasisQ, Areach_ee, Amodul_ee_norm, Amodul_ee_tang) + a_retract_ * Aretrac_ee;

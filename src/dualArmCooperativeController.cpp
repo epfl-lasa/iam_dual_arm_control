@@ -358,10 +358,10 @@ void dualArmCooperativeController::computeControlWrench(Eigen::Matrix4f w_H_o, E
 
   // Printing some results
   // ---------------------
-  std::cout << " OPTIMAL HAND WRENCH   LEFT \t " << _optimal_contact_wrench_EEs.head(6).transpose() << std::endl;
-  std::cout << " OPTIMAL HAND WRENCH  RIGHT \t " << _optimal_contact_wrench_EEs.tail(6).transpose() << std::endl;
-  std::cout << " APPLIED HAND WRENCH  LEFT \t " << _f_applied[LEFT].transpose() << std::endl;
-  std::cout << " APPLIED HAND WRENCH RIGHT \t " << _f_applied[RIGHT].transpose() << std::endl;
+  // std::cout << " OPTIMAL HAND WRENCH   LEFT \t " << _optimal_contact_wrench_EEs.head(6).transpose() << std::endl;
+  // std::cout << " OPTIMAL HAND WRENCH  RIGHT \t " << _optimal_contact_wrench_EEs.tail(6).transpose() << std::endl;
+  // std::cout << " APPLIED HAND WRENCH  LEFT \t " << _f_applied[LEFT].transpose() << std::endl;
+  // std::cout << " APPLIED HAND WRENCH RIGHT \t " << _f_applied[RIGHT].transpose() << std::endl;
 }
 
 //
