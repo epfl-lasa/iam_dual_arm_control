@@ -1332,7 +1332,7 @@ void dual_arm_control::computeCommands() {
                                  Eigen::Vector3f(0.0f, 0.0f, 0.0f),
                                  1);// Function to call in a loop
 
-        _releaseAndretract = dsThrowing.get_release_flag();
+        if (_dualTaskSelector != PICK_AND_LIFT) { _releaseAndretract = dsThrowing.get_release_flag(); }
         if ((isPlacing && placing_done) || (isPlaceTossing && placeTossing_done) || (isThrowing && tossing_done)) {
           _releaseAndretract = true;
         }
@@ -1385,15 +1385,20 @@ void dual_arm_control::computeCommands() {
       //------------------------------------
       object_.get_grasp_point_desiredRotation();
 
-      std::cout << "\033[1;41mbold [dualarm object_._xgp_o LEFT \033[0m\n"
-                << object_._w_H_Dgp[LEFT].block<3, 1>(0, 3).transpose() << std::endl;
+      std::cout << "\033[1;41mbold [dualarm object_._w_H_gp LEFT \033[0m\n"
+                << object_._w_H_gp[LEFT].block<3, 1>(0, 3).transpose() << std::endl;
       std::cout << "\033[1;41mbold [dualarm robot_._w_H_ee LEFT \033[0m\n"
                 << robot_._w_H_ee[LEFT].block<3, 1>(0, 3).transpose() << std::endl;
-
-      std::cout << "\033[1;41mbold [dualarm object_._w_H_Do RIGHT \033[0m\n"
-                << object_._w_H_Dgp[RIGHT].block<3, 1>(0, 3).transpose() << std::endl;
+      std::cout << "\033[1;41mbold [dualarm object_._w_H_gp RIGHT \033[0m\n"
+                << object_._w_H_gp[RIGHT].block<3, 1>(0, 3).transpose() << std::endl;
       std::cout << "\033[1;41mbold [dualarm robot_._w_H_ee RIGHT \033[0m\n"
                 << robot_._w_H_ee[RIGHT].block<3, 1>(0, 3).transpose() << std::endl;
+
+      std::cout << "\033[1;41mbold [dualarm] _releaseAndretract \033[0m\n" << _releaseAndretract << std::endl;
+      std::cout << "\033[1;41mbold [dualarm] isContact \033[0m\n" << isContact << std::endl;
+      std::cout << "\033[1;41mbold [dualarm] _isPickupSet \033[0m\n" << _isPickupSet << std::endl;
+      std::cout << "\033[1;41mbold [dualarm] tossvar release pose \033[0m\n"
+                << _tossVar.release_position.transpose() << std::endl;
 
       // -------------------------------------------------------------------------
       FreeMotionCtrl.getDesiredMotion(no_dual_mds_method,
@@ -1537,11 +1542,11 @@ void dual_arm_control::computeCommands() {
   // std::cout << "[dual_arm_control]: _w_H_Do: \n" << object_._w_H_Do << std::endl;
   // std::cout << "[dual_arm_control]: _w_H_t: \n" << Utils<float>::quaternionToRotationMatrix(target_._qt) << std::endl;
 
-  std::cout << "[dual_arm_control]: robot_._w_H_ee[LEFT]: \n" << robot_._w_H_ee[0] << std::endl;
-  std::cout << "[dual_arm_control]: _w_H_Dgp[LEFT]: \n" << object_._w_H_Dgp[0] << std::endl;
-  std::cout << "[dual_arm_control]: robot_._w_H_ee[RIGHT]: \n"
-            << robot_._w_H_ee[1] << std::endl;// robot_._w_H_eeStandby
-  std::cout << "[dual_arm_control]: _w_H_Dgp[RIGHT]: \n" << object_._w_H_Dgp[1] << std::endl;
+  // std::cout << "[dual_arm_control]: robot_._w_H_ee[LEFT]: \n" << robot_._w_H_ee[0] << std::endl;
+  // std::cout << "[dual_arm_control]: _w_H_Dgp[LEFT]: \n" << object_._w_H_Dgp[0] << std::endl;
+  // std::cout << "[dual_arm_control]: robot_._w_H_ee[RIGHT]: \n"
+  //           << robot_._w_H_ee[1] << std::endl;// robot_._w_H_eeStandby
+  // std::cout << "[dual_arm_control]: _w_H_Dgp[RIGHT]: \n" << object_._w_H_Dgp[1] << std::endl;
 
   // std::cout << "[dual_arm_control]: 3D STATE 2 GO : \t" << target_._xt_state2go.transpose() << std::endl;
   // std::cout << "[dual_arm_control]:  ------------- _sensedContact: \t" << _sensedContact << std::endl;
