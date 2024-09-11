@@ -1542,10 +1542,11 @@ void dual_arm_control::computeCommands() {
   // std::cout << "[dual_arm_control]: _w_H_Do: \n" << object_._w_H_Do << std::endl;
   // std::cout << "[dual_arm_control]: _w_H_t: \n" << Utils<float>::quaternionToRotationMatrix(target_._qt) << std::endl;
 
-  // std::cout << "[dual_arm_control]: robot_._w_H_ee[LEFT]: \n" << robot_._w_H_ee[0] << std::endl;
+  std::cout << "[dual_arm_control]: robot_._w_H_ee[LEFT]: \n" << robot_._w_H_ee[0] << std::endl;
+  std::cout << "[dual_arm_control]: robot_._w_H_ee[RIGHT]: \n" << robot_._w_H_ee[1] << std::endl;
+  std::cout << "[dual_arm_control]: _w_H_Do: \n" << object_._w_H_Do << std::endl;
+  std::cout << "[dual_arm_control]: _w_H_o: \n" << object_._w_H_o << std::endl;
   // std::cout << "[dual_arm_control]: _w_H_Dgp[LEFT]: \n" << object_._w_H_Dgp[0] << std::endl;
-  // std::cout << "[dual_arm_control]: robot_._w_H_ee[RIGHT]: \n"
-  //           << robot_._w_H_ee[1] << std::endl;// robot_._w_H_eeStandby
   // std::cout << "[dual_arm_control]: _w_H_Dgp[RIGHT]: \n" << object_._w_H_Dgp[1] << std::endl;
 
   // std::cout << "[dual_arm_control]: 3D STATE 2 GO : \t" << target_._xt_state2go.transpose() << std::endl;
@@ -2163,8 +2164,8 @@ void dual_arm_control::objectPoseCallback(const geometry_msgs::Pose::ConstPtr& m
 
   object_.get_estimated_state();
 
-  _Vo.head(3) = object_._vo;
-  _Vo.tail(3) = 0. * object_._wo;
+  _Vo.head(3) = object_._vo;     // not used
+  _Vo.tail(3) = 0. * object_._wo;// not used
   // _w_H_o = Utils<float>::pose2HomoMx(_xo, _qo);
   object_.get_HmgTransform();
 }

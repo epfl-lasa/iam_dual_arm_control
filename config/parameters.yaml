@@ -105,7 +105,7 @@ dual_arm_task:
   # coordination
   coordination:
     # Bimanual DS gains
-    ds_absolute_gains: [1.5, 1.5, 1.5, 1.0, 1.0, 1.0] # 2.5 orient [2.25, 2.25, 2.25, 1.0, 1.0, 1.0] #
+    ds_absolute_gains: [1.5, 1.5, 1.5, 1.0, 1.0, 1.0] #[1.5, 1.5, 1.5, 1.0, 1.0, 1.0] # 2.5 orient [2.25, 2.25, 2.25, 1.0, 1.0, 1.0] #
     ds_relative_gains: [2.0, 2.0, 2.0, 4.0, 4.0, 4.0] #[2.0, 2.0, 2.0, 1.0, 1.0, 1.0] #
 
   # coordinated reaching motion
@@ -137,7 +137,7 @@ dual_arm_task:
     height_via_point: 0.05
   # tossing task parameters (user defined)
   tossing:
-    desVtoss:           0.4 #0.85
+    desVtoss:           0.2 #0.85
     releasePos:         [0.68, -0.0, 0.37] #[0.70, 0.00, 0.60] [0.70, 0.00, 0.40]
     releaseOrient:      [1.00, 0.00, 0.00, 0.00] # [0.9436, 0, 0, 0.3310] #[0.9820, 0, 0, 0.1891] #
     releaseLinVel_dir:  [1.00, -0.0, 0.50] # [1.00, 0.00, 1.00]

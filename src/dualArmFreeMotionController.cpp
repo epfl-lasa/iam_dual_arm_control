@@ -1394,7 +1394,7 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],
       // --------------------------------------------------------------------------------------
       _Vd_o = this->compute_desired_task_twist(w_H_o, w_H_Do);
       Vector6f des_Twist_obj = _Vd_o;
-      des_Twist_obj.tail(3) = 1.0f * des_Twist_obj.tail(3);                     //.setZero();
+      des_Twist_obj.tail(3) = 1.0f * des_Twist_obj.tail(3);                     //.setZero(); // TODO
       Vector6f d_twist_l = GraspMx_obj.leftCols(6).transpose() * des_Twist_obj; //_Vd_o; //
       Vector6f d_twist_r = GraspMx_obj.rightCols(6).transpose() * des_Twist_obj;//_Vd_o; //
 
@@ -1418,9 +1418,9 @@ void dualArmFreeMotionController::dual_arm_motion(Eigen::Matrix4f w_H_ee[],
       //
       // this->constrained_ang_vel_correction(w_H_ee, w_H_gp, w_H_o, w_H_Do, Vd_ee_nom, false);
       // this->computeDesiredOrientation(1.0f, w_H_ee, w_H_gp, w_H_o, qd_nom, false);
-      // std::cout << " LLLLLLLLLLLLLLLLLLLL    Bimanaul Grasp Matrix \n" << GraspMx_obj << std::endl;
-      Vd_ee_nom[LEFT].tail(3) = 1.0 * Vd_ee_nom[LEFT].tail(3) + 1.0f * _Vd_o.tail(3);
-      Vd_ee_nom[RIGHT].tail(3) = 1.0 * Vd_ee_nom[RIGHT].tail(3) + 1.0f * _Vd_o.tail(3);
+      std::cout << " LLLLLLLLLLLLLLLLLLLL   Vd_ee_nom \n" << std::endl;
+      Vd_ee_nom[LEFT].tail(3) = 1.0 * Vd_ee_nom[LEFT].tail(3) + 1.0f * _Vd_o.tail(3) * 1.5;
+      Vd_ee_nom[RIGHT].tail(3) = 1.0 * Vd_ee_nom[RIGHT].tail(3) + 1.0f * _Vd_o.tail(3) * 1.5;
 
       // // ======================================================================================
       // X_bi.head(3)  = w_H_Do.block<3,1>(0,3) - w_H_o.block<3,1>(0,3)+ 0.5f*(X[LEFT] + X[RIGHT]);
@@ -2443,15 +2443,19 @@ Vector6f dualArmFreeMotionController::compute_desired_task_twist(const Eigen::Ma
   error_ee.head(3) = w_H_c.block<3, 1>(0, 3) - w_H_d.block<3, 1>(0, 3);
   error_ee.tail(3) = d_AxisAngle_c.axis().normalized() * d_AxisAngle_c.angle();
 
-  // std::cout << " EEEEEEEEEEEEEEEEEEEEEEOOOOOOOOO error_ee.tail(3) \t" << error_ee.tail(3).transpose() << std::endl;
+  std::cout << " EEEEEEEEEEEEEEEEEEEEEEOOOOOOOOO error_ee.tail(3) \t" << error_ee.tail(3).transpose() << std::endl;
+  std::cout << "  error_ee.tail(3).NORM \t" << error_ee.tail(3).norm() << std::endl;
   // ---------------------------------
   // computing of desired ee velocity
   // ---------------------------------
   float gain_theta = 0.5f * (std::tanh(30 * (0.25 - error_ee.tail(3).norm())) + 1.0);
   float gn_adapt = (1 + 2.f * gain_theta);
-  des_twist_ee.head(3) = -4.0f * gain_p_abs * error_ee.head(3);
+  des_twist_ee.head(3) = -4.0f * gain_p_abs * error_ee.head(3);//-4.0f *
   des_twist_ee.tail(3) = -1.0f * gain_o_abs * gn_adapt * error_ee.tail(3);
+
   des_twist_ee = Utils<float>::SaturationTwist(_v_max, _w_max, des_twist_ee);
+
+  std::cout << " des_twist_ee \t" << des_twist_ee.transpose() << std::endl;
 
   return des_twist_ee;
 }
