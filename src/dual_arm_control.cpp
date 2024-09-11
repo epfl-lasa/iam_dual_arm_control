@@ -136,7 +136,7 @@ dual_arm_control::dual_arm_control(ros::NodeHandle& n,
 
   _feasibleAlgo = false;
   _pickupBased = true;
-  _trackTargetRotation = true;
+  _trackTargetRotation = false;
   _isMotionTriggered = false;
   _isRatioFactor = false;
   _tol_attractor = 0.07f;
@@ -1015,7 +1015,7 @@ void dual_arm_control::updatePoses() {
     FreeMotionCtrl._w_H_eeStandby[RIGHT] = robot_._w_H_eeStandby[RIGHT];
     //
     object_._xDo = Eigen::Vector3f(object_._xo(0), object_._xo(1), _xDo_lifting(2));// set attractor of lifting task
-    object_._qDo = object_._qo;                                                     // _qDo_lifting
+    // object_._qDo = object_._qo;                                                   // _qDo_lifting
     object_.get_desiredHmgTransform();
 
     target_._x_intercept = Eigen::Vector3f(object_._xo(0), 0.0, object_._xo(2));
@@ -1357,6 +1357,7 @@ void dual_arm_control::computeCommands() {
 
       Eigen::Vector3f xDesTask = _xDo_lifting;
       Eigen::Vector4f qDesTask = _qDo_lifting;
+      std::cout << "\033[1;41mbold [dualarm] qDesTask \033[0m\n" << qDesTask.transpose() << std::endl;
 
       // desired task position and orientation vectors
       //----------------------------------------------
