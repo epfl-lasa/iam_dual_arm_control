@@ -1,0 +1,66 @@
+services:
+  base:
+    build: 
+      context: https://github.com/epfl-lasa/iiwa_ros.git#feature/rehassist
+      dockerfile: docker/Dockerfile
+      network: host
+      args:
+        ROS_DISTRO: noetic
+        USER: ${ROS_USER}
+        GIT_NAME: ${GIT_NAME}
+        GIT_EMAIL: ${GIT_EMAIL}
+      ssh:
+        default: ${SSH_AUTH_SOCK}  # Forwarding SSH agent
+    image: iiwa_ros:latest
+
+  iiwa_toolkit_ns:
+    env_file: .env
+    build: 
+      context: git@github.com:epfl-lasa/iiwa_toolkit_ns.git#clean/main
+      # dockerfile: Dockerfile
+      network: host
+      args:
+        ROS_DISTRO: noetic
+        USER: ${ROS_USER}
+        GIT_NAME: ${GIT_NAME}
+        GIT_EMAIL: ${GIT_EMAIL}
+      ssh:
+        default: ${SSH_AUTH_SOCK}  # Forwarding SSH agent
+    depends_on:
+      - base
+    image: iiwa_toolkit_ns:latest
+
+  ros:
+    user: ros
+    env_file: .env
+    network_mode: host
+    build:
+      context: .
+      network: host
+      dockerfile: Dockerfile
+      args:
+        ROS_DISTRO: noetic
+        USER: ros
+      ssh:
+        default: ${SSH_AUTH_SOCK}  # Forwarding SSH agent
+    depends_on:
+      - iiwa_toolkit_ns
+
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
+    volumes:
+      - ./:/home/${ROS_USER}/ros_ws/src/iam_dual_arm_control
+      - .clang-format:/home/${ROS_USER}/ros_ws/.clang-format
+      - .vscode:/home/${ROS_USER}/ros_ws/.vscode
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - ./../dual_pre_grabbing:/home/${ROS_USER}/ros_ws/src/dual_pre_grabbing # TODO Remove - used for debug
+      - ./../iiwa_toolkit_ns:/home/${ROS_USER}/ros_ws/src/iiwa_toolkit_ns # TODO Remove - used for debug
+      - ./../iiwa_ros:/home/${ROS_USER}/ros_ws/src/iiwa_ros # TODO Remove - used for debug
+    stdin_open: true
+    tty: true
+    privileged: true
