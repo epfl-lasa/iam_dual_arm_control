@@ -41,16 +41,18 @@ WORKDIR ${HOME}/ros_ws/src
 COPY ./ ./iam_dual_arm_control
 
 
+
+
+# Build ros workspace
+WORKDIR /home/${USER}/ros_ws
+RUN source /home/${USER}/.bashrc && rosdep install --from-paths src --ignore-src -r -y
+RUN source ${HOME}/.bashrc && source /opt/ros/noetic/setup.bash && catkin build
+
 # Add the workspace to the bashrc
 USER root
 RUN echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> ~/.bashrc && \
     echo "source ${HOME}/ros_ws/devel/setup.bash" >> ~/.bashrc
 USER ${USER}
-
-# Build ros workspace
-WORKDIR /home/${USER}/ros_ws
-RUN source /home/${USER}/.bashrc && rosdep install --from-paths src --ignore-src -r -y
-RUN source ${HOME}/.bashrc && source /opt/ros/noetic/setup.bash && catkin build dual_pre_grabbing
 
 USER ${USER}
 CMD [ "bash" ]
