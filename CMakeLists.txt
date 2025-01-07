@@ -49,13 +49,6 @@ catkin_package(
     sg_differentiation
 )
 
-# message(${catkin_LIBRARIES} )
-message("dual_pre_grabbing library : ${dual_pre_grabbing_LIBRARIES}")
-message("dual_pre_grabbing: ${dual_pre_grabbing_INCLUDE_DIRS}")
-message("libqpOASES library : ${libqpOASES}")
-
-
-
 set(SRC_FOLDER      "${CMAKE_CURRENT_SOURCE_DIR}/src")
 set(HEADERS_FOLDER  "${CMAKE_CURRENT_SOURCE_DIR}/include/")
 set(SOLVER_BWC      "${CMAKE_CURRENT_SOURCE_DIR}/bwc_cvxgen")

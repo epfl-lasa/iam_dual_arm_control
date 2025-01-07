@@ -4,9 +4,8 @@ USER root
 # Install catkin tools
 RUN apt update --fix-missing && apt upgrade -y && apt clean
 RUN apt install -y \
-    ros-noetic-tf-conversions
-
-
+    ros-noetic-tf-conversions \
+    libeigen3-dev
 # Install required libraries
 
 # qpoases
@@ -34,22 +33,24 @@ RUN git clone https://github.com/epfl-lasa/sg_differentiation.git
 # Need to be root to clone private repo
 USER root
 WORKDIR ${HOME}/ros_ws/src
-RUN --mount=type=ssh git clone -b feat/realrobots git@github.com:epfl-lasa/dual_pre_grabbing.git
+RUN --mount=type=ssh git clone -b feat/clean git@github.com:epfl-lasa/dual_pre_grabbing.git
 USER ${USER}
 
 # Copy iam_dual_arm_control folder inside docker
 WORKDIR ${HOME}/ros_ws/src
 COPY ./ ./iam_dual_arm_control
 
-# Build ros workspace
-WORKDIR /home/${USER}/ros_ws
-RUN source /home/${USER}/.bashrc && rosdep install --from-paths src --ignore-src -r -y
-# RUN source ${HOME}/.bashrc && source /opt/ros/noetic/setup.bash && catkin build
 
 # Add the workspace to the bashrc
 USER root
 RUN echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> ~/.bashrc && \
     echo "source ${HOME}/ros_ws/devel/setup.bash" >> ~/.bashrc
+USER ${USER}
+
+# Build ros workspace
+WORKDIR /home/${USER}/ros_ws
+RUN source /home/${USER}/.bashrc && rosdep install --from-paths src --ignore-src -r -y
+RUN source ${HOME}/.bashrc && source /opt/ros/noetic/setup.bash && catkin build dual_pre_grabbing
 
 USER ${USER}
 CMD [ "bash" ]
