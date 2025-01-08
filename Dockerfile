@@ -1,12 +1,12 @@
 FROM iiwa_toolkit_ns:latest AS base
 
 USER root
+
 # Install catkin tools
 RUN apt update --fix-missing && apt upgrade -y && apt clean
 RUN apt install -y \
     ros-noetic-tf-conversions \
     libeigen3-dev
-# Install required libraries
 
 # qpoases
 WORKDIR /source
@@ -25,16 +25,36 @@ RUN cd qpOASES && cd build && cmake -DBUILD_SHARED_LIBS=ON ../ && make && sudo m
 USER ${USER}
 WORKDIR ${HOME}/ros_ws/src
 
+# ----------------------------------------------------------------------------
+# ------------------------------- PRIVATE REPO ------------------------------- 
+
+# Need to be root to clone private repo
+USER root
+
+# iiwa_sim_models_poses
+WORKDIR /home/${USER}/ros_ws/src
+RUN --mount=type=ssh git clone -b mb_dev git@github.com:epfl-lasa/iiwa_sim_models_poses.git
+
+#sim_objects_description
+WORKDIR /home/${USER}/ros_ws/src
+RUN --mount=type=ssh git clone -b temp git@github.com:epfl-lasa/sim_objects_description.git
+
+#dual_iiwa_toolkit - simulation control
+WORKDIR /home/${USER}/ros_ws/src
+RUN --mount=type=ssh git clone -b feat/exterWrench git@github.com:epfl-lasa/dual_iiwa_toolkit.git
+
+# dual_pre_grabbing
+WORKDIR ${HOME}/ros_ws/src
+RUN --mount=type=ssh git clone -b feat/clean git@github.com:epfl-lasa/dual_pre_grabbing.git
+
+
+USER ${USER}
+# ----------------------------------------------------------------------------
+
+
 # sg_differentiation
 WORKDIR ${HOME}/ros_ws/src
 RUN git clone https://github.com/epfl-lasa/sg_differentiation.git
-
-# dual_pre_grabbing
-# Need to be root to clone private repo
-USER root
-WORKDIR ${HOME}/ros_ws/src
-RUN --mount=type=ssh git clone -b feat/clean git@github.com:epfl-lasa/dual_pre_grabbing.git
-USER ${USER}
 
 # Copy iam_dual_arm_control folder inside docker
 WORKDIR ${HOME}/ros_ws/src

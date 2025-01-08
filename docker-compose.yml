@@ -61,6 +61,8 @@ services:
       - ./../dual_pre_grabbing:/home/${ROS_USER}/ros_ws/src/dual_pre_grabbing # TODO Remove - used for debug
       - ./../iiwa_toolkit_ns:/home/${ROS_USER}/ros_ws/src/iiwa_toolkit_ns # TODO Remove - used for debug
       - ./../iiwa_ros:/home/${ROS_USER}/ros_ws/src/iiwa_ros # TODO Remove - used for debug
+      # - ./../dual_iiwa_toolkit:/home/${ROS_USER}/ros_ws/src/dual_iiwa_toolkit # TODO Remove - used for debug
+      # - ./../sim_objects_description:/home/${ROS_USER}/ros_ws/src/sim_objects_description # TODO Remove - used for debug
     stdin_open: true
     tty: true
     privileged: true
